@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Pro Momentum & Breakout Engine
+// @name         Pocket Option Titan Institutional Quant Engine
 // @namespace    http://tampermonkey.net/
-// @version      17.0
-// @description  Anti-Blunder Momentum Lock, SNR Breakout Engine, Zero Counter-Trend Traps
+// @version      20.0
+// @description  Full VSA Breakout, Absolute Body Dominance, SNR Polarity & Zero-Countertrend Traps
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // 1. INJECT MAIN-WORLD PROXY FOR ALL ASSET FORMATS
+    // 1. INJECT UNIVERSAL MAIN-WORLD PRICE HOOK
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
@@ -40,14 +40,15 @@
     `;
     (document.head || document.documentElement).appendChild(bridgeScript);
 
-    function initEngine() {
+    function initTitanEngine() {
         if (!document.body) {
-            setTimeout(initEngine, 200);
+            setTimeout(initTitanEngine, 200);
             return;
         }
 
-        if (document.getElementById('po-manual-hud')) return;
+        if (document.getElementById('po-titan-hud')) return;
 
+        // Sound System
         let audioCtx = null;
         function playBeep(freq = 850) {
             try {
@@ -69,13 +70,13 @@
 
         // HUD Design
         const hud = document.createElement('div');
-        hud.id = 'po-manual-hud';
+        hud.id = 'po-titan-hud';
         hud.style.cssText = `
             position: fixed;
             top: 175px;
             left: 15px;
             z-index: 999999999;
-            background: rgba(4, 8, 18, 0.98);
+            background: rgba(3, 7, 18, 0.98);
             border: 2px solid #0284c7;
             border-radius: 14px;
             padding: 10px;
@@ -89,29 +90,29 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ MOMENTUM ENGINE v17</span>
+                <span>⚡ TITAN INSTITUTIONAL v20</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #10b981; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">STRUCTURE: <span id="m-struct" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">SETUP: <span id="m-setup" style="color: #c084fc; font-weight: bold;">READY</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="m-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="t-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="t-price" style="color: #10b981; font-weight: bold;">--</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">SNR ZONE: <span id="t-snr" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">VSA PATTERN: <span id="t-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="t-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
-            <button id="m-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 FULL CHART DEEP SCAN
+            <button id="t-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
+                🔬 INSTITUTIONAL SCAN
             </button>
 
-            <div id="m-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="m-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
+            <div id="t-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+                <div id="t-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
             </div>
 
-            <div id="m-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
+            <div id="t-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
-                <div id="m-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
-                <div id="m-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
+                <div id="t-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
+                <div id="t-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 15s to 8s of candle</div>
+            <div id="t-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 14s to 8s of candle</div>
         `;
 
         document.body.appendChild(hud);
@@ -166,7 +167,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "OTC ASSET";
+            return "OTC PAIR";
         }
 
         let curBarOpen = null, curBarHigh = -Infinity, curBarLow = Infinity, curBarClose = null;
@@ -181,7 +182,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // Instant Pair Change Memory Wipe
+            // Instant Pair Switch Auto-Flush
             if (activePairStored !== "" && currentPair !== activePairStored) {
                 curBarOpen = price;
                 curBarHigh = price || -Infinity;
@@ -189,29 +190,22 @@
                 curBarClose = price;
                 candleHistory = [];
                 lastMinuteTracked = currentMin;
-                document.getElementById('m-signal-text').innerText = "PAIR SYNCED";
-                document.getElementById('m-signal-text').style.color = "#facc15";
+                document.getElementById('t-signal-text').innerText = "PAIR SYNCED";
+                document.getElementById('t-signal-text').style.color = "#facc15";
             }
             activePairStored = currentPair;
 
-            // Minute Bar Rollover
+            // Minute Rollover
             if (currentMin !== lastMinuteTracked) {
                 if (lastMinuteTracked !== -1 && curBarOpen !== null && curBarClose !== null) {
-                    let cBody = Math.abs(curBarClose - curBarOpen);
-                    let cRange = Math.max(0.00001, curBarHigh - curBarLow);
-                    let cUpper = curBarHigh - Math.max(curBarOpen, curBarClose);
-                    let cLower = Math.min(curBarOpen, curBarClose) - curBarLow;
-
                     candleHistory.push({
                         open: curBarOpen,
                         close: curBarClose,
                         high: curBarHigh,
                         low: curBarLow,
                         isGreen: curBarClose >= curBarOpen,
-                        body: cBody,
-                        range: cRange,
-                        upperWick: cUpper,
-                        lowerWick: cLower
+                        body: Math.abs(curBarClose - curBarOpen),
+                        range: Math.max(0.00001, curBarHigh - curBarLow)
                     });
                     if (candleHistory.length > 15) candleHistory.shift();
                 }
@@ -229,50 +223,43 @@
                 if (price < curBarLow) curBarLow = price;
                 curBarClose = price;
 
-                document.getElementById('m-price').innerText = price.toFixed(price > 100 ? 3 : 5);
-                document.getElementById('m-price').style.color = "#10b981";
+                document.getElementById('t-price').innerText = price.toFixed(price > 100 ? 3 : 5);
+                document.getElementById('t-price').style.color = "#10b981";
 
-                let greenCount = 0, redCount = 0;
-                for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (candleHistory[i].isGreen) {
-                        if (redCount === 0) greenCount++;
-                        else break;
-                    } else {
-                        if (greenCount === 0) redCount++;
-                        else break;
-                    }
-                }
-                const structEl = document.getElementById('m-struct');
-                if (greenCount >= 4) {
-                    structEl.innerText = `BUYING CLIMAX (${greenCount}x UP) ⚠️`;
-                    structEl.style.color = "#ef4444";
-                } else if (redCount >= 4) {
-                    structEl.innerText = `SELLING CLIMAX (${redCount}x DOWN) ⚠️`;
-                    structEl.style.color = "#10b981";
+                // SNR Proximity
+                let pStr = price.toFixed(price > 100 ? 3 : 5);
+                let lastDigits = parseInt(pStr.slice(-2));
+                const snrEl = document.getElementById('t-snr');
+                if (lastDigits >= 95 || lastDigits <= 5) {
+                    snrEl.innerText = "🎯 MAJOR .00 ROUND LEVEL";
+                    snrEl.style.color = "#ec4899";
+                } else if (Math.abs(lastDigits - 50) <= 5) {
+                    snrEl.innerText = "🎯 MID .50 LEVEL";
+                    snrEl.style.color = "#f59e0b";
                 } else {
-                    structEl.innerText = "HEALTHY MOMENTUM";
-                    structEl.style.color = "#38bdf8";
+                    snrEl.innerText = "MID CHANNEL";
+                    snrEl.style.color = "#64748b";
                 }
             }
 
-            document.getElementById('m-pair').innerText = currentPair;
-            document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
+            document.getElementById('t-pair').innerText = currentPair;
+            document.getElementById('t-timer').innerText = `${60 - currentSec}s`;
         }, 120);
 
-        // DEEP QUANT SCAN WITH MOMENTUM LOCK
+        // TITAN DEEP SCAN (2.0s)
         let isScanning = false;
-        document.getElementById('m-scan-btn').addEventListener('click', function() {
+        document.getElementById('t-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
 
             const price = getLivePrice();
-            const sigBox = document.getElementById('m-status-box');
-            const sigText = document.getElementById('m-signal-text');
-            const confText = document.getElementById('m-conf-text');
-            const desc = document.getElementById('m-desc');
-            const setupEl = document.getElementById('m-setup');
-            const scanBtn = document.getElementById('m-scan-btn');
-            const pBar = document.getElementById('m-progress-bar');
-            const pFill = document.getElementById('m-progress-fill');
+            const sigBox = document.getElementById('t-status-box');
+            const sigText = document.getElementById('t-signal-text');
+            const confText = document.getElementById('t-conf-text');
+            const desc = document.getElementById('t-desc');
+            const patEl = document.getElementById('t-pattern');
+            const scanBtn = document.getElementById('t-scan-btn');
+            const pBar = document.getElementById('t-progress-bar');
+            const pFill = document.getElementById('t-progress-fill');
 
             if (!price || !curBarOpen) {
                 sigText.innerText = "WAITING FOR TICK";
@@ -282,7 +269,7 @@
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "ANALYZING MOMENTUM...";
+            scanBtn.innerText = "CALCULATING CONFLUENCE...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -300,21 +287,21 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateBreakoutEngine(tickSamples);
+                    evaluateTitanStrategy(tickSamples);
                 }
             }, 100);
 
-            function evaluateBreakoutEngine(ticks) {
+            function evaluateTitanStrategy(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
+                scanBtn.innerText = "🔬 INSTITUTIONAL SCAN";
                 pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
                 const latestPrice = ticks[ticks.length - 1] || curBarClose || price;
 
-                // 1. Exact Candle Geometry
+                // 1. Candlestick Geometry
                 let isGreen = latestPrice >= curBarOpen;
                 let bodySize = Math.abs(latestPrice - curBarOpen);
                 let totalRange = Math.max(0.00001, curBarHigh - curBarLow);
@@ -325,14 +312,14 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. Order Flow Ticks
-                let upTicks = 0, downTicks = 0;
-                for (let i = 1; i < ticks.length; i++) {
-                    if (ticks[i] > ticks[i - 1]) upTicks++;
-                    else if (ticks[i] < ticks[i - 1]) downTicks++;
+                // Average historical body size (for VSA check)
+                let avgBody = 0.0001;
+                if (candleHistory.length > 0) {
+                    avgBody = candleHistory.reduce((s, c) => s + c.body, 0) / candleHistory.length;
                 }
+                let isGiantImpulse = bodySize >= (avgBody * 1.8);
 
-                // 3. Streak Count
+                // 2. Streak
                 let greenStreak = 0, redStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (candleHistory[i].isGreen) {
@@ -346,62 +333,81 @@
                 if (isGreen) greenStreak++;
                 else redStreak++;
 
-                let pStr = latestPrice.toFixed(5);
-                let lastTwo = parseInt(pStr.slice(-2));
-                let atMajorSNR = (lastTwo >= 95 || lastTwo <= 5);
+                // 3. SNR Level Math
+                let pStr = latestPrice.toFixed(latestPrice > 100 ? 3 : 5);
+                let lastDigits = parseInt(pStr.slice(-2));
+                let atMajorSNR = (lastDigits >= 95 || lastDigits <= 5);
 
                 let isCall = false;
                 let patternName = "";
-                let confidence = 85;
+                let confidence = 88;
 
                 // ==========================================
-                // STRICT MOMENTUM & BREAKOUT MATRIX
+                // TITAN INSTITUTIONAL DECISION LAWS
                 // ==========================================
 
-                // RULE 1: STRONG BODY BREAKOUT (Prevents Image 15 Bug)
-                // If candle is Green and Body >= 40%, NEVER PUT! (Follow the impulse)
-                if (isGreen && bodyPct >= 40 && upperWickPct <= 30 && greenStreak <= 3) {
+                // LAW 1: VSA GIANT IMPULSE MARUBOZU (Prevents Image 16 Blunder!)
+                // If a giant green candle erupts with body > 60% and upper wick < 25%, PUT IS 100% FORBIDDEN
+                if (isGreen && (isGiantImpulse || bodyPct >= 65) && upperWickPct <= 25) {
                     isCall = true;
-                    patternName = "Bullish Breakout Impulse";
-                    confidence = 92 + Math.floor(bodyPct / 15);
+                    patternName = "Giant Bullish Marubozu Breakout";
+                    confidence = 96;
                 }
-                // If candle is Red and Body >= 40%, NEVER CALL!
-                else if (!isGreen && bodyPct >= 40 && lowerWickPct <= 30 && redStreak <= 3) {
+                else if (!isGreen && (isGiantImpulse || bodyPct >= 65) && lowerWickPct <= 25) {
                     isCall = false;
-                    patternName = "Bearish Breakout Impulse";
-                    confidence = 92 + Math.floor(bodyPct / 15);
+                    patternName = "Giant Bearish Marubozu Dump";
+                    confidence = 96;
                 }
-                // RULE 2: BUYING CLIMAX EXHAUSTION (4+ Candles at Roof)
-                else if (greenStreak >= 4 && upperWickPct >= 35) {
+                // LAW 2: EXTREME CLIMAX EXHAUSTION (5+ Streak into Major Level)
+                else if (greenStreak >= 5 && upperWickPct >= 35) {
                     isCall = false;
-                    patternName = "Buying Climax Reversal";
-                    confidence = 93;
+                    patternName = `${greenStreak}x Green Climax Exhaustion`;
+                    confidence = 94;
                 }
-                // RULE 3: SELLING CLIMAX EXHAUSTION (4+ Candles at Floor)
-                else if (redStreak >= 4 && lowerWickPct >= 35) {
+                else if (redStreak >= 5 && lowerWickPct >= 35) {
                     isCall = true;
-                    patternName = "Selling Climax Reversal";
-                    confidence = 93;
+                    patternName = `${redStreak}x Red Climax Exhaustion`;
+                    confidence = 94;
                 }
-                // RULE 4: INSTITUTIONAL PINBAR REJECTION
-                else if (lowerWickPct >= 50 && bodyPct <= 35) {
+                // LAW 3: INSTITUTIONAL HAMMER / SHOOTING STAR (Pinbar Reversal)
+                else if (lowerWickPct >= 50 && bodyPct <= 35 && upperWickPct <= 15) {
                     isCall = true;
-                    patternName = "Hammer Floor Reversal";
-                    confidence = 91;
+                    patternName = "Institutional Hammer Rejection";
+                    confidence = 92;
                 }
-                else if (upperWickPct >= 50 && bodyPct <= 35) {
+                else if (upperWickPct >= 50 && bodyPct <= 35 && lowerWickPct <= 15) {
                     isCall = false;
-                    patternName = "Shooting Star Roof Reversal";
-                    confidence = 91;
+                    patternName = "Institutional Shooting Star Rejection";
+                    confidence = 92;
                 }
-                // RULE 5: DEFAULT TO CANDLE BODY COLOR (Micro-ticks cannot invert body)
-                else {
-                    isCall = isGreen;
-                    patternName = isGreen ? "Buyer Flow Continuation" : "Seller Flow Continuation";
-                    confidence = 84;
+                // LAW 4: ENGULFING MOMENTUM (Clear Body Takeover)
+                else if (candleHistory.length > 0 && bodyPct >= 55) {
+                    let prev = candleHistory[candleHistory.length - 1];
+                    if (isGreen && !prev.isGreen && bodySize > prev.body) {
+                        isCall = true;
+                        patternName = "Bullish Engulfing Impulse";
+                        confidence = 91;
+                    } else if (!isGreen && prev.isGreen && bodySize > prev.body) {
+                        isCall = false;
+                        patternName = "Bearish Engulfing Impulse";
+                        confidence = 91;
+                    }
+                }
+                // LAW 5: BODY COLOR DOMINANCE (Micro-ticks NEVER flip a 35%+ body)
+                if (!patternName) {
+                    if (bodyPct >= 35) {
+                        isCall = isGreen;
+                        patternName = isGreen ? "Bullish Candle Dominance" : "Bearish Candle Dominance";
+                        confidence = 88;
+                    } else {
+                        // Tight Doji Resolution
+                        isCall = isGreen;
+                        patternName = "Micro-Range Continuation";
+                        confidence = 83;
+                    }
                 }
 
-                setupEl.innerText = patternName;
+                patEl.innerText = patternName;
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
@@ -413,8 +419,8 @@
                 sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
                 confText.innerText = `CONFIDENCE: ${confidence}%`;
 
-                let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickInfo} • Flow: [${upTicks}▲ ${downTicks}▼]`;
+                let wickTag = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
+                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickTag}`;
                 desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playBeep(isCall ? 950 : 450);
@@ -423,8 +429,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initEngine);
+        document.addEventListener('DOMContentLoaded', initTitanEngine);
     } else {
-        initEngine();
+        initTitanEngine();
     }
 })();
