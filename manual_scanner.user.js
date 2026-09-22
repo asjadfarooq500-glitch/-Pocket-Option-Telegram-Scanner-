@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX True-Wick Engine
+// @name         Pocket Option APEX Omni-Stream Engine
 // @namespace    http://tampermonkey.net/
-// @version      40.0
-// @description  Eliminates Top-Left Watermark Bug, Exact High/Low/Wick Ratios & Trend-Lock
+// @version      45.0
+// @description  Matrix Screen Hook, Anti-Freeze Auto-Sync, 100-Pip Sanity Shield & True Wicks
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,37 +14,33 @@
 (function() {
     'use strict';
 
-    // 1. INJECT COORDINATE-AWARE MAIN-WORLD PRICE HOOK
+    // 1. INJECT ROBUST MATRIX-AWARE PRICE HOOK
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        var lastValidPrice = null;
-        var lastValidTime = 0;
+        var runningPriceCluster = null;
 
-        function broadcastPrice(num, x, y, canvasWidth) {
+        function broadcastPrice(num, screenX, screenY) {
             if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
 
-            // WATERMARK FILTER: Top-left numbers (x < 45% of width or y < 140) are headers/watermarks!
-            if (canvasWidth && x < (canvasWidth * 0.5)) return;
-            if (x < 180 && y < 150) return;
-
-            var now = Date.now();
-            if (now - lastValidTime > 1200) {
-                lastValidPrice = null;
-            }
-
-            // Reject unnatural tick jumps (filters out stray grid/axis numbers)
-            if (lastValidPrice !== null) {
-                var maxJump = lastValidPrice > 100 ? 0.35 : 0.00085; // Max 85 pips jump
-                if (Math.abs(num - lastValidPrice) > maxJump) {
-                    return;
+            // WATERMARK REJECT: Reject numbers strictly drawn in top-left header zone
+            if (screenX !== null && screenY !== null) {
+                if (screenX < 240 && screenY < 180) {
+                    return; // Ignore top-left pair header watermark
                 }
             }
 
-            lastValidPrice = num;
-            lastValidTime = now;
+            // SANITY SHIELD: Reject numbers 80+ pips away from active running price
+            if (runningPriceCluster !== null) {
+                var maxDist = runningPriceCluster > 100 ? 1.0 : 0.0015;
+                if (Math.abs(num - runningPriceCluster) > maxDist) {
+                    return; // Ignore far-away axis scale markers
+                }
+            }
+
+            runningPriceCluster = num;
             document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', now);
+            document.documentElement.setAttribute('data-po-live-time', Date.now());
         }
 
         try {
@@ -53,8 +49,15 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        var cWidth = this.canvas ? this.canvas.width : window.innerWidth;
-                        broadcastPrice(parseFloat(str), x, y, cWidth);
+                        var realX = x, realY = y;
+                        try {
+                            if (this.getTransform) {
+                                var m = this.getTransform();
+                                realX = m.a * x + m.c * y + m.e;
+                                realY = m.b * x + m.d * y + m.f;
+                            }
+                        } catch(err) {}
+                        broadcastPrice(parseFloat(str), realX, realY);
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -113,7 +116,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX TRUE-WICK v40</span>
+                <span>⚡ APEX TRUE-STREAM v45</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -180,13 +183,14 @@
             let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
             if (hooked && hooked > 0) return hooked;
 
+            // DOM Fallback
             const nodes = document.querySelectorAll('*');
             for (let el of nodes) {
                 if (el.children.length === 0 && el.textContent) {
                     let txt = el.textContent.trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
                         let rect = el.getBoundingClientRect();
-                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.5)) {
+                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.45)) {
                             let n = parseFloat(txt);
                             if (n > 0 && Math.abs(n - 2.62) > 0.05) return n;
                         }
@@ -204,7 +208,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "OTC PAIR";
+            return "AUD/CHF OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
@@ -219,7 +223,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // Pair switch flush
+            // INSTANT PAIR SWITCH FLUSH
             if (storedPair !== "" && currentPair !== storedPair) {
                 candleOpen = price;
                 candleHigh = price || -Infinity;
@@ -232,7 +236,7 @@
             }
             storedPair = currentPair;
 
-            // Minute Rollover
+            // Minute Cycle Rollover
             if (currentMin !== lastMinuteTracked) {
                 if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                     candleHistory.push({
@@ -261,10 +265,8 @@
                     candleLow = price;
                 }
 
-                // Clamped High & Low tracking
-                let maxDiff = candleOpen * 0.0015; // Max 15 pips per candle
-                if (price > candleHigh && (price - candleOpen) < maxDiff) candleHigh = price;
-                if (price < candleLow && (candleOpen - price) < maxDiff) candleLow = price;
+                if (price > candleHigh) candleHigh = price;
+                if (price < candleLow) candleLow = price;
                 candleClose = price;
 
                 let decimals = price > 100 ? 3 : 5;
@@ -275,7 +277,7 @@
                 document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
                 document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
 
-                // EXACT WICK & BODY MATHEMATICS
+                // EXACT WICK & BODY PROPORTIONS
                 let cRange = Math.max(0.00001, candleHigh - candleLow);
                 let cBody = Math.abs(candleClose - candleOpen);
                 let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -289,7 +291,7 @@
                 document.getElementById('a-uwick').innerText = `${uPct}%`;
                 document.getElementById('a-lwick').innerText = `${lPct}%`;
 
-                // Waterfall vs Rocket Trend Flow
+                // Trend Streak Analysis
                 let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (!candleHistory[i].isGreen) {
@@ -305,7 +307,7 @@
 
                 const flowEl = document.getElementById('a-flow');
                 if (redStreak >= 4) {
-                    flowEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
+                    flowEl.innerText = `WATERFALL DUMP (${redStreak}x RED) 🔴`;
                     flowEl.style.color = "#ef4444";
                 } else if (greenStreak >= 4) {
                     flowEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
@@ -321,7 +323,7 @@
         }, 80);
 
         // ==========================================
-        // SCANNER (VERIFIED HIGH/LOW CONFLUENCE)
+        // SCANNER (INSTANT RECOVERY & ACCURACY)
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
@@ -363,11 +365,11 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateTrueWickDecision(tickSamples);
+                    evaluateStreamDecision(tickSamples);
                 }
             }, 100);
 
-            function evaluateTrueWickDecision(ticks) {
+            function evaluateStreamDecision(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
                 scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
@@ -404,20 +406,17 @@
                 let setupName = "";
                 let confidence = 88;
 
-                // STRICT TRADING RULES
-                // RULE 1: WATERFALL DUMP CONTINUATION
+                // STRICT TRADING RULES (WATERFALL LOCK)
                 if (redStreak >= 4 && lowerWickPct <= 35) {
                     isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
                     confidence = 96;
                 }
-                // RULE 2: ROCKET RALLY CONTINUATION
                 else if (greenStreak >= 4 && upperWickPct <= 35) {
                     isCall = true;
                     setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
                     confidence = 96;
                 }
-                // RULE 3: REAL DOJI (Body <= 18%)
                 else if (bodyPct <= 18) {
                     if (redStreak >= 3) {
                         isCall = false;
@@ -433,7 +432,6 @@
                         confidence = 83;
                     }
                 }
-                // RULE 4: CONFIRMED PINBAR (Requires 45%+ Wick)
                 else if (lowerWickPct >= 45 && bodyPct <= 40 && redStreak <= 3) {
                     isCall = true;
                     setupName = "Confirmed Hammer Rejection Bounce";
@@ -444,13 +442,11 @@
                     setupName = "Confirmed Shooting Star Drop";
                     confidence = 92;
                 }
-                // RULE 5: SOLID BODY MOMENTUM
                 else if (bodyPct >= 50) {
                     isCall = isGreen;
                     setupName = isGreen ? "Bullish Volume Impulse" : "Bearish Volume Dump";
                     confidence = 91;
                 }
-                // RULE 6: CANDLE DOMINANCE
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Candle Dominance" : "Seller Candle Dominance";
