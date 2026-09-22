@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Titan Institutional Range & Floor Guard
+// @name         Pocket Option APEX True OHLC Engine
 // @namespace    http://tampermonkey.net/
-// @version      21.0
-// @description  Swing Floor/Roof Detection, Never-Sell-At-Support Lock, Range Mean-Reversion
+// @version      25.0
+// @description  Exact OHLC Candle Tracking, Live Wick/Body Math, VSA Momentum & True Rejections
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // 1. INJECT UNIVERSAL MAIN-WORLD PRICE HOOK
+    // 1. INJECT UNIVERSAL MAIN-WORLD PRICE PROXY
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
@@ -40,13 +40,13 @@
     `;
     (document.head || document.documentElement).appendChild(bridgeScript);
 
-    function initTitanEngine() {
+    function initApexEngine() {
         if (!document.body) {
-            setTimeout(initTitanEngine, 200);
+            setTimeout(initApexEngine, 200);
             return;
         }
 
-        if (document.getElementById('po-titan-hud')) return;
+        if (document.getElementById('po-apex-hud')) return;
 
         let audioCtx = null;
         function playBeep(freq = 850) {
@@ -69,10 +69,10 @@
 
         // HUD Design
         const hud = document.createElement('div');
-        hud.id = 'po-titan-hud';
+        hud.id = 'po-apex-hud';
         hud.style.cssText = `
             position: fixed;
-            top: 175px;
+            top: 170px;
             left: 15px;
             z-index: 999999999;
             background: rgba(3, 7, 18, 0.98);
@@ -82,42 +82,55 @@
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             box-shadow: 0 16px 55px rgba(0,0,0,0.98);
-            width: 225px;
+            width: 230px;
             touch-action: none;
             user-select: none;
         `;
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ TITAN FLOOR-GUARD v21</span>
+                <span>⚡ APEX TRUE-OHLC v25</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="t-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="t-price" style="color: #10b981; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">FLOOR LEVEL: <span id="t-snr" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="t-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="t-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="a-price" style="color: #10b981; font-weight: bold;">--</span></div>
+            
+            <div style="background: #091226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
+                <div style="font-size: 8px; color: #94a3b8; display: flex; justify-content: space-between;">
+                    <span>O: <b id="a-open" style="color:#fff;">--</b></span>
+                    <span>H: <b id="a-high" style="color:#10b981;">--</b></span>
+                    <span>L: <b id="a-low" style="color:#ef4444;">--</b></span>
+                </div>
+                <div style="font-size: 8px; color: #94a3b8; margin-top: 3px; display: flex; justify-content: space-between;">
+                    <span>BODY: <b id="a-body-pct" style="color:#38bdf8;">--%</b></span>
+                    <span>U-WICK: <b id="a-uwick-pct" style="color:#facc15;">--%</b></span>
+                    <span>L-WICK: <b id="a-lwick-pct" style="color:#facc15;">--%</b></span>
+                </div>
+            </div>
 
-            <button id="t-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 INSTITUTIONAL SCAN
+            <div style="font-size: 9px; color: #94a3b8;">STATE: <span id="a-status" style="color: #facc15; font-weight: bold;">LOCKING :00</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+
+            <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
+                🔬 SCAN RUNNING CANDLE
             </button>
 
-            <div id="t-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="t-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
+            <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+                <div id="a-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
             </div>
 
-            <div id="t-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
-                <div id="t-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
-                <div id="t-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
+            <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
+                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="t-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 14s to 8s of candle</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 6s of candle</div>
         `;
 
         document.body.appendChild(hud);
 
         // Touch Dragging
-        let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 175;
+        let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 170;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
                 isDragging = true;
@@ -132,8 +145,8 @@
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
             e.preventDefault();
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 230, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 270, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
+            hud.style.left = Math.max(5, Math.min(window.innerWidth - 235, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
+            hud.style.top = Math.max(5, Math.min(window.innerHeight - 275, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
         }, { passive: false });
 
         document.addEventListener('touchend', function() { isDragging = false; });
@@ -169,10 +182,14 @@
             return "OTC PAIR";
         }
 
-        let curBarOpen = null, curBarHigh = -Infinity, curBarLow = Infinity, curBarClose = null;
+        // ==========================================
+        // TRUE-OHLC TICK TRACKER & MINUTE LOCK
+        // ==========================================
+        let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
+        let lastMinuteSynced = -1;
+        let isMinuteLocked = false;
         let candleHistory = [];
-        let lastMinuteTracked = -1;
-        let activePairStored = "";
+        let storedPair = "";
 
         setInterval(() => {
             const currentPair = getActivePair();
@@ -181,107 +198,128 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // Instant Pair Switch Auto-Flush
-            if (activePairStored !== "" && currentPair !== activePairStored) {
-                curBarOpen = price;
-                curBarHigh = price || -Infinity;
-                curBarLow = price || Infinity;
-                curBarClose = price;
+            // Pair change flush
+            if (storedPair !== "" && currentPair !== storedPair) {
+                candleOpen = null;
+                candleHigh = -Infinity;
+                candleLow = Infinity;
+                isMinuteLocked = false;
                 candleHistory = [];
-                lastMinuteTracked = currentMin;
-                document.getElementById('t-signal-text').innerText = "PAIR SYNCED";
-                document.getElementById('t-signal-text').style.color = "#facc15";
+                lastMinuteSynced = currentMin;
             }
-            activePairStored = currentPair;
+            storedPair = currentPair;
 
-            // Minute Rollover
-            if (currentMin !== lastMinuteTracked) {
-                if (lastMinuteTracked !== -1 && curBarOpen !== null && curBarClose !== null) {
+            // Minute Cycle Rollover (:00.000)
+            if (currentMin !== lastMinuteSynced) {
+                if (lastMinuteSynced !== -1 && candleOpen !== null && price) {
                     candleHistory.push({
-                        open: curBarOpen,
-                        close: curBarClose,
-                        high: curBarHigh,
-                        low: curBarLow,
-                        isGreen: curBarClose >= curBarOpen,
-                        body: Math.abs(curBarClose - curBarOpen),
-                        range: Math.max(0.00001, curBarHigh - curBarLow)
+                        open: candleOpen,
+                        close: price,
+                        high: candleHigh,
+                        low: candleLow,
+                        isGreen: price >= candleOpen,
+                        body: Math.abs(price - candleOpen),
+                        range: Math.max(0.00001, candleHigh - candleLow)
                     });
                     if (candleHistory.length > 20) candleHistory.shift();
                 }
 
-                lastMinuteTracked = currentMin;
-                curBarOpen = price;
-                curBarHigh = price || -Infinity;
-                curBarLow = price || Infinity;
-                curBarClose = price;
+                lastMinuteSynced = currentMin;
+                if (price) {
+                    candleOpen = price;
+                    candleHigh = price;
+                    candleLow = price;
+                    candleClose = price;
+                    isMinuteLocked = true;
+                } else {
+                    candleOpen = null;
+                    isMinuteLocked = false;
+                }
             }
 
             if (price) {
-                if (!curBarOpen) curBarOpen = price;
-                if (price > curBarHigh) curBarHigh = price;
-                if (price < curBarLow) curBarLow = price;
-                curBarClose = price;
-
-                document.getElementById('t-price').innerText = price.toFixed(price > 100 ? 3 : 5);
-                document.getElementById('t-price').style.color = "#10b981";
-
-                // Check Horizontal Support Floor & Roof from History
-                let swingLow = Infinity, swingHigh = -Infinity;
-                for (let c of candleHistory) {
-                    if (c.low < swingLow) swingLow = c.low;
-                    if (c.high > swingHigh) swingHigh = c.high;
+                if (candleOpen === null && currentSec <= 5) {
+                    candleOpen = price;
+                    candleHigh = price;
+                    candleLow = price;
+                    isMinuteLocked = true;
                 }
 
-                const snrEl = document.getElementById('t-snr');
-                let distToFloor = Math.abs(price - swingLow);
-                let distToRoof = Math.abs(price - swingHigh);
+                if (isMinuteLocked) {
+                    if (price > candleHigh) candleHigh = price;
+                    if (price < candleLow) candleLow = price;
+                    candleClose = price;
+                }
 
-                if (distToFloor < 0.00020) {
-                    snrEl.innerText = "🛡️ AT SUPPORT FLOOR";
-                    snrEl.style.color = "#10b981";
-                } else if (distToRoof < 0.00020) {
-                    snrEl.innerText = "🛑 AT RESISTANCE ROOF";
-                    snrEl.style.color = "#ef4444";
+                // Update UI Numbers
+                let decimals = price > 100 ? 3 : 5;
+                document.getElementById('a-price').innerText = price.toFixed(decimals);
+                document.getElementById('a-price').style.color = "#10b981";
+
+                if (isMinuteLocked && candleOpen !== null) {
+                    document.getElementById('a-open').innerText = candleOpen.toFixed(decimals);
+                    document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
+                    document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
+
+                    let cRange = Math.max(0.00001, candleHigh - candleLow);
+                    let cBody = Math.abs(price - candleOpen);
+                    let cUpper = candleHigh - Math.max(candleOpen, price);
+                    let cLower = Math.min(candleOpen, price) - candleLow;
+
+                    let bPct = Math.round((cBody / cRange) * 100);
+                    let uPct = Math.round((cUpper / cRange) * 100);
+                    let lPct = Math.round((cLower / cRange) * 100);
+
+                    document.getElementById('a-body-pct').innerText = `${bPct}%`;
+                    document.getElementById('a-uwick-pct').innerText = `${uPct}%`;
+                    document.getElementById('a-lwick-pct').innerText = `${lPct}%`;
+
+                    let isG = price >= candleOpen;
+                    document.getElementById('a-status').innerText = isG ? "BULLISH FLOW 🟢" : "BEARISH DUMP 🔴";
+                    document.getElementById('a-status').style.color = isG ? "#10b981" : "#ef4444";
                 } else {
-                    snrEl.innerText = "MID CHANNEL";
-                    snrEl.style.color = "#64748b";
+                    document.getElementById('a-status').innerText = "LOCKING AT :00";
+                    document.getElementById('a-status').style.color = "#facc15";
                 }
             }
 
-            document.getElementById('t-pair').innerText = currentPair;
-            document.getElementById('t-timer').innerText = `${60 - currentSec}s`;
-        }, 120);
+            document.getElementById('a-pair').innerText = currentPair;
+            document.getElementById('a-timer').innerText = `${60 - currentSec}s`;
+        }, 80);
 
-        // TITAN FLOOR-GUARD SCAN
+        // ==========================================
+        // APEX QUANT SCANNER (NO COUNTER-TREND TRAPS)
+        // ==========================================
         let isScanning = false;
-        document.getElementById('t-scan-btn').addEventListener('click', function() {
+        document.getElementById('a-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
 
             const price = getLivePrice();
-            const sigBox = document.getElementById('t-status-box');
-            const sigText = document.getElementById('t-signal-text');
-            const confText = document.getElementById('t-conf-text');
-            const desc = document.getElementById('t-desc');
-            const patEl = document.getElementById('t-pattern');
-            const scanBtn = document.getElementById('t-scan-btn');
-            const pBar = document.getElementById('t-progress-bar');
-            const pFill = document.getElementById('t-progress-fill');
+            const sigBox = document.getElementById('a-status-box');
+            const sigText = document.getElementById('a-signal-text');
+            const confText = document.getElementById('a-conf-text');
+            const desc = document.getElementById('a-desc');
+            const scanBtn = document.getElementById('a-scan-btn');
+            const pBar = document.getElementById('a-progress-bar');
+            const pFill = document.getElementById('a-progress-fill');
 
-            if (!price || !curBarOpen) {
-                sigText.innerText = "WAITING FOR TICK";
+            if (!price || !isMinuteLocked || candleOpen === null) {
+                sigText.innerText = "WAITING FOR :00";
                 sigText.style.color = "#f43f5e";
+                desc.innerText = "Wait for new candle open to lock real data";
+                playBeep(300);
                 return;
             }
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "SCANNING LEVELS...";
+            scanBtn.innerText = "SCANNING OHLC...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
             let tickSamples = [];
             let elapsed = 0;
-            const sampleSteps = 18;
+            const sampleSteps = 16; // 1.6s
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -293,41 +331,32 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateFloorGuard(tickSamples);
+                    evaluateApexDecision(tickSamples);
                 }
             }, 100);
 
-            function evaluateFloorGuard(ticks) {
+            function evaluateApexDecision(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 INSTITUTIONAL SCAN";
+                scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
                 pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
-                const latestPrice = ticks[ticks.length - 1] || curBarClose || price;
+                const latestPrice = ticks[ticks.length - 1] || candleClose || price;
 
-                // 1. Candlestick Anatomy
-                let isGreen = latestPrice >= curBarOpen;
-                let bodySize = Math.abs(latestPrice - curBarOpen);
-                let totalRange = Math.max(0.00001, curBarHigh - curBarLow);
-                let upperWick = curBarHigh - Math.max(curBarOpen, latestPrice);
-                let lowerWick = Math.min(curBarOpen, latestPrice) - curBarLow;
+                // 1. Exact Math from Verified OHLC
+                let isGreen = latestPrice >= candleOpen;
+                let bodySize = Math.abs(latestPrice - candleOpen);
+                let totalRange = Math.max(0.00001, candleHigh - candleLow);
+                let upperWick = candleHigh - Math.max(candleOpen, latestPrice);
+                let lowerWick = Math.min(candleOpen, latestPrice) - candleLow;
 
                 let bodyPct = Math.round((bodySize / totalRange) * 100);
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. Swing High / Low Floor Detection
-                let swingLow = Infinity, swingHigh = -Infinity;
-                for (let c of candleHistory) {
-                    if (c.low < swingLow) swingLow = c.low;
-                    if (c.high > swingHigh) swingHigh = c.high;
-                }
-                let isAtFloor = Math.abs(latestPrice - swingLow) < 0.00022;
-                let isAtRoof = Math.abs(latestPrice - swingHigh) < 0.00022;
-
-                // 3. Streak Count
+                // 2. Multi-Bar Streak
                 let greenStreak = 0, redStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (candleHistory[i].isGreen) {
@@ -342,66 +371,55 @@
                 else redStreak++;
 
                 let isCall = false;
-                let patternName = "";
+                let setupName = "";
                 let confidence = 88;
 
                 // ==========================================
-                // STRICT FLOOR-GUARD DECISION MATRIX
+                // STRICT APEX TRADING LAWS
                 // ==========================================
 
-                // RULE 1: NEVER SELL INTO SUPPORT (Prevents Image 14 Trap!)
-                if (!isGreen && isAtFloor) {
-                    isCall = true; // Red candle dumped into floor = BUY BOUNCE!
-                    patternName = "Support Floor Absorption Bounce";
+                // LAW 1: WATERFALL DUMP CONTINUATION (Prevents Counter-Trading in Crash)
+                // If candle is solid Red (Body >= 40% and lower wick <= 25%), ALWAYS PUT!
+                if (!isGreen && bodyPct >= 40 && lowerWickPct <= 25) {
+                    isCall = false; // 100% PUT (Follow the drop!)
+                    setupName = "Solid Bearish Dump Impulse";
                     confidence = 94;
                 }
-                // RULE 2: NEVER BUY INTO RESISTANCE
-                else if (isGreen && isAtRoof) {
-                    isCall = false; // Green candle pumped into roof = SELL REJECTION!
-                    patternName = "Resistance Roof Exhaustion Drop";
+                // LAW 2: ROCKET PUMP CONTINUATION (Prevents Counter-Trading in Rally)
+                // If candle is solid Green (Body >= 40% and upper wick <= 25%), ALWAYS CALL!
+                else if (isGreen && bodyPct >= 40 && upperWickPct <= 25) {
+                    isCall = true; // 100% CALL (Follow the breakout!)
+                    setupName = "Solid Bullish Pump Impulse";
                     confidence = 94;
                 }
-                // RULE 3: VSA GIANT MARUBOZU (In Open Channel)
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 20 && !isAtRoof) {
-                    isCall = true;
-                    patternName = "Giant Bullish Marubozu Breakout";
-                    confidence = 93;
-                }
-                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 20 && !isAtFloor) {
-                    isCall = false;
-                    patternName = "Giant Bearish Marubozu Dump";
-                    confidence = 93;
-                }
-                // RULE 4: MULTI-BAR EXHAUSTION
-                else if (redStreak >= 4) {
-                    isCall = true;
-                    patternName = `${redStreak}x Red Selling Climax`;
+                // LAW 3: TRUE PINBAR REVERSAL (Requires 50%+ Wick)
+                else if (lowerWickPct >= 50 && bodyPct <= 35) {
+                    isCall = true; // Real Hammer Rejection
+                    setupName = "Verified Hammer Floor Bounce";
                     confidence = 92;
                 }
-                else if (greenStreak >= 4) {
-                    isCall = false;
-                    patternName = `${greenStreak}x Green Buying Climax`;
+                else if (upperWickPct >= 50 && bodyPct <= 35) {
+                    isCall = false; // Real Shooting Star Rejection
+                    setupName = "Verified Shooting Star Drop";
                     confidence = 92;
                 }
-                // RULE 5: PINBAR REVERSAL
-                else if (lowerWickPct >= 45 && bodyPct <= 35) {
+                // LAW 4: MULTI-BAR EXHAUSTION WITH CLEAR WICK
+                else if (redStreak >= 4 && lowerWickPct >= 35) {
                     isCall = true;
-                    patternName = "Hammer Floor Reversal";
+                    setupName = `${redStreak}x Red Dump Floor Reversal`;
                     confidence = 91;
                 }
-                else if (upperWickPct >= 45 && bodyPct <= 35) {
+                else if (greenStreak >= 4 && upperWickPct >= 35) {
                     isCall = false;
-                    patternName = "Shooting Star Roof Reversal";
+                    setupName = `${greenStreak}x Green Pump Roof Reversal`;
                     confidence = 91;
                 }
-                // RULE 6: BODY MOMENTUM FALLBACK
+                // LAW 5: BODY COLOR DOMINANCE FALLBACK
                 else {
                     isCall = isGreen;
-                    patternName = isGreen ? "Bullish Flow Continuation" : "Bearish Flow Continuation";
+                    setupName = isGreen ? "Bullish Flow Dominance" : "Bearish Flow Dominance";
                     confidence = 85;
                 }
-
-                patEl.innerText = patternName;
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
@@ -413,8 +431,8 @@
                 sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
                 confText.innerText = `CONFIDENCE: ${confidence}%`;
 
-                let wickTag = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickTag}`;
+                let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
+                let dynamicReason = `${setupName} • Body: ${bodyPct}% • ${wickInfo}`;
                 desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playBeep(isCall ? 950 : 450);
@@ -423,8 +441,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTitanEngine);
+        document.addEventListener('DOMContentLoaded', initApexEngine);
     } else {
-        initTitanEngine();
+        initApexEngine();
     }
 })();
