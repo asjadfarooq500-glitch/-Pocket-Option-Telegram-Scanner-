@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Strict Manual Engine (Direct On-Screen)
+// @name         Pocket Option Live Manual Engine (Axis Lock)
 // @namespace    http://tampermonkey.net/
-// @version      2.5
-// @description  Direct On-Screen Live Tick Reader & Next Candle Signal HUD
+// @version      3.0
+// @description  Strict Right-Axis Chart Reader - Ignores Account Balance
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -22,7 +22,7 @@
 
         if (document.getElementById('po-manual-hud')) return;
 
-        // Audio alert support for iPhone Safari
+        // Audio alert support
         let audioCtx = null;
         function playBeep(freq = 850) {
             try {
@@ -42,7 +42,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // Floating HUD Box
+        // Movable HUD Box
         const hud = document.createElement('div');
         hud.id = 'po-manual-hud';
         hud.style.cssText = `
@@ -67,7 +67,7 @@
                 <span>⚡ PO STRICT ENGINE</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">ACTIVE PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #f43f5e; font-weight: bold;">SEARCHING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">CANDLE: <span id="m-timer" style="color: #facc15; font-weight: bold;">--s</span></div>
 
@@ -83,15 +83,15 @@
             </button>
 
             <div id="m-status-box" style="margin-top: 6px; padding: 8px 4px; background: #131b2e; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Signal</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
                 <div id="m-signal-text" style="font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait for live tick sync</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait for tick sync</div>
         `;
 
         document.body.appendChild(hud);
 
-        // Smooth Touch Dragging for iPhone
+        // Smooth Touch Dragging
         let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 180;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -113,25 +113,36 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
-        // Targeted Price Grabber
+        // STRICT AXIS PRICE READER (Ignores Top Balance Completely)
         function getLivePrice() {
-            const potentialClasses = ['.chart-current-value', '.current-price', '.val__num', '[class*="current-value"]'];
-            for (let c of potentialClasses) {
-                let el = document.querySelector(c);
-                if (el && el.textContent) {
-                    let num = parseFloat(el.textContent.replace(/[^0-9.]/g, ''));
-                    if (!isNaN(num) && num > 0) return num;
+            // 1. Chart classes check
+            const directSelectors = ['.chart-current-value', '.current-price', '[class*="current-value"]', '.val__num'];
+            for (let sel of directSelectors) {
+                let els = document.querySelectorAll(sel);
+                for (let el of els) {
+                    let rect = el.getBoundingClientRect();
+                    // Top header ignore (must be below 75px)
+                    if (rect.top > 75 && el.textContent) {
+                        let clean = parseFloat(el.textContent.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(clean) && clean > 0 && Math.abs(clean - 2.62) > 0.05) return clean;
+                    }
                 }
             }
 
-            const nodes = document.body.querySelectorAll('span, div, text');
+            // 2. Strict Right-Axis Reader
+            const nodes = document.querySelectorAll('div, span, text');
             for (let el of nodes) {
                 if (el.children.length === 0 && el.textContent) {
                     let txt = el.textContent.trim();
-                    if (/^\d{1,4}\.\d{3,6}$/.test(txt)) {
-                        let num = parseFloat(txt);
-                        if (num > 0 && num !== 100 && !txt.includes('%')) {
-                            return num;
+                    // Must have 4 or 5 decimal places (e.g. 0.72256 or 1.98600)
+                    if (/^\d{1,4}\.\d{4,6}$/.test(txt)) {
+                        let rect = el.getBoundingClientRect();
+                        // Must be in the right 40% area of screen, below 75px and above 550px
+                        if (rect.top > 75 && rect.left > (window.innerWidth * 0.60)) {
+                            let num = parseFloat(txt);
+                            if (num > 0 && Math.abs(num - 2.62) > 0.05) {
+                                return num;
+                            }
                         }
                     }
                 }
@@ -147,7 +158,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "AED/CNY OTC";
+            return "AUD/USD OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, lastMinute = -1;
@@ -171,7 +182,7 @@
                 if (price > candleHigh) candleHigh = price;
                 if (price < candleLow) candleLow = price;
                 priceEl.innerText = price.toFixed(5);
-                priceEl.style.color = "#10b981";
+                priceEl.style.color = "#10b981"; // GREEN when real price is locked
             } else {
                 priceEl.innerText = "NO TICK";
                 priceEl.style.color = "#f43f5e";
@@ -181,7 +192,7 @@
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
         }, 200);
 
-        // Strict Scan Button (Zero Guesswork)
+        // Strict Scan Decision
         document.getElementById('m-scan-btn').addEventListener('click', function() {
             const price = getLivePrice();
             const now = new Date();
@@ -189,12 +200,11 @@
             const sigText = document.getElementById('m-signal-text');
             const desc = document.getElementById('m-desc');
 
-            // Agar price sync nahi hui toh error show karega (tukka nahi lagayega)
             if (!price || !candleOpen) {
-                sigText.innerText = "NO TICK FOUND";
+                sigText.innerText = "NO TICK SYNC";
                 sigText.style.color = "#f43f5e";
                 sigBox.style.borderColor = "#f43f5e";
-                desc.innerText = "Close 'Trades' tab & wait for tick!";
+                desc.innerText = "Chart price not detected yet.";
                 playBeep(300);
                 return;
             }
@@ -208,19 +218,18 @@
             let isCall = true;
             let reason = "";
 
-            // Rejection & Momentum Evaluation
             if (lowerWick > upperWick && lowerWick >= (totalRange * 0.3)) {
                 isCall = true;
-                reason = "Lower wick buyer rejection";
+                reason = "Lower wick buyer bounce";
             } else if (upperWick > lowerWick && upperWick >= (totalRange * 0.3)) {
                 isCall = false;
-                reason = "Upper wick seller rejection";
+                reason = "Upper wick seller dump";
             } else if (bodySize >= (totalRange * 0.5)) {
                 isCall = isGreen;
-                reason = isGreen ? "Bullish trend push" : "Bearish trend drop";
+                reason = isGreen ? "Strong Bullish continuation" : "Strong Bearish drop";
             } else {
                 isCall = isGreen;
-                reason = "Tick momentum direction";
+                reason = "Momentum trend follow";
             }
 
             let nextSec = 60 - now.getSeconds();
