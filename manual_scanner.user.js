@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Live Canvas Tick Engine
+// @name         Pocket Option Live Canvas & Stream Engine
 // @namespace    http://tampermonkey.net/
-// @version      4.0
-// @description  Direct Canvas & DOM Hook - Reads exact right-axis price badge
+// @version      5.0
+// @description  Deep Main-World Canvas & WebSocket Injection for Pocket Option
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,36 +14,71 @@
 (function() {
     'use strict';
 
-    let capturedLivePrice = null;
-
-    // 1. CANVAS HOOK: Captures the exact price drawn on chart axis
-    const origFillText = CanvasRenderingContext2D.prototype.fillText;
-    CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
-        if (text && typeof text === 'string') {
-            let str = text.trim();
-            // Match formats like 0.07934, 1.23456, 154.230
-            if (/^\d{1,5}\.\d{3,6}$/.test(str)) {
-                let num = parseFloat(str);
-                // Exclude balance (2.62), 100%, and require right-side drawing
-                if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
-                    if (x > 140) {
-                        capturedLivePrice = num;
-                    }
-                }
+    // ==========================================
+    // 1. MAIN-WORLD INJECTION (Direct Chart Hook)
+    // ==========================================
+    const bridgeScript = document.createElement('script');
+    bridgeScript.textContent = `
+    (function() {
+        function broadcastPrice(price) {
+            if (!price) return;
+            var num = parseFloat(price);
+            if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
+                document.documentElement.setAttribute('data-po-live-price', num);
             }
         }
-        return origFillText.apply(this, arguments);
-    };
 
-    function initManualBot() {
+        // Hook Canvas 2D Text Drawing
+        try {
+            var origFill = CanvasRenderingContext2D.prototype.fillText;
+            CanvasRenderingContext2D.prototype.fillText = function(text) {
+                if (text && typeof text === 'string') {
+                    var str = text.trim();
+                    if (/^\\d{1,5}\\.\\d{3,6}$/.test(str)) {
+                        broadcastPrice(str);
+                    }
+                }
+                return origFill.apply(this, arguments);
+            };
+        } catch(e) {}
+
+        // Hook Live WebSocket Stream
+        try {
+            var OrigWebSocket = window.WebSocket;
+            window.WebSocket = function(url, protocols) {
+                var ws = protocols ? new OrigWebSocket(url, protocols) : new OrigWebSocket(url);
+                ws.addEventListener('message', function(ev) {
+                    try {
+                        if (typeof ev.data === 'string') {
+                            var matches = ev.data.match(/\\d{1,4}\\.\\d{4,6}/g);
+                            if (matches && matches.length > 0) {
+                                for (var i = 0; i < matches.length; i++) {
+                                    broadcastPrice(matches[i]);
+                                }
+                            }
+                        }
+                    } catch(err) {}
+                });
+                return ws;
+            };
+            window.WebSocket.prototype = OrigWebSocket.prototype;
+        } catch(e) {}
+    })();
+    `;
+    (document.head || document.documentElement).appendChild(bridgeScript);
+
+    // ==========================================
+    // 2. HUD & SIGNAL ENGINE
+    // ==========================================
+    function initEngine() {
         if (!document.body) {
-            setTimeout(initManualBot, 250);
+            setTimeout(initEngine, 200);
             return;
         }
 
         if (document.getElementById('po-manual-hud')) return;
 
-        // Sound alert
+        // Sound alert support
         let audioCtx = null;
         function playBeep(freq = 850) {
             try {
@@ -63,7 +98,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Setup
+        // HUD Box
         const hud = document.createElement('div');
         hud.id = 'po-manual-hud';
         hud.style.cssText = `
@@ -76,7 +111,7 @@
             border-radius: 14px;
             padding: 10px;
             color: #ffffff;
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             box-shadow: 0 12px 35px rgba(0,0,0,0.85);
             width: 185px;
             touch-action: none;
@@ -85,11 +120,11 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: #0284c7; margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ PO TICK ENGINE</span>
+                <span>⚡ PO STRICT ENGINE</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #f43f5e; font-weight: bold;">SEARCHING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">AUD/CHF OTC</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #f43f5e; font-weight: bold;">CONNECTING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">CANDLE: <span id="m-timer" style="color: #facc15; font-weight: bold;">--s</span></div>
 
             <div style="margin: 6px 0;">
@@ -107,12 +142,12 @@
                 <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
                 <div id="m-signal-text" style="font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Waiting for tick...</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Syncing live ticks...</div>
         `;
 
         document.body.appendChild(hud);
 
-        // Touch Dragging
+        // Smooth Touch Dragging
         let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 180;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -134,21 +169,27 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
-        // DOM Fallback Scan
-        function getDomPrice() {
-            const nodes = document.querySelectorAll('*');
-            for (let el of nodes) {
-                if (el.textContent) {
-                    let txt = el.textContent.trim();
+        // Fast TreeWalker Fallback Scanner
+        function getTreeWalkerPrice() {
+            try {
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while (node = walker.nextNode()) {
+                    let txt = node.nodeValue.trim();
                     if (/^\d{1,4}\.\d{4,6}$/.test(txt)) {
-                        let rect = el.getBoundingClientRect();
-                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.5)) {
-                            let n = parseFloat(txt);
-                            if (n > 0 && Math.abs(n - 2.62) > 0.05) return n;
+                        let num = parseFloat(txt);
+                        if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
+                            let parent = node.parentElement;
+                            if (parent) {
+                                let rect = parent.getBoundingClientRect();
+                                if (rect.top > 70 && rect.left > (window.innerWidth * 0.45)) {
+                                    return num;
+                                }
+                            }
                         }
                     }
                 }
-            }
+            } catch(e) {}
             return null;
         }
 
@@ -160,13 +201,16 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "OTC ASSET";
+            return "AUD/CHF OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, lastMinute = -1;
 
         setInterval(() => {
-            const price = capturedLivePrice || getDomPrice();
+            // Read from Injected Main-World Hook or TreeWalker
+            let hookedPrice = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
+            let price = (hookedPrice && hookedPrice > 0) ? hookedPrice : getTreeWalkerPrice();
+            
             const pair = getActivePair();
             const now = new Date();
             const currentSec = now.getSeconds();
@@ -184,9 +228,9 @@
                 if (price > candleHigh) candleHigh = price;
                 if (price < candleLow) candleLow = price;
                 priceEl.innerText = price.toFixed(5);
-                priceEl.style.color = "#10b981"; // GREEN when tick is active
+                priceEl.style.color = "#10b981"; // GREEN when price locked
             } else {
-                priceEl.innerText = "NO TICK";
+                priceEl.innerText = "CONNECTING...";
                 priceEl.style.color = "#f43f5e";
             }
 
@@ -194,19 +238,20 @@
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
         }, 150);
 
-        // Scan Event
+        // Strict Scan Button
         document.getElementById('m-scan-btn').addEventListener('click', function() {
-            const price = capturedLivePrice || getDomPrice();
+            let hookedPrice = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
+            let price = (hookedPrice && hookedPrice > 0) ? hookedPrice : getTreeWalkerPrice();
             const now = new Date();
             const sigBox = document.getElementById('m-status-box');
             const sigText = document.getElementById('m-signal-text');
             const desc = document.getElementById('m-desc');
 
             if (!price || !candleOpen) {
-                sigText.innerText = "NO TICK SYNC";
+                sigText.innerText = "SYNCING TICK...";
                 sigText.style.color = "#f43f5e";
                 sigBox.style.borderColor = "#f43f5e";
-                desc.innerText = "Wait 2 seconds for tick hook.";
+                desc.innerText = "Wait 2 sec for chart data";
                 playBeep(300);
                 return;
             }
@@ -228,7 +273,7 @@
                 reason = "Upper wick seller rejection";
             } else if (bodySize >= (totalRange * 0.5)) {
                 isCall = isGreen;
-                reason = isGreen ? "Bullish trend push" : "Bearish trend drop";
+                reason = isGreen ? "Strong Bullish impulse" : "Strong Bearish drop";
             } else {
                 isCall = isGreen;
                 reason = "Momentum trend follow";
@@ -249,8 +294,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initManualBot);
+        document.addEventListener('DOMContentLoaded', initEngine);
     } else {
-        initManualBot();
+        initEngine();
     }
 })();
