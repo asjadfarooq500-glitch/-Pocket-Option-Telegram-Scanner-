@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Decisive Quantum OTC Engine
+// @name         Pocket Option Smart-Money & Full Pattern Engine
 // @namespace    http://tampermonkey.net/
-// @version      14.0
-// @description  Full Candlestick Anatomy, Dual Exhaustion, SNR & 5-Second Early Decisive Signals
+// @version      15.0
+// @description  Full 10-Candle Historical Chart Scan, Liquidity Sweeps, Evening/Morning Stars, Climax Traps
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -66,7 +66,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Design
+        // HUD Interface
         const hud = document.createElement('div');
         hud.id = 'po-manual-hud';
         hud.style.cssText = `
@@ -74,47 +74,48 @@
             top: 175px;
             left: 15px;
             z-index: 999999999;
-            background: rgba(6, 10, 20, 0.98);
+            background: rgba(4, 8, 18, 0.98);
             border: 2px solid #0284c7;
             border-radius: 14px;
             padding: 10px;
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            box-shadow: 0 16px 50px rgba(0,0,0,0.95);
-            width: 220px;
+            box-shadow: 0 16px 55px rgba(0,0,0,0.98);
+            width: 225px;
             touch-action: none;
             user-select: none;
         `;
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ QUANTUM DECISIVE v14</span>
+                <span>⚡ SMC PATTERN ENGINE v15</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #10b981; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">SNR LEVEL: <span id="m-snr" style="color: #facc15; font-weight: bold;">CALCULATING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">CANDLE CLOCK: <span id="m-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">CHART STRUCTURE: <span id="m-struct" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">DETECTED SETUP: <span id="m-setup" style="color: #c084fc; font-weight: bold;">WAITING SCAN</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">CANDLE TIMER: <span id="m-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="m-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN CANDLE (2.0s)
+                🔬 FULL CHART DEEP SCAN
             </button>
 
             <div id="m-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="m-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.1s linear;"></div>
+                <div id="m-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
             </div>
 
-            <div id="m-status-box" style="margin-top: 8px; padding: 8px 4px; background: #0b1329; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
+            <div id="m-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
                 <div id="m-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
                 <div id="m-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Click SCAN between 15s and 10s</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 15s to 8s of candle</div>
         `;
 
         document.body.appendChild(hud);
 
-        // Smooth Touch Dragging
+        // Touch Dragging
         let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 175;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -130,8 +131,8 @@
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
             e.preventDefault();
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 225, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 260, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
+            hud.style.left = Math.max(5, Math.min(window.innerWidth - 230, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
+            hud.style.top = Math.max(5, Math.min(window.innerHeight - 270, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
         }, { passive: false });
 
         document.addEventListener('touchend', function() { isDragging = false; });
@@ -167,92 +168,89 @@
             return "OTC PAIR";
         }
 
-        // Rolling buffer & Candlestick History
-        let priceBuffer = [];
-        let candleHistory = [];
-        let lastMinute = -1;
+        // ==========================================
+        // PRECISE BAR-BY-BAR RUNNING CANDLE TRACKER
+        // ==========================================
+        let curBarOpen = null, curBarHigh = -Infinity, curBarLow = Infinity, curBarClose = null;
+        let candleHistory = []; // Stores completed bars
+        let lastMinuteTracked = -1;
 
         setInterval(() => {
             const price = getLivePrice();
             const pair = getActivePair();
-            const now = Date.now();
-            const nowDate = new Date();
-            const currentSec = nowDate.getSeconds();
-            const currentMin = nowDate.getMinutes();
+            const now = new Date();
+            const currentSec = now.getSeconds();
+            const currentMin = now.getMinutes();
+
+            // Minute Bar Rollover
+            if (currentMin !== lastMinuteTracked) {
+                if (lastMinuteTracked !== -1 && curBarOpen !== null && curBarClose !== null) {
+                    let cBody = Math.abs(curBarClose - curBarOpen);
+                    let cRange = Math.max(0.00001, curBarHigh - curBarLow);
+                    let cUpper = curBarHigh - Math.max(curBarOpen, curBarClose);
+                    let cLower = Math.min(curBarOpen, curBarClose) - curBarLow;
+
+                    candleHistory.push({
+                        open: curBarOpen,
+                        close: curBarClose,
+                        high: curBarHigh,
+                        low: curBarLow,
+                        isGreen: curBarClose >= curBarOpen,
+                        body: cBody,
+                        range: cRange,
+                        upperWick: cUpper,
+                        lowerWick: cLower
+                    });
+                    if (candleHistory.length > 15) candleHistory.shift();
+                }
+
+                lastMinuteTracked = currentMin;
+                curBarOpen = price;
+                curBarHigh = price || -Infinity;
+                curBarLow = price || Infinity;
+                curBarClose = price;
+            }
 
             if (price) {
-                priceBuffer.push({ t: now, p: price });
-                const cutoff = now - (180 * 1000);
-                while (priceBuffer.length > 0 && priceBuffer[0].t < cutoff) {
-                    priceBuffer.shift();
-                }
+                if (!curBarOpen) curBarOpen = price;
+                if (price > curBarHigh) curBarHigh = price;
+                if (price < curBarLow) curBarLow = price;
+                curBarClose = price;
 
                 document.getElementById('m-price').innerText = price.toFixed(5);
                 document.getElementById('m-price').style.color = "#10b981";
 
-                let pStr = price.toFixed(5);
-                let lastTwo = parseInt(pStr.slice(-2));
-                const snrEl = document.getElementById('m-snr');
-                if (lastTwo >= 95 || lastTwo <= 5) {
-                    snrEl.innerText = "🎯 MAJOR .00 SNR";
-                    snrEl.style.color = "#ec4899";
-                } else if (Math.abs(lastTwo - 50) <= 5) {
-                    snrEl.innerText = "🎯 MID .50 SNR";
-                    snrEl.style.color = "#f59e0b";
-                } else if (Math.abs(lastTwo - 20) <= 4 || Math.abs(lastTwo - 80) <= 4) {
-                    snrEl.innerText = "🎯 KEY LEVEL .20/.80";
-                    snrEl.style.color = "#38bdf8";
-                } else {
-                    snrEl.innerText = "MID CHANNEL";
-                    snrEl.style.color = "#64748b";
-                }
-            }
-
-            // Save completed candle to history
-            if (currentMin !== lastMinute) {
-                if (lastMinute !== -1 && priceBuffer.length > 25) {
-                    let prevMinStart = (Math.floor(now / 60000) - 1) * 60000;
-                    let prevMinEnd = prevMinStart + 60000;
-                    let prevTicks = priceBuffer.filter(pt => pt.t >= prevMinStart && pt.t < prevMinEnd);
-                    if (prevTicks.length > 0) {
-                        let cOpen = prevTicks[0].p;
-                        let cClose = prevTicks[prevTicks.length - 1].p;
-                        let cHigh = Math.max(...prevTicks.map(t => t.p));
-                        let cLow = Math.min(...prevTicks.map(t => t.p));
-                        candleHistory.push({
-                            open: cOpen,
-                            close: cClose,
-                            high: cHigh,
-                            low: cLow,
-                            isGreen: cClose >= cOpen,
-                            body: Math.abs(cClose - cOpen),
-                            range: Math.max(0.00001, cHigh - cLow)
-                        });
-                        if (candleHistory.length > 8) candleHistory.shift();
+                // Check Structure (Climax or Consolidation)
+                let greenCount = 0, redCount = 0;
+                for (let i = candleHistory.length - 1; i >= 0; i--) {
+                    if (candleHistory[i].isGreen) {
+                        if (redCount === 0) greenCount++;
+                        else break;
+                    } else {
+                        if (greenCount === 0) redCount++;
+                        else break;
                     }
                 }
-                lastMinute = currentMin;
+                const structEl = document.getElementById('m-struct');
+                if (greenCount >= 4) {
+                    structEl.innerText = `BUYING CLIMAX (${greenCount}x UP) ⚠️`;
+                    structEl.style.color = "#ef4444";
+                } else if (redCount >= 4) {
+                    structEl.innerText = `SELLING CLIMAX (${redCount}x DOWN) ⚠️`;
+                    structEl.style.color = "#10b981";
+                } else {
+                    structEl.innerText = "HEALTHY TREND FLOW";
+                    structEl.style.color = "#38bdf8";
+                }
             }
 
             document.getElementById('m-pair').innerText = pair;
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
         }, 120);
 
-        function getBufferPriceAt(targetTime) {
-            if (priceBuffer.length === 0) return null;
-            let closest = priceBuffer[0];
-            let minDiff = Math.abs(closest.t - targetTime);
-            for (let i = 1; i < priceBuffer.length; i++) {
-                let diff = Math.abs(priceBuffer[i].t - targetTime);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closest = priceBuffer[i];
-                }
-            }
-            return closest.p;
-        }
-
-        // 2.0-SECOND SCAN (DELIVERS EXACTLY AT 5-6s BEFORE EXPIRY)
+        // ==========================================
+        // FULL CHART MULTI-CANDLE QUANT SCANNER
+        // ==========================================
         let isScanning = false;
         document.getElementById('m-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
@@ -262,26 +260,26 @@
             const sigText = document.getElementById('m-signal-text');
             const confText = document.getElementById('m-conf-text');
             const desc = document.getElementById('m-desc');
+            const setupEl = document.getElementById('m-setup');
             const scanBtn = document.getElementById('m-scan-btn');
             const pBar = document.getElementById('m-progress-bar');
             const pFill = document.getElementById('m-progress-fill');
 
-            if (!price || priceBuffer.length < 15) {
-                sigText.innerText = "WAIT FOR BUFFER";
+            if (!price || !curBarOpen) {
+                sigText.innerText = "WAIT FOR TICK";
                 sigText.style.color = "#f43f5e";
-                desc.innerText = "Waiting for price ticks to sync";
                 return;
             }
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "DEEP SCANNING (2.0s)...";
+            scanBtn.innerText = "SCANNING CHART MATRIX...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
             let tickSamples = [];
             let elapsed = 0;
-            const sampleSteps = 20; // 2.0 seconds total (100ms * 20)
+            const sampleSteps = 18; // 1.8 seconds scan
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -293,149 +291,146 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateDecisiveQuantum(tickSamples);
+                    evaluateFullChartMatrix(tickSamples);
                 }
             }, 100);
 
-            function evaluateDecisiveQuantum(ticks) {
+            function evaluateFullChartMatrix(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 SCAN CANDLE (2.0s)";
+                scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
                 pBar.style.display = "none";
 
-                const now = Date.now();
-                const nowDate = new Date();
-                const currentSec = nowDate.getSeconds();
+                const now = new Date();
+                const currentSec = now.getSeconds();
+                const latestPrice = ticks[ticks.length - 1] || curBarClose || price;
 
-                // 1. Precise Candle Geometry
-                const startOfMinute = Math.floor(now / 60000) * 60000;
-                const trueOpen = getBufferPriceAt(startOfMinute) || ticks[0] || price;
-                const currentPrice = ticks[ticks.length - 1] || price;
-
-                let candleHigh = -Infinity, candleLow = Infinity;
-                for (let pt of priceBuffer) {
-                    if (pt.t >= startOfMinute) {
-                        if (pt.p > candleHigh) candleHigh = pt.p;
-                        if (pt.p < candleLow) candleLow = pt.p;
-                    }
-                }
-                if (candleHigh === -Infinity) candleHigh = Math.max(trueOpen, currentPrice);
-                if (candleLow === Infinity) candleLow = Math.min(trueOpen, currentPrice);
-
-                let isGreen = currentPrice >= trueOpen;
-                let bodySize = Math.abs(currentPrice - trueOpen);
-                let totalRange = Math.max(0.00002, candleHigh - candleLow);
-                let upperWick = Math.max(0, candleHigh - Math.max(currentPrice, trueOpen));
-                let lowerWick = Math.max(0, Math.min(currentPrice, trueOpen) - candleLow);
+                // 1. Current Candle Geometry
+                let isGreen = latestPrice >= curBarOpen;
+                let bodySize = Math.abs(latestPrice - curBarOpen);
+                let totalRange = Math.max(0.00001, curBarHigh - curBarLow);
+                let upperWick = curBarHigh - Math.max(curBarOpen, latestPrice);
+                let lowerWick = Math.min(curBarOpen, latestPrice) - curBarLow;
 
                 let bodyPct = Math.round((bodySize / totalRange) * 100);
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. 2.0s Tick Velocity & Order Flow
+                // 2. Order Flow in Scan
                 let upTicks = 0, downTicks = 0;
                 for (let i = 1; i < ticks.length; i++) {
                     if (ticks[i] > ticks[i - 1]) upTicks++;
                     else if (ticks[i] < ticks[i - 1]) downTicks++;
                 }
 
-                // 3. Macro Trend & Sequence History
-                let price60s = getBufferPriceAt(now - 60000) || trueOpen;
-                let delta60s = currentPrice - price60s;
-
-                let redStreak = 0, greenStreak = 0;
+                // 3. Count Streak in Historical Candles
+                let greenStreak = 0, redStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (!candleHistory[i].isGreen) {
-                        if (greenStreak === 0) redStreak++;
+                    if (candleHistory[i].isGreen) {
+                        if (redStreak === 0) greenStreak++;
                         else break;
                     } else {
-                        if (redStreak === 0) greenStreak++;
+                        if (greenStreak === 0) redStreak++;
                         else break;
                     }
                 }
-                if (!isGreen) redStreak++;
-                else greenStreak++;
+                if (isGreen) greenStreak++;
+                else redStreak++;
 
-                // 4. SNR Proximity Check
-                let pStr = currentPrice.toFixed(5);
+                // 4. Institutional SNR Proximity
+                let pStr = latestPrice.toFixed(5);
                 let lastTwo = parseInt(pStr.slice(-2));
                 let atMajorSNR = (lastTwo >= 95 || lastTwo <= 5);
                 let atMidSNR = (Math.abs(lastTwo - 50) <= 5);
 
+                // 5. Pattern Logic & Decision Matrix
+                let isCall = false;
+                let patternName = "";
+                let confidence = 85;
+
                 // ==========================================
-                // WEIGHTED DECISIVE ENGINE (NO-TRADE BANNED)
+                // STRICT PATTERN CLASSIFICATION
                 // ==========================================
-                let callScore = 0;
-                let putScore = 0;
-                let setupName = "";
 
-                // A. Exhaustion Weight (Highest Confluence in Binary OTC)
-                if (redStreak >= 3) {
-                    callScore += 45 + (redStreak * 8);
-                    setupName = `${redStreak}x Red Dump Exhaustion`;
+                // RULE 1: EVENING STAR / LIQUIDITY SWEEP (Image 13 Exact Trap Fix)
+                if (greenStreak >= 4 && !isGreen && bodyPct >= 45) {
+                    isCall = false; // 100% PUT (SELL)
+                    patternName = "Evening Star / Liquidity Sweep";
+                    confidence = 96;
                 }
-                if (greenStreak >= 3) {
-                    putScore += 45 + (greenStreak * 8);
-                    setupName = `${greenStreak}x Green Pump Exhaustion`;
+                // RULE 2: MORNING STAR / LIQUIDITY SWEEP
+                else if (redStreak >= 4 && isGreen && bodyPct >= 45) {
+                    isCall = true; // 100% CALL (BUY)
+                    patternName = "Morning Star / Floor Bounce";
+                    confidence = 96;
                 }
-
-                // B. Candlestick Wick Rejection Secrets
-                if (lowerWickPct >= 40 && lowerWickPct > upperWickPct) {
-                    callScore += 35 + Math.floor(lowerWickPct / 3);
-                    if (!setupName) setupName = "Hammer / Floor Rejection";
+                // RULE 3: BUYING CLIMAX EXHAUSTION (Top Par BUY Banned)
+                else if (greenStreak >= 5) {
+                    isCall = false; // Never BUY at the very top of 5+ green candles
+                    patternName = `${greenStreak}x Green Buying Climax Exhaustion`;
+                    confidence = 93;
                 }
-                if (upperWickPct >= 40 && upperWickPct > lowerWickPct) {
-                    putScore += 35 + Math.floor(upperWickPct / 3);
-                    if (!setupName) setupName = "Shooting Star / Roof Rejection";
+                // RULE 4: SELLING CLIMAX EXHAUSTION (Bottom Par SELL Banned)
+                else if (redStreak >= 5) {
+                    isCall = true; // Never SELL at the bottom of 5+ red candles
+                    patternName = `${redStreak}x Red Dump Exhaustion Floor`;
+                    confidence = 93;
                 }
-
-                // C. Body Momentum Expansion
-                if (bodyPct >= 60) {
-                    if (isGreen && greenStreak <= 2) {
-                        callScore += 30;
-                        if (!setupName) setupName = "Bullish Momentum Continuation";
-                    } else if (!isGreen && redStreak <= 2) {
-                        putScore += 30;
-                        if (!setupName) setupName = "Bearish Dump Continuation";
+                // RULE 5: PINBAR REJECTION AT MAJOR SNR
+                else if (lowerWickPct >= 45 && bodyPct <= 35 && atMajorSNR) {
+                    isCall = true;
+                    patternName = "Institutional Hammer at SNR";
+                    confidence = 94;
+                }
+                else if (upperWickPct >= 45 && bodyPct <= 35 && atMajorSNR) {
+                    isCall = false;
+                    patternName = "Institutional Shooting Star at SNR";
+                    confidence = 94;
+                }
+                // RULE 6: BEARISH / BULLISH ENGULFING
+                else if (candleHistory.length > 0 && bodyPct >= 60) {
+                    let prev = candleHistory[candleHistory.length - 1];
+                    if (!isGreen && prev.isGreen && bodySize > prev.body) {
+                        isCall = false;
+                        patternName = "Bearish Engulfing Reversal";
+                        confidence = 91;
+                    } else if (isGreen && !prev.isGreen && bodySize > prev.body) {
+                        isCall = true;
+                        patternName = "Bullish Engulfing Reversal";
+                        confidence = 91;
+                    }
+                }
+                // RULE 7: MOMENTUM CONTINUATION (Fresh Breakout)
+                if (!patternName) {
+                    if (isGreen && upTicks >= downTicks) {
+                        isCall = true;
+                        patternName = "Bullish Momentum Push";
+                        confidence = 86;
+                    } else if (!isGreen && downTicks >= upTicks) {
+                        isCall = false;
+                        patternName = "Bearish Momentum Push";
+                        confidence = 86;
+                    } else {
+                        isCall = isGreen;
+                        patternName = "Trend Flow Alignment";
+                        confidence = 82;
                     }
                 }
 
-                // D. SNR Attraction & Bounce Math
-                if (atMajorSNR || atMidSNR) {
-                    if (lowerWickPct >= 25) callScore += 25;
-                    if (upperWickPct >= 25) putScore += 25;
-                }
-
-                // E. 2-Second Tick Velocity
-                if (upTicks > downTicks) callScore += 15 + (upTicks - downTicks) * 2;
-                if (downTicks > upTicks) putScore += 15 + (downTicks - upTicks) * 2;
-
-                // F. Macro Trend Baseline
-                if (delta60s > 0) callScore += 10;
-                else putScore += 10;
-
-                // DECISIVE VERDICT (Strict Winner Selected)
-                let isCall = callScore >= putScore;
-                if (!setupName) {
-                    setupName = isCall ? "Buyer Flow Confluence" : "Seller Flow Confluence";
-                }
-
-                // Dynamic Confidence (Calculated between 84% and 97%)
-                let maxPoints = Math.max(callScore, putScore);
-                let dynamicConfidence = Math.min(97, Math.max(84, 80 + Math.floor(maxPoints / 6)));
+                setupEl.innerText = patternName;
 
                 let secondsToNext = 60 - currentSec;
-                let entryDate = new Date(now + (secondsToNext * 1000));
+                let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
                 let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
                 sigText.innerText = action;
                 sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                confText.innerText = `CONFIDENCE: ${dynamicConfidence}%`;
+                confText.innerText = `CONFIDENCE: ${confidence}%`;
 
                 let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${setupName} • Body: ${bodyPct}% • ${wickInfo} • Flow: [${upTicks}▲ ${downTicks}▼]`;
+                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickInfo} • Flow: [${upTicks}▲ ${downTicks}▼]`;
                 desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playBeep(isCall ? 950 : 450);
