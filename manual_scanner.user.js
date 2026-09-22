@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Dual-Stream Engine
-// @namespace    http://tampermonkey.net/
-// @version      120.0
-// @description  Zero-Freeze Dual DOM/Canvas Stream, 20-Bar Trend Lock, No-Coordinate Traps
+// @name         Pocket Option APEX GitHub Master Engine
+// @namespace    https://github.com/
+// @version      135.0
+// @description  Zero-Freeze Dual DOM/Canvas Stream, 20-Bar Trend Lock, Universal Safari Injection
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,44 +14,38 @@
 (function() {
     'use strict';
 
-    // 1. DUAL-LAYER INJECTION (ZERO RESTRICTIONS ON CANVAS / NATIVE TANK)
-    const bridgeScript = document.createElement('script');
-    bridgeScript.textContent = `
-    (function() {
-        var lastValidTick = null;
-        var lastTickTimestamp = 0;
+    // 1. INJECT RESILIENT CANVAS PROXY
+    try {
+        const bridgeScript = document.createElement('script');
+        bridgeScript.textContent = `
+        (function() {
+            function submitPrice(num) {
+                if (!num || num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100 || Math.abs(num - 1.89) < 0.01) return;
+                document.documentElement.setAttribute('data-po-live-price', num);
+                document.documentElement.setAttribute('data-po-live-time', Date.now());
+            }
 
-        function submitPrice(num) {
-            if (!num || num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100 || Math.abs(num - 1.89) < 0.01) return;
-            lastValidTick = num;
-            lastTickTimestamp = Date.now();
-            document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', lastTickTimestamp);
-        }
-
-        try {
-            var origFill = CanvasRenderingContext2D.prototype.fillText;
-            CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
-                if (text && typeof text === 'string') {
-                    var str = text.trim();
-                    if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        submitPrice(parseFloat(str));
+            try {
+                var origFill = CanvasRenderingContext2D.prototype.fillText;
+                CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
+                    if (text && typeof text === 'string') {
+                        var str = text.trim();
+                        if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
+                            submitPrice(parseFloat(str));
+                        }
                     }
-                }
-                return origFill.apply(this, arguments);
-            };
-        } catch(e) {}
-    })();
-    `;
-    (document.head || document.documentElement).appendChild(bridgeScript);
+                    return origFill.apply(this, arguments);
+                };
+            } catch(e) {}
+        })();
+        `;
+        (document.head || document.documentElement).appendChild(bridgeScript);
+    } catch(e) {}
 
+    // 2. HUD & ENGINE LOGIC
     function initApexEngine() {
-        if (!document.body) {
-            setTimeout(initApexEngine, 200);
-            return;
-        }
-
-        if (document.getElementById('po-apex-hud')) return;
+        if (!document.body) return false;
+        if (document.getElementById('po-apex-hud')) return true;
 
         let audioCtx = null;
         function playBeep(freq = 850) {
@@ -94,7 +88,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX DUAL-STREAM v120</span>
+                <span>⚡ APEX GITHUB ENGINE v135</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -157,9 +151,8 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
-        // DUAL-FALLBACK LIVE PRICE GETTER (DOM First, Hook Second)
+        // DUAL LIVE PRICE DETECTOR (DOM + Canvas Hook)
         function getLivePrice() {
-            // Priority 1: Direct DOM extraction from right-axis price badges
             const allElements = document.querySelectorAll('*');
             for (let el of allElements) {
                 if (el.children.length === 0 && el.textContent) {
@@ -176,7 +169,6 @@
                 }
             }
 
-            // Priority 2: Hook attribute
             let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
             if (hooked && hooked > 0) return hooked;
 
@@ -311,9 +303,7 @@
             document.getElementById('a-timer').innerText = `${60 - currentSec}s`;
         }, 80);
 
-        // ==========================================
         // SCANNER: ZERO-FREEZE CONFLUENCE EVALUATOR
-        // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
@@ -400,31 +390,26 @@
                 let confidence = 88;
 
                 // STRICT TRADING RULES (NO COUNTER-TREND)
-                // RULE 1: WATERFALL DUMP LOCK (Never Buy into 4+ Red Waterfall)
                 if (redStreak >= 4 && lowerWickPct <= 35) {
                     isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
                     confidence = 96;
                 }
-                // RULE 2: ROCKET RALLY LOCK (Never Sell into 4+ Green Moon)
                 else if (greenStreak >= 4 && upperWickPct <= 35) {
                     isCall = true;
                     setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
                     confidence = 96;
                 }
-                // RULE 3: SUPPORT FLOOR ABSORPTION BOUNCE
                 else if (!isGreen && isAtFloor && lowerWickPct >= 30) {
                     isCall = true;
                     setupName = "Support Floor Absorption Bounce";
                     confidence = 94;
                 }
-                // RULE 4: RESISTANCE ROOF EXHAUSTION DROP
                 else if (isGreen && isAtRoof && upperWickPct >= 30) {
                     isCall = false;
                     setupName = "Resistance Roof Exhaustion Drop";
                     confidence = 94;
                 }
-                // RULE 5: SOLID MOMENTUM BREAKOUT (Body >= 45%)
                 else if (isGreen && bodyPct >= 45 && upperWickPct <= 25) {
                     isCall = true;
                     setupName = "Bullish Momentum Breakout";
@@ -435,7 +420,6 @@
                     setupName = "Bearish Momentum Dump";
                     confidence = 93;
                 }
-                // RULE 6: CONFIRMED PINBAR REJECTION
                 else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
                     isCall = true;
                     setupName = "Confirmed Hammer Rejection Bounce";
@@ -446,7 +430,6 @@
                     setupName = "Confirmed Shooting Star Drop";
                     confidence = 91;
                 }
-                // RULE 7: DEFAULT CANDLE FLOW
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Volume Dominance" : "Seller Volume Dominance";
@@ -472,11 +455,21 @@
                 playBeep(isCall ? 950 : 450);
             }
         });
+
+        return true;
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initEngine);
+    function triggerBoot() {
+        if (!initApexEngine()) {
+            setTimeout(triggerBoot, 200);
+        }
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        triggerBoot();
     } else {
-        initEngine();
+        window.addEventListener('DOMContentLoaded', triggerBoot);
+        window.addEventListener('load', triggerBoot);
+        setTimeout(triggerBoot, 300);
     }
 })();
