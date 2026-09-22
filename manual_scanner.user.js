@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Master Quant Engine
+// @name         Pocket Option APEX Grid-Filter Engine
 // @namespace    https://github.com/
-// @version      140.0
-// @description  Permanent Heartbeat Watchdog, Zero-CSP Direct Stream & Instant Root Mounting
+// @version      150.0
+// @description  Grid-Scale Rejector, Right-Axis Live Badge Hunter, Zero-Freeze Dynamic OHLC
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -16,10 +16,9 @@
 (function() {
     'use strict';
 
-    // 1. IFRAME GUARD (Only run on main trading screen)
     if (window.top !== window.self) return;
 
-    // 2. SAFE IN-CONTEXT CANVAS HOOK (NO INLINE SCRIPT / CSP-SAFE)
+    // 1. IN-PAGE CANVAS BADGE SNIFFER
     try {
         if (typeof CanvasRenderingContext2D !== 'undefined') {
             const origFill = CanvasRenderingContext2D.prototype.fillText;
@@ -29,8 +28,14 @@
                     if (/^\d{1,6}\.\d{2,6}$/.test(str)) {
                         var n = parseFloat(str);
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
-                            window.__po_live_tick = n;
-                            window.__po_live_tick_time = Date.now();
+                            var fill = ("" + this.fillStyle).toLowerCase();
+                            var isWhite = (fill === '#ffffff' || fill === 'rgb(255, 255, 255)' || fill === 'white' || fill === '#fff' || fill.indexOf('255, 255, 255') !== -1 || fill.indexOf('255,255,255') !== -1);
+                            
+                            // Blue badge uses white fill on the right axis
+                            if (isWhite) {
+                                window.__po_live_tick = n;
+                                window.__po_live_tick_time = Date.now();
+                            }
                         }
                     }
                 }
@@ -39,7 +44,7 @@
         }
     } catch(e) {}
 
-    // Sound System
+    // Sound alert
     let audioCtx = null;
     function playBeep(freq = 850) {
         try {
@@ -59,8 +64,15 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
 
-    // DUAL LIVE PRICE DETECTOR (DOM Badges + Canvas Fallback)
+    // SMART LIVE PRICE DETECTOR (Filters out static grid levels like 1.02800)
     function getLivePrice() {
+        // Priority 1: Canvas sniffer with white text badge
+        if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
+            return window.__po_live_tick;
+        }
+
+        // Priority 2: Smart DOM candidate collector on the rightmost 45%
+        const candidates = [];
         const allElements = document.querySelectorAll('*');
         for (let el of allElements) {
             if (el.children.length === 0 && el.textContent) {
@@ -70,15 +82,22 @@
                     if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                         let n = parseFloat(txt);
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
-                            return n;
+                            candidates.push({ val: n, str: txt, top: rect.top, el: el });
                         }
                     }
                 }
             }
         }
-        if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 2500)) {
-            return window.__po_live_tick;
+
+        if (candidates.length > 0) {
+            // Find numbers that do NOT end in '00' (Eliminates grid scale levels 1.02800, 1.03000)
+            const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
+            if (nonGrid.length > 0) {
+                return nonGrid[nonGrid.length - 1].val; // Pick the active badge
+            }
+            return candidates[0].val;
         }
+
         return null;
     }
 
@@ -93,7 +112,7 @@
         return "OTC ASSET";
     }
 
-    // 3. HUD BUILDER (DIRECT ROOT MOUNTING)
+    // 2. HUD MOUNTING
     function mountHUD() {
         const root = document.body || document.documentElement;
         if (!root || document.getElementById('po-apex-hud')) return;
@@ -122,7 +141,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX MASTER v140</span>
+                <span>⚡ APEX MASTER v150</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -188,7 +207,7 @@
         bindScannerEvents();
     }
 
-    // 4. CANDLE ENGINE
+    // 3. CANDLE ENGINE
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
@@ -318,7 +337,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 5. SCAN BUTTON LOGIC
+    // 4. SCAN BUTTON EVALUATOR
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -410,7 +429,7 @@
                 let setupName = "";
                 let confidence = 88;
 
-                // STRICT TRADING CONFLUENCE
+                // STRICT TRADING RULES (NO COUNTER-TREND)
                 if (redStreak >= 4 && lowerWickPct <= 35) {
                     isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
@@ -480,6 +499,5 @@
         });
     }
 
-    // 6. PERMANENT HEARTBEAT ENGINE
     setInterval(runEngineTick, 100);
 })();
