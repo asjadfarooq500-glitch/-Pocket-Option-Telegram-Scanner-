@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Live Canvas & Stream Engine
+// @name         Pocket Option Live OTC Pro Engine
 // @namespace    http://tampermonkey.net/
-// @version      5.0
-// @description  Deep Main-World Canvas & WebSocket Injection for Pocket Option
+// @version      6.0
+// @description  Zero-Freeze Instant Scan & Trend-Confluence Engine
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,62 +14,32 @@
 (function() {
     'use strict';
 
-    // ==========================================
-    // 1. MAIN-WORLD INJECTION (Direct Chart Hook)
-    // ==========================================
+    // 1. INJECT MAIN-WORLD PROXY FOR CANVAS & TICKS
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        function broadcastPrice(price) {
-            if (!price) return;
-            var num = parseFloat(price);
+        function setPrice(num) {
             if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
                 document.documentElement.setAttribute('data-po-live-price', num);
             }
         }
 
-        // Hook Canvas 2D Text Drawing
         try {
             var origFill = CanvasRenderingContext2D.prototype.fillText;
-            CanvasRenderingContext2D.prototype.fillText = function(text) {
+            CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
                 if (text && typeof text === 'string') {
                     var str = text.trim();
-                    if (/^\\d{1,5}\\.\\d{3,6}$/.test(str)) {
-                        broadcastPrice(str);
+                    if (/^\\d{1,5}\\.\\d{4,6}$/.test(str)) {
+                        setPrice(parseFloat(str));
                     }
                 }
                 return origFill.apply(this, arguments);
             };
         } catch(e) {}
-
-        // Hook Live WebSocket Stream
-        try {
-            var OrigWebSocket = window.WebSocket;
-            window.WebSocket = function(url, protocols) {
-                var ws = protocols ? new OrigWebSocket(url, protocols) : new OrigWebSocket(url);
-                ws.addEventListener('message', function(ev) {
-                    try {
-                        if (typeof ev.data === 'string') {
-                            var matches = ev.data.match(/\\d{1,4}\\.\\d{4,6}/g);
-                            if (matches && matches.length > 0) {
-                                for (var i = 0; i < matches.length; i++) {
-                                    broadcastPrice(matches[i]);
-                                }
-                            }
-                        }
-                    } catch(err) {}
-                });
-                return ws;
-            };
-            window.WebSocket.prototype = OrigWebSocket.prototype;
-        } catch(e) {}
     })();
     `;
     (document.head || document.documentElement).appendChild(bridgeScript);
 
-    // ==========================================
-    // 2. HUD & SIGNAL ENGINE
-    // ==========================================
     function initEngine() {
         if (!document.body) {
             setTimeout(initEngine, 200);
@@ -78,7 +48,7 @@
 
         if (document.getElementById('po-manual-hud')) return;
 
-        // Sound alert support
+        // Sound alert
         let audioCtx = null;
         function playBeep(freq = 850) {
             try {
@@ -98,7 +68,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Box
+        // HUD Interface
         const hud = document.createElement('div');
         hud.id = 'po-manual-hud';
         hud.style.cssText = `
@@ -120,11 +90,11 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: #0284c7; margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ PO STRICT ENGINE</span>
+                <span>⚡ PO OTC ENGINE v6</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">AUD/CHF OTC</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #f43f5e; font-weight: bold;">CONNECTING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #10b981; font-weight: bold;">--</span></div>
             <div style="font-size: 9px; color: #94a3b8;">CANDLE: <span id="m-timer" style="color: #facc15; font-weight: bold;">--s</span></div>
 
             <div style="margin: 6px 0;">
@@ -140,14 +110,14 @@
 
             <div id="m-status-box" style="margin-top: 6px; padding: 8px 4px; background: #131b2e; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
-                <div id="m-signal-text" style="font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
+                <div id="m-signal-text" style="font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Syncing live ticks...</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Tap SCAN in last 15s</div>
         `;
 
         document.body.appendChild(hud);
 
-        // Smooth Touch Dragging
+        // Smooth iPhone Drag
         let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 180;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -169,27 +139,23 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
-        // Fast TreeWalker Fallback Scanner
-        function getTreeWalkerPrice() {
-            try {
-                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-                let node;
-                while (node = walker.nextNode()) {
-                    let txt = node.nodeValue.trim();
+        function getLivePrice() {
+            let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
+            if (hooked && hooked > 0) return hooked;
+
+            const nodes = document.querySelectorAll('*');
+            for (let el of nodes) {
+                if (el.children.length === 0 && el.textContent) {
+                    let txt = el.textContent.trim();
                     if (/^\d{1,4}\.\d{4,6}$/.test(txt)) {
-                        let num = parseFloat(txt);
-                        if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
-                            let parent = node.parentElement;
-                            if (parent) {
-                                let rect = parent.getBoundingClientRect();
-                                if (rect.top > 70 && rect.left > (window.innerWidth * 0.45)) {
-                                    return num;
-                                }
-                            }
+                        let rect = el.getBoundingClientRect();
+                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.5)) {
+                            let n = parseFloat(txt);
+                            if (n > 0 && Math.abs(n - 2.62) > 0.05) return n;
                         }
                     }
                 }
-            } catch(e) {}
+            }
             return null;
         }
 
@@ -201,21 +167,19 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "AUD/CHF OTC";
+            return "AUD/USD OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, lastMinute = -1;
 
         setInterval(() => {
-            // Read from Injected Main-World Hook or TreeWalker
-            let hookedPrice = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
-            let price = (hookedPrice && hookedPrice > 0) ? hookedPrice : getTreeWalkerPrice();
-            
+            const price = getLivePrice();
             const pair = getActivePair();
             const now = new Date();
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
+            // Minute cycle reset
             if (currentMin !== lastMinute) {
                 lastMinute = currentMin;
                 candleOpen = price;
@@ -223,64 +187,75 @@
                 candleLow = price || Infinity;
             }
 
+            // AUTO-REPAIR: Agar candleOpen kisi wajah se null reh gaya tha, toh foran current price se bind karein
+            if (!candleOpen && price) {
+                candleOpen = price;
+                candleHigh = price;
+                candleLow = price;
+            }
+
             const priceEl = document.getElementById('m-price');
             if (price) {
                 if (price > candleHigh) candleHigh = price;
                 if (price < candleLow) candleLow = price;
                 priceEl.innerText = price.toFixed(5);
-                priceEl.style.color = "#10b981"; // GREEN when price locked
-            } else {
-                priceEl.innerText = "CONNECTING...";
-                priceEl.style.color = "#f43f5e";
+                priceEl.style.color = "#10b981";
             }
 
             document.getElementById('m-pair').innerText = pair;
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
         }, 150);
 
-        // Strict Scan Button
+        // INSTANT MANUAL SCAN LOGIC (NO FREEZE)
         document.getElementById('m-scan-btn').addEventListener('click', function() {
-            let hookedPrice = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
-            let price = (hookedPrice && hookedPrice > 0) ? hookedPrice : getTreeWalkerPrice();
+            const price = getLivePrice();
             const now = new Date();
+            const currentSec = now.getSeconds();
             const sigBox = document.getElementById('m-status-box');
             const sigText = document.getElementById('m-signal-text');
             const desc = document.getElementById('m-desc');
 
-            if (!price || !candleOpen) {
-                sigText.innerText = "SYNCING TICK...";
+            if (!price) {
+                sigText.innerText = "WAIT FOR TICK";
                 sigText.style.color = "#f43f5e";
-                sigBox.style.borderColor = "#f43f5e";
-                desc.innerText = "Wait 2 sec for chart data";
-                playBeep(300);
                 return;
             }
 
-            let isGreen = price >= candleOpen;
-            let bodySize = Math.abs(price - candleOpen);
-            let upperWick = candleHigh - Math.max(price, candleOpen);
-            let lowerWick = Math.min(price, candleOpen) - candleLow;
-            let totalRange = candleHigh - candleLow;
+            // Fallback base for candle calculation
+            let baseOpen = candleOpen || price;
+            let isGreen = price >= baseOpen;
+            let bodySize = Math.abs(price - baseOpen);
+            let upperWick = Math.max(0, candleHigh - Math.max(price, baseOpen));
+            let lowerWick = Math.max(0, Math.min(price, baseOpen) - candleLow);
+            let totalRange = Math.max(0.00001, candleHigh - candleLow);
 
             let isCall = true;
             let reason = "";
 
-            if (lowerWick > upperWick && lowerWick >= (totalRange * 0.3)) {
-                isCall = true;
-                reason = "Lower wick buyer rejection";
-            } else if (upperWick > lowerWick && upperWick >= (totalRange * 0.3)) {
-                isCall = false;
-                reason = "Upper wick seller rejection";
-            } else if (bodySize >= (totalRange * 0.5)) {
-                isCall = isGreen;
-                reason = isGreen ? "Strong Bullish impulse" : "Strong Bearish drop";
+            // OTC ACCURACY LOGIC: Trend Continuation First, Reversal Only On Massive Rejection
+            if (isGreen) {
+                // If green candle has huge upper wick (exhaustion at roof)
+                if (upperWick > (bodySize * 1.5) && upperWick >= (totalRange * 0.45)) {
+                    isCall = false;
+                    reason = "Strong roof rejection. Reversal to PUT.";
+                } else {
+                    isCall = true;
+                    reason = "Bullish body momentum. Next CALL.";
+                }
             } else {
-                isCall = isGreen;
-                reason = "Momentum trend follow";
+                // If red candle has huge lower wick (buyers truly bouncing from floor)
+                if (lowerWick > (bodySize * 1.5) && lowerWick >= (totalRange * 0.45)) {
+                    isCall = true;
+                    reason = "Strong floor rejection. Reversal to CALL.";
+                } else {
+                    isCall = false;
+                    reason = "Bearish dump momentum. Next PUT.";
+                }
             }
 
-            let nextSec = 60 - now.getSeconds();
-            let entryDate = new Date(now.getTime() + (nextSec * 1000));
+            // Sync exact entry clock with the exact next minute start
+            let secondsToNext = 60 - currentSec;
+            let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
             let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
             let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
