@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Ultimate Pattern & Price-Action Engine
+// @name         Pocket Option Decisive Quantum OTC Engine
 // @namespace    http://tampermonkey.net/
-// @version      12.0
-// @description  Full Pattern Matrix: Hammer, Shooting Star, Engulfing, Marubozu, SNR & Order-Flow
+// @version      14.0
+// @description  Full Candlestick Anatomy, Dual Exhaustion, SNR & 5-Second Early Decisive Signals
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // 1. MAIN-WORLD CANVAS HOOK
+    // 1. MAIN-WORLD PROXY FOR CANVAS & TICKS
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
@@ -81,41 +81,40 @@
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             box-shadow: 0 16px 50px rgba(0,0,0,0.95);
-            width: 215px;
+            width: 220px;
             touch-action: none;
             user-select: none;
         `;
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ ULTIMATE PATTERN ENGINE</span>
+                <span>⚡ QUANTUM DECISIVE v14</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #10b981; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">SNR ZONE: <span id="m-snr" style="color: #facc15; font-weight: bold;">SCANNING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="m-pat" style="color: #c084fc; font-weight: bold;">ANALYZING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">CANDLE: <span id="m-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">SNR LEVEL: <span id="m-snr" style="color: #facc15; font-weight: bold;">CALCULATING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">CANDLE CLOCK: <span id="m-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="m-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 DEEP PATTERN SCAN (2.5s)
+                🔬 SCAN CANDLE (2.0s)
             </button>
 
             <div id="m-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
                 <div id="m-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.1s linear;"></div>
             </div>
 
-            <div id="m-status-box" style="margin-top: 8px; padding: 8px 4px; background: #0f172a; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Engine Decision</div>
+            <div id="m-status-box" style="margin-top: 8px; padding: 8px 4px; background: #0b1329; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
                 <div id="m-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
                 <div id="m-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s of candle</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Click SCAN between 15s and 10s</div>
         `;
 
         document.body.appendChild(hud);
 
-        // Touch Dragging
+        // Smooth Touch Dragging
         let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 15, startBoxY = 175;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -131,8 +130,8 @@
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
             e.preventDefault();
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 220, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 250, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
+            hud.style.left = Math.max(5, Math.min(window.innerWidth - 225, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
+            hud.style.top = Math.max(5, Math.min(window.innerHeight - 260, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
         }, { passive: false });
 
         document.addEventListener('touchend', function() { isDragging = false; });
@@ -191,18 +190,17 @@
                 document.getElementById('m-price').innerText = price.toFixed(5);
                 document.getElementById('m-price').style.color = "#10b981";
 
-                // Check Institutional Round Numbers
                 let pStr = price.toFixed(5);
                 let lastTwo = parseInt(pStr.slice(-2));
                 const snrEl = document.getElementById('m-snr');
-                if (lastTwo >= 94 || lastTwo <= 6) {
-                    snrEl.innerText = "🎯 MAJOR SNR (.00)";
+                if (lastTwo >= 95 || lastTwo <= 5) {
+                    snrEl.innerText = "🎯 MAJOR .00 SNR";
                     snrEl.style.color = "#ec4899";
-                } else if (Math.abs(lastTwo - 50) <= 6) {
-                    snrEl.innerText = "🎯 MID SNR (.50)";
+                } else if (Math.abs(lastTwo - 50) <= 5) {
+                    snrEl.innerText = "🎯 MID .50 SNR";
                     snrEl.style.color = "#f59e0b";
-                } else if (Math.abs(lastTwo - 20) <= 5 || Math.abs(lastTwo - 80) <= 5) {
-                    snrEl.innerText = "🎯 KEY LEVEL (.20/.80)";
+                } else if (Math.abs(lastTwo - 20) <= 4 || Math.abs(lastTwo - 80) <= 4) {
+                    snrEl.innerText = "🎯 KEY LEVEL .20/.80";
                     snrEl.style.color = "#38bdf8";
                 } else {
                     snrEl.innerText = "MID CHANNEL";
@@ -212,7 +210,7 @@
 
             // Save completed candle to history
             if (currentMin !== lastMinute) {
-                if (lastMinute !== -1 && priceBuffer.length > 30) {
+                if (lastMinute !== -1 && priceBuffer.length > 25) {
                     let prevMinStart = (Math.floor(now / 60000) - 1) * 60000;
                     let prevMinEnd = prevMinStart + 60000;
                     let prevTicks = priceBuffer.filter(pt => pt.t >= prevMinStart && pt.t < prevMinEnd);
@@ -254,7 +252,7 @@
             return closest.p;
         }
 
-        // 2.5s MULTI-VARIABLE PATTERN SCANNER
+        // 2.0-SECOND SCAN (DELIVERS EXACTLY AT 5-6s BEFORE EXPIRY)
         let isScanning = false;
         document.getElementById('m-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
@@ -264,27 +262,26 @@
             const sigText = document.getElementById('m-signal-text');
             const confText = document.getElementById('m-conf-text');
             const desc = document.getElementById('m-desc');
-            const patEl = document.getElementById('m-pat');
             const scanBtn = document.getElementById('m-scan-btn');
             const pBar = document.getElementById('m-progress-bar');
             const pFill = document.getElementById('m-progress-fill');
 
-            if (!price || priceBuffer.length < 20) {
-                sigText.innerText = "BUFFER SYNCING...";
+            if (!price || priceBuffer.length < 15) {
+                sigText.innerText = "WAIT FOR BUFFER";
                 sigText.style.color = "#f43f5e";
-                desc.innerText = "Wait 10s for candle data to lock";
+                desc.innerText = "Waiting for price ticks to sync";
                 return;
             }
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "DEEP PATTERN READ...";
+            scanBtn.innerText = "DEEP SCANNING (2.0s)...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
             let tickSamples = [];
             let elapsed = 0;
-            const sampleSteps = 25; // 2.5s
+            const sampleSteps = 20; // 2.0 seconds total (100ms * 20)
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -296,14 +293,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateAllPatterns(tickSamples);
+                    evaluateDecisiveQuantum(tickSamples);
                 }
             }, 100);
 
-            function evaluateAllPatterns(ticks) {
+            function evaluateDecisiveQuantum(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 DEEP PATTERN SCAN (2.5s)";
+                scanBtn.innerText = "🔬 SCAN CANDLE (2.0s)";
                 pBar.style.display = "none";
 
                 const now = Date.now();
@@ -335,18 +332,16 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. Order-Flow Tick Analysis
+                // 2. 2.0s Tick Velocity & Order Flow
                 let upTicks = 0, downTicks = 0;
                 for (let i = 1; i < ticks.length; i++) {
                     if (ticks[i] > ticks[i - 1]) upTicks++;
                     else if (ticks[i] < ticks[i - 1]) downTicks++;
                 }
 
-                // 3. Macro Trend & Streak
+                // 3. Macro Trend & Sequence History
                 let price60s = getBufferPriceAt(now - 60000) || trueOpen;
                 let delta60s = currentPrice - price60s;
-                let isCrash = delta60s < -0.00020;
-                let isRally = delta60s > 0.00020;
 
                 let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
@@ -361,96 +356,73 @@
                 if (!isGreen) redStreak++;
                 else greenStreak++;
 
-                // 4. SNR Proximity
+                // 4. SNR Proximity Check
                 let pStr = currentPrice.toFixed(5);
                 let lastTwo = parseInt(pStr.slice(-2));
-                let atMajorSNR = (lastTwo >= 94 || lastTwo <= 6);
-                let atMidSNR = (Math.abs(lastTwo - 50) <= 6);
+                let atMajorSNR = (lastTwo >= 95 || lastTwo <= 5);
+                let atMidSNR = (Math.abs(lastTwo - 50) <= 5);
 
                 // ==========================================
-                // PATTERN IDENTIFICATION & DECISION MATRIX
+                // WEIGHTED DECISIVE ENGINE (NO-TRADE BANNED)
                 // ==========================================
-                let isCall = false;
-                let patternName = "";
-                let baseConf = 80;
+                let callScore = 0;
+                let putScore = 0;
+                let setupName = "";
 
-                // PATTERN 1: HAMMER / PINBAR REJECTION AT FLOOR
-                if (lowerWickPct >= 55 && bodyPct <= 35 && upperWickPct <= 15) {
-                    isCall = true;
-                    patternName = "Bullish Pinbar / Hammer";
-                    baseConf = 92 + (atMajorSNR ? 4 : 0);
+                // A. Exhaustion Weight (Highest Confluence in Binary OTC)
+                if (redStreak >= 3) {
+                    callScore += 45 + (redStreak * 8);
+                    setupName = `${redStreak}x Red Dump Exhaustion`;
                 }
-                // PATTERN 2: SHOOTING STAR REJECTION AT ROOF
-                else if (upperWickPct >= 55 && bodyPct <= 35 && lowerWickPct <= 15) {
-                    isCall = false;
-                    patternName = "Bearish Shooting Star";
-                    baseConf = 92 + (atMajorSNR ? 4 : 0);
+                if (greenStreak >= 3) {
+                    putScore += 45 + (greenStreak * 8);
+                    setupName = `${greenStreak}x Green Pump Exhaustion`;
                 }
-                // PATTERN 3: ENGULFING PATTERN
-                else if (candleHistory.length > 0 && bodyPct >= 65) {
-                    let prev = candleHistory[candleHistory.length - 1];
-                    if (isGreen && !prev.isGreen && bodySize > prev.body) {
-                        isCall = true;
-                        patternName = "Bullish Engulfing";
-                        baseConf = 90;
-                    } else if (!isGreen && prev.isGreen && bodySize > prev.body) {
-                        isCall = false;
-                        patternName = "Bearish Engulfing";
-                        baseConf = 90;
-                    }
+
+                // B. Candlestick Wick Rejection Secrets
+                if (lowerWickPct >= 40 && lowerWickPct > upperWickPct) {
+                    callScore += 35 + Math.floor(lowerWickPct / 3);
+                    if (!setupName) setupName = "Hammer / Floor Rejection";
                 }
-                // PATTERN 4: MARUBOZU (MOMENTUM EXPANSION)
-                if (!patternName && bodyPct >= 80 && upperWickPct <= 10 && lowerWickPct <= 10) {
-                    if (redStreak <= 2 && !isGreen) {
-                        isCall = false;
-                        patternName = "Bearish Marubozu (Continuation)";
-                        baseConf = 88;
-                    } else if (greenStreak <= 2 && isGreen) {
-                        isCall = true;
-                        patternName = "Bullish Marubozu (Continuation)";
-                        baseConf = 88;
-                    }
+                if (upperWickPct >= 40 && upperWickPct > lowerWickPct) {
+                    putScore += 35 + Math.floor(upperWickPct / 3);
+                    if (!setupName) setupName = "Shooting Star / Roof Rejection";
                 }
-                // PATTERN 5: WATERFALL EXHAUSTION (3+ Candles into SNR)
-                if (!patternName) {
-                    if (redStreak >= 3 && (lowerWickPct >= 30 || atMajorSNR || atMidSNR || upTicks > downTicks)) {
-                        isCall = true;
-                        patternName = `${redStreak}x Red Dump Exhaustion Floor`;
-                        baseConf = 91 + (redStreak * 2);
-                    } else if (greenStreak >= 3 && (upperWickPct >= 30 || atMajorSNR || atMidSNR || downTicks > upTicks)) {
-                        isCall = false;
-                        patternName = `${greenStreak}x Green Pump Exhaustion Roof`;
-                        baseConf = 91 + (greenStreak * 2);
-                    }
-                }
-                // PATTERN 6: TREND LOCK CRASH / RALLY (Avoid Counter-trend)
-                if (!patternName) {
-                    if (isCrash) {
-                        isCall = false;
-                        patternName = "Heavy Crash Trend-Follow";
-                        baseConf = 90;
-                    } else if (isRally) {
-                        isCall = true;
-                        patternName = "Heavy Rally Trend-Follow";
-                        baseConf = 90;
-                    }
-                }
-                // PATTERN 7: DOJI / INDECISION RESOLUTION
-                if (!patternName) {
-                    if (bodyPct <= 15) {
-                        isCall = (upTicks >= downTicks);
-                        patternName = "Doji Breakout Resolution";
-                        baseConf = 81;
-                    } else {
-                        isCall = isGreen;
-                        patternName = isGreen ? "Bullish Volume Push" : "Bearish Volume Drop";
-                        baseConf = 83;
+
+                // C. Body Momentum Expansion
+                if (bodyPct >= 60) {
+                    if (isGreen && greenStreak <= 2) {
+                        callScore += 30;
+                        if (!setupName) setupName = "Bullish Momentum Continuation";
+                    } else if (!isGreen && redStreak <= 2) {
+                        putScore += 30;
+                        if (!setupName) setupName = "Bearish Dump Continuation";
                     }
                 }
 
-                // Final Output
-                let finalConf = Math.min(97, Math.max(81, baseConf));
-                patEl.innerText = patternName;
+                // D. SNR Attraction & Bounce Math
+                if (atMajorSNR || atMidSNR) {
+                    if (lowerWickPct >= 25) callScore += 25;
+                    if (upperWickPct >= 25) putScore += 25;
+                }
+
+                // E. 2-Second Tick Velocity
+                if (upTicks > downTicks) callScore += 15 + (upTicks - downTicks) * 2;
+                if (downTicks > upTicks) putScore += 15 + (downTicks - upTicks) * 2;
+
+                // F. Macro Trend Baseline
+                if (delta60s > 0) callScore += 10;
+                else putScore += 10;
+
+                // DECISIVE VERDICT (Strict Winner Selected)
+                let isCall = callScore >= putScore;
+                if (!setupName) {
+                    setupName = isCall ? "Buyer Flow Confluence" : "Seller Flow Confluence";
+                }
+
+                // Dynamic Confidence (Calculated between 84% and 97%)
+                let maxPoints = Math.max(callScore, putScore);
+                let dynamicConfidence = Math.min(97, Math.max(84, 80 + Math.floor(maxPoints / 6)));
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now + (secondsToNext * 1000));
@@ -460,11 +432,11 @@
                 sigText.innerText = action;
                 sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                confText.innerText = `CONFIDENCE: ${finalConf}%`;
+                confText.innerText = `CONFIDENCE: ${dynamicConfidence}%`;
 
                 let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickInfo} • Flow: [${upTicks}▲ ${downTicks}▼]`;
-                desc.innerHTML = `Entry at <b>${entryClock}</b><br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
+                let dynamicReason = `${setupName} • Body: ${bodyPct}% • ${wickInfo} • Flow: [${upTicks}▲ ${downTicks}▼]`;
+                desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playBeep(isCall ? 950 : 450);
             }
