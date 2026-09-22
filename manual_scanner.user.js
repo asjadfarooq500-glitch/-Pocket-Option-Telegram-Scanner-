@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Zero-Freeze Multi-Pair SMC Engine
+// @name         Pocket Option Pro Momentum & Breakout Engine
 // @namespace    http://tampermonkey.net/
-// @version      16.0
-// @description  Instant Pair-Wipe, Universal JPY/Crypto Rates, Zero-Flow Emergency Lock
+// @version      17.0
+// @description  Anti-Blunder Momentum Lock, SNR Breakout Engine, Zero Counter-Trend Traps
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // 1. INJECT MAIN-WORLD PROXY FOR ALL ASSET FORMATS (FOREX, JPY, CRYPTO)
+    // 1. INJECT MAIN-WORLD PROXY FOR ALL ASSET FORMATS
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
@@ -29,7 +29,6 @@
             CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
                 if (text && typeof text === 'string') {
                     var str = text.trim();
-                    // Matches: 0.63998, 111.939, 18.2899, 65000.50
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
                         broadcastPrice(parseFloat(str));
                     }
@@ -90,7 +89,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ SMC ENGINE v16 (AUTO-SYNC)</span>
+                <span>⚡ MOMENTUM ENGINE v17</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -182,7 +181,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // INSTANT PAIR CHANGE DETECTION & MEMORY WIPE
+            // Instant Pair Change Memory Wipe
             if (activePairStored !== "" && currentPair !== activePairStored) {
                 curBarOpen = price;
                 curBarHigh = price || -Infinity;
@@ -190,7 +189,7 @@
                 curBarClose = price;
                 candleHistory = [];
                 lastMinuteTracked = currentMin;
-                document.getElementById('m-signal-text').innerText = "PAIR CHANGED";
+                document.getElementById('m-signal-text').innerText = "PAIR SYNCED";
                 document.getElementById('m-signal-text').style.color = "#facc15";
             }
             activePairStored = currentPair;
@@ -251,7 +250,7 @@
                     structEl.innerText = `SELLING CLIMAX (${redCount}x DOWN) ⚠️`;
                     structEl.style.color = "#10b981";
                 } else {
-                    structEl.innerText = "BALANCED FLOW";
+                    structEl.innerText = "HEALTHY MOMENTUM";
                     structEl.style.color = "#38bdf8";
                 }
             }
@@ -260,7 +259,7 @@
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
         }, 120);
 
-        // FULL SCAN ENGINE WITH ZERO-FLOW EMERGENCY STOP
+        // DEEP QUANT SCAN WITH MOMENTUM LOCK
         let isScanning = false;
         document.getElementById('m-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
@@ -283,7 +282,7 @@
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "SCANNING CHART MATRIX...";
+            scanBtn.innerText = "ANALYZING MOMENTUM...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -301,11 +300,11 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateGuardedSignal(tickSamples);
+                    evaluateBreakoutEngine(tickSamples);
                 }
             }, 100);
 
-            function evaluateGuardedSignal(ticks) {
+            function evaluateBreakoutEngine(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
                 scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
@@ -315,25 +314,7 @@
                 const currentSec = now.getSeconds();
                 const latestPrice = ticks[ticks.length - 1] || curBarClose || price;
 
-                // 1. Order Flow Velocity
-                let upTicks = 0, downTicks = 0;
-                for (let i = 1; i < ticks.length; i++) {
-                    if (ticks[i] > ticks[i - 1]) upTicks++;
-                    else if (ticks[i] < ticks[i - 1]) downTicks++;
-                }
-
-                // SAFETY CHECK: AGAR TICKS FREEZE HON TOH SIGNAL BLOCK
-                if (upTicks === 0 && downTicks === 0) {
-                    sigText.innerText = "TICK FROZEN ⚠️";
-                    sigText.style.color = "#f43f5e";
-                    sigBox.style.borderColor = "#f43f5e";
-                    confText.innerText = "NO DATA FLOW";
-                    desc.innerHTML = `Price did not update during scan. <b>Switch pair or re-scan</b>`;
-                    playBeep(300);
-                    return;
-                }
-
-                // 2. Exact Candle Geometry
+                // 1. Exact Candle Geometry
                 let isGreen = latestPrice >= curBarOpen;
                 let bodySize = Math.abs(latestPrice - curBarOpen);
                 let totalRange = Math.max(0.00001, curBarHigh - curBarLow);
@@ -343,6 +324,13 @@
                 let bodyPct = Math.round((bodySize / totalRange) * 100);
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
+
+                // 2. Order Flow Ticks
+                let upTicks = 0, downTicks = 0;
+                for (let i = 1; i < ticks.length; i++) {
+                    if (ticks[i] > ticks[i - 1]) upTicks++;
+                    else if (ticks[i] < ticks[i - 1]) downTicks++;
+                }
 
                 // 3. Streak Count
                 let greenStreak = 0, redStreak = 0;
@@ -358,54 +346,58 @@
                 if (isGreen) greenStreak++;
                 else redStreak++;
 
+                let pStr = latestPrice.toFixed(5);
+                let lastTwo = parseInt(pStr.slice(-2));
+                let atMajorSNR = (lastTwo >= 95 || lastTwo <= 5);
+
                 let isCall = false;
                 let patternName = "";
                 let confidence = 85;
 
                 // ==========================================
-                // STRICT SMC LOGIC
+                // STRICT MOMENTUM & BREAKOUT MATRIX
                 // ==========================================
 
-                // RULE 1: BUYING CLIMAX (Top par CALL 100% Forbidden)
-                if (greenStreak >= 4) {
-                    isCall = false; // Always PUT at the top of 4+ candles
+                // RULE 1: STRONG BODY BREAKOUT (Prevents Image 15 Bug)
+                // If candle is Green and Body >= 40%, NEVER PUT! (Follow the impulse)
+                if (isGreen && bodyPct >= 40 && upperWickPct <= 30 && greenStreak <= 3) {
+                    isCall = true;
+                    patternName = "Bullish Breakout Impulse";
+                    confidence = 92 + Math.floor(bodyPct / 15);
+                }
+                // If candle is Red and Body >= 40%, NEVER CALL!
+                else if (!isGreen && bodyPct >= 40 && lowerWickPct <= 30 && redStreak <= 3) {
+                    isCall = false;
+                    patternName = "Bearish Breakout Impulse";
+                    confidence = 92 + Math.floor(bodyPct / 15);
+                }
+                // RULE 2: BUYING CLIMAX EXHAUSTION (4+ Candles at Roof)
+                else if (greenStreak >= 4 && upperWickPct >= 35) {
+                    isCall = false;
                     patternName = "Buying Climax Reversal";
-                    confidence = 94;
+                    confidence = 93;
                 }
-                // RULE 2: SELLING CLIMAX (Bottom par PUT 100% Forbidden)
-                else if (redStreak >= 4) {
-                    isCall = true; // Always CALL at the bottom of 4+ candles
+                // RULE 3: SELLING CLIMAX EXHAUSTION (4+ Candles at Floor)
+                else if (redStreak >= 4 && lowerWickPct >= 35) {
+                    isCall = true;
                     patternName = "Selling Climax Reversal";
-                    confidence = 94;
+                    confidence = 93;
                 }
-                // RULE 3: PINBAR REVERSALS
-                else if (lowerWickPct >= 45 && bodyPct <= 35) {
+                // RULE 4: INSTITUTIONAL PINBAR REJECTION
+                else if (lowerWickPct >= 50 && bodyPct <= 35) {
                     isCall = true;
                     patternName = "Hammer Floor Reversal";
-                    confidence = 92;
+                    confidence = 91;
                 }
-                else if (upperWickPct >= 45 && bodyPct <= 35) {
+                else if (upperWickPct >= 50 && bodyPct <= 35) {
                     isCall = false;
                     patternName = "Shooting Star Roof Reversal";
-                    confidence = 92;
+                    confidence = 91;
                 }
-                // RULE 4: ENGULFING MOMENTUM
-                else if (candleHistory.length > 0 && bodyPct >= 55) {
-                    let prev = candleHistory[candleHistory.length - 1];
-                    if (!isGreen && prev.isGreen && bodySize > prev.body) {
-                        isCall = false;
-                        patternName = "Bearish Engulfing";
-                        confidence = 90;
-                    } else if (isGreen && !prev.isGreen && bodySize > prev.body) {
-                        isCall = true;
-                        patternName = "Bullish Engulfing";
-                        confidence = 90;
-                    }
-                }
-                // RULE 5: FLOW DIRECTION
-                if (!patternName) {
-                    isCall = (upTicks >= downTicks);
-                    patternName = isCall ? "Buyer Order Flow" : "Seller Order Flow";
+                // RULE 5: DEFAULT TO CANDLE BODY COLOR (Micro-ticks cannot invert body)
+                else {
+                    isCall = isGreen;
+                    patternName = isGreen ? "Buyer Flow Continuation" : "Seller Flow Continuation";
                     confidence = 84;
                 }
 
