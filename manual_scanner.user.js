@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Live Manual Telegram Scanner
+// @name         Pocket Option Strict Manual Engine (Direct On-Screen)
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Deep read Pocket Option live chart and send on-demand manual signals to Telegram
+// @version      2.5
+// @description  Direct On-Screen Live Tick Reader & Next Candle Signal HUD
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,13 +14,6 @@
 (function() {
     'use strict';
 
-    // ==========================================
-    // APNA TOKEN AUR CHAT ID YAHAN ENTER KAREIN
-    // ==========================================
-    const TELEGRAM_BOT_TOKEN = "APNA_BOT_TOKEN_YAHAN_DAALEIN";
-    const TELEGRAM_CHAT_ID = "APNI_CHAT_ID_YAHAN_DAALEIN";
-    // ==========================================
-
     function initManualBot() {
         if (!document.body) {
             setTimeout(initManualBot, 300);
@@ -29,7 +22,27 @@
 
         if (document.getElementById('po-manual-hud')) return;
 
-        // Movable On-Screen Scanner Box
+        // Audio alert support for iPhone Safari
+        let audioCtx = null;
+        function playBeep(freq = 850) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.16);
+            } catch(e) {}
+        }
+        document.addEventListener('touchstart', () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }, { once: true });
+
+        // Floating HUD Box
         const hud = document.createElement('div');
         hud.id = 'po-manual-hud';
         hud.style.cssText = `
@@ -42,7 +55,7 @@
             border-radius: 14px;
             padding: 10px;
             color: #ffffff;
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             box-shadow: 0 12px 35px rgba(0,0,0,0.85);
             width: 185px;
             touch-action: none;
@@ -51,31 +64,29 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: #0284c7; margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ PO MANUAL ENGINE</span>
+                <span>⚡ PO STRICT ENGINE</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">ACTIVE PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">READING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #fff; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">CANDLE TIME: <span id="m-timer" style="color: #facc15; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">ACTIVE PAIR: <span id="m-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="m-price" style="color: #f43f5e; font-weight: bold;">SEARCHING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">CANDLE: <span id="m-timer" style="color: #facc15; font-weight: bold;">--s</span></div>
 
             <div style="margin: 6px 0;">
                 <select id="m-tf" style="width: 100%; padding: 4px; font-size: 10px; background: #131b2e; border: 1px solid #1e293b; color: #fff; border-radius: 6px; outline: none;">
                     <option value="60" selected>1 Minute (M1)</option>
                     <option value="30">30 Seconds (S30)</option>
-                    <option value="120">2 Minutes (M2)</option>
-                    <option value="300">5 Minutes (M5)</option>
                 </select>
             </div>
 
             <button id="m-scan-btn" style="width: 100%; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 10px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase;">
-                🔍 SCAN RUNNING CANDLE
+                🔍 SCAN CANDLE
             </button>
 
-            <div id="m-status-box" style="margin-top: 6px; padding: 6px; background: #131b2e; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8;">NEXT CANDLE VERDICT</div>
-                <div id="m-signal-text" style="font-size: 13px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
+            <div id="m-status-box" style="margin-top: 6px; padding: 8px 4px; background: #131b2e; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Signal</div>
+                <div id="m-signal-text" style="font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
             </div>
-            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Press SCAN during candle</div>
+            <div id="m-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait for live tick sync</div>
         `;
 
         document.body.appendChild(hud);
@@ -96,25 +107,31 @@
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
             e.preventDefault();
-            let dx = e.touches[0].clientX - startTouchX;
-            let dy = e.touches[0].clientY - startTouchY;
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 190, startBoxX + dx)) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 220, startBoxY + dy)) + 'px';
+            hud.style.left = Math.max(5, Math.min(window.innerWidth - 190, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
+            hud.style.top = Math.max(5, Math.min(window.innerHeight - 220, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
         }, { passive: false });
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
-        // Deep Market DOM Scanners
+        // Targeted Price Grabber
         function getLivePrice() {
-            const allElements = document.querySelectorAll('*');
-            for (let el of allElements) {
+            const potentialClasses = ['.chart-current-value', '.current-price', '.val__num', '[class*="current-value"]'];
+            for (let c of potentialClasses) {
+                let el = document.querySelector(c);
+                if (el && el.textContent) {
+                    let num = parseFloat(el.textContent.replace(/[^0-9.]/g, ''));
+                    if (!isNaN(num) && num > 0) return num;
+                }
+            }
+
+            const nodes = document.body.querySelectorAll('span, div, text');
+            for (let el of nodes) {
                 if (el.children.length === 0 && el.textContent) {
                     let txt = el.textContent.trim();
-                    if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
+                    if (/^\d{1,4}\.\d{3,6}$/.test(txt)) {
                         let num = parseFloat(txt);
                         if (num > 0 && num !== 100 && !txt.includes('%')) {
-                            let rect = el.getBoundingClientRect();
-                            if (rect.right > (window.innerWidth * 0.45)) return num;
+                            return num;
                         }
                     }
                 }
@@ -123,14 +140,14 @@
         }
 
         function getActivePair() {
-            const selectors = ['.current-symbol', '[class*="pair-title"]', '.asset-select', '.symbol-title'];
+            const selectors = ['.current-symbol', '[class*="pair-title"]', '.asset-select'];
             for (let sel of selectors) {
                 let el = document.querySelector(sel);
                 if (el && el.innerText && el.innerText.trim().length > 2) {
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "ACTIVE OTC ASSET";
+            return "AED/CNY OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, lastMinute = -1;
@@ -149,102 +166,74 @@
                 candleLow = price || Infinity;
             }
 
+            const priceEl = document.getElementById('m-price');
             if (price) {
                 if (price > candleHigh) candleHigh = price;
                 if (price < candleLow) candleLow = price;
-                document.getElementById('m-price').innerText = price.toFixed(5);
+                priceEl.innerText = price.toFixed(5);
+                priceEl.style.color = "#10b981";
+            } else {
+                priceEl.innerText = "NO TICK";
+                priceEl.style.color = "#f43f5e";
             }
 
             document.getElementById('m-pair').innerText = pair;
             document.getElementById('m-timer').innerText = `${60 - currentSec}s`;
-        }, 250);
+        }, 200);
 
-        // Telegram Sender Function
-        function sendTelegramAlert(pair, action, entryClock, expiryText, reason) {
-            if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes("APNA_BOT")) return;
-            const icon = action.includes("CALL") ? "🟢" : "🔴";
-            const text = `🎯 *POCKET OPTION MANUAL SCAN* 🎯\n` +
-                         `━━━━━━━━━━━━━━━━━━━\n` +
-                         `📊 *Asset:* ${pair}\n` +
-                         `🔥 *Signal:* ${icon} *${action}*\n` +
-                         `⏰ *Exact Entry:* \`${entryClock}\`\n` +
-                         `⏳ *Expiration:* ${expiryText}\n` +
-                         `📈 *Deep Read:* ${reason}\n` +
-                         `━━━━━━━━━━━━━━━━━━━\n` +
-                         `⚡ *Action:* Place trade manually on next candle open!`;
-
-            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=Markdown`;
-            fetch(url).catch(e => console.error("Telegram send error:", e));
-        }
-
-        // Manual Deep Scan Button Event
+        // Strict Scan Button (Zero Guesswork)
         document.getElementById('m-scan-btn').addEventListener('click', function() {
-            const scanBtn = this;
-            const now = new Date();
-            const currentSec = now.getSeconds();
             const price = getLivePrice();
-            const pair = getActivePair();
-            const tfSec = parseInt(document.getElementById('m-tf').value);
-            const tfText = document.getElementById('m-tf').options[document.getElementById('m-tf').selectedIndex].text;
+            const now = new Date();
+            const sigBox = document.getElementById('m-status-box');
+            const sigText = document.getElementById('m-signal-text');
+            const desc = document.getElementById('m-desc');
 
-            scanBtn.innerText = "DEEP SCANNING...";
-            scanBtn.style.opacity = "0.7";
+            // Agar price sync nahi hui toh error show karega (tukka nahi lagayega)
+            if (!price || !candleOpen) {
+                sigText.innerText = "NO TICK FOUND";
+                sigText.style.color = "#f43f5e";
+                sigBox.style.borderColor = "#f43f5e";
+                desc.innerText = "Close 'Trades' tab & wait for tick!";
+                playBeep(300);
+                return;
+            }
 
-            setTimeout(() => {
-                scanBtn.innerText = "🔍 SCAN RUNNING CANDLE";
-                scanBtn.style.opacity = "1";
+            let isGreen = price >= candleOpen;
+            let bodySize = Math.abs(price - candleOpen);
+            let upperWick = candleHigh - Math.max(price, candleOpen);
+            let lowerWick = Math.min(price, candleOpen) - candleLow;
+            let totalRange = candleHigh - candleLow;
 
-                let isCall = true;
-                let reason = "";
+            let isCall = true;
+            let reason = "";
 
-                if (candleOpen && price) {
-                    let isGreen = price >= candleOpen;
-                    let bodySize = Math.abs(price - candleOpen);
-                    let upperWick = candleHigh - Math.max(price, candleOpen);
-                    let lowerWick = Math.min(price, candleOpen) - candleLow;
-                    let totalRange = candleHigh - candleLow;
+            // Rejection & Momentum Evaluation
+            if (lowerWick > upperWick && lowerWick >= (totalRange * 0.3)) {
+                isCall = true;
+                reason = "Lower wick buyer rejection";
+            } else if (upperWick > lowerWick && upperWick >= (totalRange * 0.3)) {
+                isCall = false;
+                reason = "Upper wick seller rejection";
+            } else if (bodySize >= (totalRange * 0.5)) {
+                isCall = isGreen;
+                reason = isGreen ? "Bullish trend push" : "Bearish trend drop";
+            } else {
+                isCall = isGreen;
+                reason = "Tick momentum direction";
+            }
 
-                    // Deep Candle Structure Breakdown
-                    if (lowerWick > upperWick && lowerWick >= (totalRange * 0.35)) {
-                        isCall = true;
-                        reason = "Strong Buyer Wick Rejection from lower support. High bounce probability.";
-                    } else if (upperWick > lowerWick && upperWick >= (totalRange * 0.35)) {
-                        isCall = false;
-                        reason = "Strong Seller Wick Rejection from upper resistance. Downward pressure confirmed.";
-                    } else if (bodySize >= (totalRange * 0.55)) {
-                        isCall = isGreen;
-                        reason = isGreen 
-                            ? "Bullish impulse candle with high volume continuation." 
-                            : "Bearish dump candle with seller volume continuation.";
-                    } else {
-                        isCall = isGreen;
-                        reason = "Micro-trend direction confirmed on current tick velocity.";
-                    }
-                } else {
-                    isCall = (now.getMinutes() + now.getSeconds()) % 2 === 0;
-                    reason = "Harmonic cycle resolution calculated from chart time-tick.";
-                }
+            let nextSec = 60 - now.getSeconds();
+            let entryDate = new Date(now.getTime() + (nextSec * 1000));
+            let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
-                // Calculate Exact Entry Time (:00 mark of next candle)
-                let secondsUntilNext = tfSec - ((now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) % tfSec);
-                let entryDate = new Date(now.getTime() + (secondsUntilNext * 1000));
-                let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
+            let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
+            sigText.innerText = action;
+            sigText.style.color = isCall ? "#10b981" : "#ef4444";
+            sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
+            desc.innerHTML = `Entry at <b>${entryClock}</b><br><span style="color:#94a3b8;">${reason}</span>`;
 
-                let action = isCall ? "CALL (BUY)" : "PUT (SELL)";
-
-                // Update On-Screen HUD
-                const sigBox = document.getElementById('m-status-box');
-                const sigText = document.getElementById('m-signal-text');
-                const desc = document.getElementById('m-desc');
-
-                sigText.innerText = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
-                sigText.style.color = isCall ? "#10b981" : "#ef4444";
-                sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                desc.innerHTML = `Entry at <b>${entryClock}</b> (Sent to Telegram)`;
-
-                // Dispatch to Telegram
-                sendTelegramAlert(pair, action, entryClock, tfText, reason);
-            }, 500);
+            playBeep(isCall ? 950 : 450);
         });
     }
 
