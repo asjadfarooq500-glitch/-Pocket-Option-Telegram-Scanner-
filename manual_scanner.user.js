@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX True OHLC Engine
+// @name         Pocket Option APEX Omni-Scan Engine
 // @namespace    http://tampermonkey.net/
-// @version      25.0
-// @description  Exact OHLC Candle Tracking, Live Wick/Body Math, VSA Momentum & True Rejections
+// @version      30.0
+// @description  Full 20-Candle Chart Memory, Grid Clamping, Waterfall Lock & Multi-Pattern Confluence
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,16 +14,30 @@
 (function() {
     'use strict';
 
-    // 1. INJECT UNIVERSAL MAIN-WORLD PRICE PROXY
+    let currentLiveTick = null;
+
+    // 1. MAIN-WORLD PROXY WITH STRICT AXIS-GRID FILTER
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
+        var lastValidPrice = null;
+
         function broadcastPrice(num) {
-            if (num > 0 && Math.abs(num - 2.62) > 0.05 && num !== 100) {
-                document.documentElement.setAttribute('data-po-live-price', num);
-                document.documentElement.setAttribute('data-po-live-time', Date.now());
+            if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
+
+            // GRID CLAMP: Reject prices that jump unnaturally (filters out axis numbers like 0.72000)
+            if (lastValidPrice !== null) {
+                var maxDeviation = lastValidPrice * 0.008; // Max 0.8% deviation
+                if (Math.abs(num - lastValidPrice) > maxDeviation) {
+                    return; // Ignore axis numbers
+                }
             }
+
+            lastValidPrice = num;
+            document.documentElement.setAttribute('data-po-live-price', num);
+            document.documentElement.setAttribute('data-po-live-time', Date.now());
         }
+
         try {
             var origFill = CanvasRenderingContext2D.prototype.fillText;
             CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
@@ -40,13 +54,13 @@
     `;
     (document.head || document.documentElement).appendChild(bridgeScript);
 
-    function initApexEngine() {
+    function initOmniEngine() {
         if (!document.body) {
-            setTimeout(initApexEngine, 200);
+            setTimeout(initOmniEngine, 200);
             return;
         }
 
-        if (document.getElementById('po-apex-hud')) return;
+        if (document.getElementById('po-omni-hud')) return;
 
         let audioCtx = null;
         function playBeep(freq = 850) {
@@ -69,7 +83,7 @@
 
         // HUD Design
         const hud = document.createElement('div');
-        hud.id = 'po-apex-hud';
+        hud.id = 'po-omni-hud';
         hud.style.cssText = `
             position: fixed;
             top: 170px;
@@ -89,42 +103,43 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX TRUE-OHLC v25</span>
+                <span>⚡ OMNI-SCAN ENGINE v30</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="a-price" style="color: #10b981; font-weight: bold;">--</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="o-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="o-price" style="color: #10b981; font-weight: bold;">--</span></div>
             
             <div style="background: #091226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; display: flex; justify-content: space-between;">
-                    <span>O: <b id="a-open" style="color:#fff;">--</b></span>
-                    <span>H: <b id="a-high" style="color:#10b981;">--</b></span>
-                    <span>L: <b id="a-low" style="color:#ef4444;">--</b></span>
+                    <span>O: <b id="o-open" style="color:#fff;">--</b></span>
+                    <span>H: <b id="o-high" style="color:#10b981;">--</b></span>
+                    <span>L: <b id="o-low" style="color:#ef4444;">--</b></span>
                 </div>
                 <div style="font-size: 8px; color: #94a3b8; margin-top: 3px; display: flex; justify-content: space-between;">
-                    <span>BODY: <b id="a-body-pct" style="color:#38bdf8;">--%</b></span>
-                    <span>U-WICK: <b id="a-uwick-pct" style="color:#facc15;">--%</b></span>
-                    <span>L-WICK: <b id="a-lwick-pct" style="color:#facc15;">--%</b></span>
+                    <span>BODY: <b id="o-body" style="color:#38bdf8;">--%</b></span>
+                    <span>U-WICK: <b id="o-uwick" style="color:#facc15;">--%</b></span>
+                    <span>L-WICK: <b id="o-lwick" style="color:#facc15;">--%</b></span>
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">STATE: <span id="a-status" style="color: #facc15; font-weight: bold;">LOCKING :00</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">CHART FLOW: <span id="o-trend" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="o-setup" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="o-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
-            <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN RUNNING CANDLE
+            <button id="o-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
+                🔬 FULL CHART OMNI-SCAN
             </button>
 
-            <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="a-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
+            <div id="o-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+                <div id="o-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
             </div>
 
-            <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
-                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
+            <div id="o-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Omni-Scan Decision</div>
+                <div id="o-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
+                <div id="o-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 6s of candle</div>
+            <div id="o-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan between 14s and 6s</div>
         `;
 
         document.body.appendChild(hud);
@@ -183,12 +198,12 @@
         }
 
         // ==========================================
-        // TRUE-OHLC TICK TRACKER & MINUTE LOCK
+        // 20-CANDLE BUFFER & CLAMPED OHLC
         // ==========================================
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
         let lastMinuteSynced = -1;
         let isMinuteLocked = false;
-        let candleHistory = [];
+        let candleHistory = []; // Full 20-candle memory
         let storedPair = "";
 
         setInterval(() => {
@@ -198,7 +213,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // Pair change flush
+            // Pair switch flush
             if (storedPair !== "" && currentPair !== storedPair) {
                 candleOpen = null;
                 candleHigh = -Infinity;
@@ -209,7 +224,7 @@
             }
             storedPair = currentPair;
 
-            // Minute Cycle Rollover (:00.000)
+            // Minute Bar Rollover (:00.000)
             if (currentMin !== lastMinuteSynced) {
                 if (lastMinuteSynced !== -1 && candleOpen !== null && price) {
                     candleHistory.push({
@@ -245,21 +260,22 @@
                     isMinuteLocked = true;
                 }
 
-                if (isMinuteLocked) {
-                    if (price > candleHigh) candleHigh = price;
-                    if (price < candleLow) candleLow = price;
+                // Clamped High/Low Tracking (Eliminates the 0.72000 Axis Bug!)
+                if (isMinuteLocked && candleOpen !== null) {
+                    let maxAllowedDiff = candleOpen * 0.003; // Max 0.3% range for 1 candle
+                    if (price > candleHigh && (price - candleOpen) < maxAllowedDiff) candleHigh = price;
+                    if (price < candleLow && (candleOpen - price) < maxAllowedDiff) candleLow = price;
                     candleClose = price;
                 }
 
-                // Update UI Numbers
                 let decimals = price > 100 ? 3 : 5;
-                document.getElementById('a-price').innerText = price.toFixed(decimals);
-                document.getElementById('a-price').style.color = "#10b981";
+                document.getElementById('o-price').innerText = price.toFixed(decimals);
+                document.getElementById('o-price').style.color = "#10b981";
 
                 if (isMinuteLocked && candleOpen !== null) {
-                    document.getElementById('a-open').innerText = candleOpen.toFixed(decimals);
-                    document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
-                    document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
+                    document.getElementById('o-open').innerText = candleOpen.toFixed(decimals);
+                    document.getElementById('o-high').innerText = candleHigh.toFixed(decimals);
+                    document.getElementById('o-low').innerText = candleLow.toFixed(decimals);
 
                     let cRange = Math.max(0.00001, candleHigh - candleLow);
                     let cBody = Math.abs(price - candleOpen);
@@ -270,56 +286,76 @@
                     let uPct = Math.round((cUpper / cRange) * 100);
                     let lPct = Math.round((cLower / cRange) * 100);
 
-                    document.getElementById('a-body-pct').innerText = `${bPct}%`;
-                    document.getElementById('a-uwick-pct').innerText = `${uPct}%`;
-                    document.getElementById('a-lwick-pct').innerText = `${lPct}%`;
+                    document.getElementById('o-body').innerText = `${bPct}%`;
+                    document.getElementById('o-uwick').innerText = `${uPct}%`;
+                    document.getElementById('o-lwick').innerText = `${lPct}%`;
 
-                    let isG = price >= candleOpen;
-                    document.getElementById('a-status').innerText = isG ? "BULLISH FLOW 🟢" : "BEARISH DUMP 🔴";
-                    document.getElementById('a-status').style.color = isG ? "#10b981" : "#ef4444";
-                } else {
-                    document.getElementById('a-status').innerText = "LOCKING AT :00";
-                    document.getElementById('a-status').style.color = "#facc15";
+                    // Macro Flow Analysis
+                    let redCount = 0, greenCount = 0;
+                    for (let i = candleHistory.length - 1; i >= 0; i--) {
+                        if (!candleHistory[i].isGreen) {
+                            if (greenCount === 0) redCount++;
+                            else break;
+                        } else {
+                            if (redCount === 0) greenCount++;
+                            else break;
+                        }
+                    }
+                    if (price < candleOpen) redCount++;
+                    else greenCount++;
+
+                    const trendEl = document.getElementById('o-trend');
+                    if (redCount >= 4) {
+                        trendEl.innerText = `WATERFALL CRASH (${redCount}x RED) 🔴`;
+                        trendEl.style.color = "#ef4444";
+                    } else if (greenCount >= 4) {
+                        trendEl.innerText = `ROCKET RALLY (${greenCount}x GREEN) 🟢`;
+                        trendEl.style.color = "#10b981";
+                    } else {
+                        trendEl.innerText = "BALANCED CHANNEL";
+                        trendEl.style.color = "#38bdf8";
+                    }
                 }
             }
 
-            document.getElementById('a-pair').innerText = currentPair;
-            document.getElementById('a-timer').innerText = `${60 - currentSec}s`;
+            document.getElementById('o-pair').innerText = currentPair;
+            document.getElementById('o-timer').innerText = `${60 - currentSec}s`;
         }, 80);
 
         // ==========================================
-        // APEX QUANT SCANNER (NO COUNTER-TREND TRAPS)
+        // OMNI-SCAN CONFLUENCE MATRIX (20-CANDLE DATA)
         // ==========================================
         let isScanning = false;
-        document.getElementById('a-scan-btn').addEventListener('click', function() {
+        document.getElementById('o-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
 
             const price = getLivePrice();
-            const sigBox = document.getElementById('a-status-box');
-            const sigText = document.getElementById('a-signal-text');
-            const confText = document.getElementById('a-conf-text');
-            const desc = document.getElementById('a-desc');
-            const scanBtn = document.getElementById('a-scan-btn');
-            const pBar = document.getElementById('a-progress-bar');
-            const pFill = document.getElementById('a-progress-fill');
+            const sigBox = document.getElementById('o-status-box');
+            const sigText = document.getElementById('o-signal-text');
+            const confText = document.getElementById('o-conf-text');
+            const desc = document.getElementById('o-desc');
+            const setupEl = document.getElementById('o-setup');
+            const scanBtn = document.getElementById('o-scan-btn');
+            const pBar = document.getElementById('o-progress-bar');
+            const pFill = document.getElementById('o-progress-fill');
 
             if (!price || !isMinuteLocked || candleOpen === null) {
                 sigText.innerText = "WAITING FOR :00";
                 sigText.style.color = "#f43f5e";
-                desc.innerText = "Wait for new candle open to lock real data";
+                desc.innerText = "Wait for new candle open to sync data";
                 playBeep(300);
                 return;
             }
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "SCANNING OHLC...";
+            scanBtn.innerText = "ANALYZING 20 BARS...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
             let tickSamples = [];
             let elapsed = 0;
-            const sampleSteps = 16; // 1.6s
+            const sampleSteps = 16;
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -331,21 +367,21 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateApexDecision(tickSamples);
+                    evaluateOmniConfluence(tickSamples);
                 }
             }, 100);
 
-            function evaluateApexDecision(ticks) {
+            function evaluateOmniConfluence(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
+                scanBtn.innerText = "🔬 FULL CHART OMNI-SCAN";
                 pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
                 const latestPrice = ticks[ticks.length - 1] || candleClose || price;
 
-                // 1. Exact Math from Verified OHLC
+                // 1. Clamped Candle Geometry
                 let isGreen = latestPrice >= candleOpen;
                 let bodySize = Math.abs(latestPrice - candleOpen);
                 let totalRange = Math.max(0.00001, candleHigh - candleLow);
@@ -356,70 +392,72 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. Multi-Bar Streak
-                let greenStreak = 0, redStreak = 0;
+                // 2. Count Consecutive Trend Streaks in 20 Bars
+                let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (candleHistory[i].isGreen) {
-                        if (redStreak === 0) greenStreak++;
+                    if (!candleHistory[i].isGreen) {
+                        if (greenStreak === 0) redStreak++;
                         else break;
                     } else {
-                        if (greenStreak === 0) redStreak++;
+                        if (redStreak === 0) greenStreak++;
                         else break;
                     }
                 }
-                if (isGreen) greenStreak++;
-                else redStreak++;
+                if (!isGreen) redStreak++;
+                else greenStreak++;
 
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
                 // ==========================================
-                // STRICT APEX TRADING LAWS
+                // STRICT OMNI-SCAN TRADING LAWS
                 // ==========================================
 
-                // LAW 1: WATERFALL DUMP CONTINUATION (Prevents Counter-Trading in Crash)
-                // If candle is solid Red (Body >= 40% and lower wick <= 25%), ALWAYS PUT!
-                if (!isGreen && bodyPct >= 40 && lowerWickPct <= 25) {
-                    isCall = false; // 100% PUT (Follow the drop!)
-                    setupName = "Solid Bearish Dump Impulse";
-                    confidence = 94;
+                // LAW 1: WATERFALL CRASH LOCK (Prevents Image 16 Blunder!)
+                // In a heavy drop of 4+ Red candles, NEVER BUY! Follow the waterfall dump.
+                if (redStreak >= 4 && lowerWickPct <= 35) {
+                    isCall = false; // 100% PUT (Follow the institutional dump!)
+                    setupName = `${redStreak}x Red Waterfall Crash (Follow Sell)`;
+                    confidence = 96;
                 }
-                // LAW 2: ROCKET PUMP CONTINUATION (Prevents Counter-Trading in Rally)
-                // If candle is solid Green (Body >= 40% and upper wick <= 25%), ALWAYS CALL!
-                else if (isGreen && bodyPct >= 40 && upperWickPct <= 25) {
-                    isCall = true; // 100% CALL (Follow the breakout!)
-                    setupName = "Solid Bullish Pump Impulse";
-                    confidence = 94;
+                // LAW 2: ROCKET RALLY LOCK
+                // In a heavy pump of 4+ Green candles, NEVER SELL! Follow the breakout.
+                else if (greenStreak >= 4 && upperWickPct <= 35) {
+                    isCall = true; // 100% CALL (Follow the institutional pump!)
+                    setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
+                    confidence = 96;
                 }
-                // LAW 3: TRUE PINBAR REVERSAL (Requires 50%+ Wick)
-                else if (lowerWickPct >= 50 && bodyPct <= 35) {
-                    isCall = true; // Real Hammer Rejection
-                    setupName = "Verified Hammer Floor Bounce";
-                    confidence = 92;
-                }
-                else if (upperWickPct >= 50 && bodyPct <= 35) {
-                    isCall = false; // Real Shooting Star Rejection
-                    setupName = "Verified Shooting Star Drop";
-                    confidence = 92;
-                }
-                // LAW 4: MULTI-BAR EXHAUSTION WITH CLEAR WICK
-                else if (redStreak >= 4 && lowerWickPct >= 35) {
+                // LAW 3: SOLID BODY IMPULSE (Marubozu)
+                else if (bodyPct >= 50 && upperWickPct <= 20 && isGreen) {
                     isCall = true;
-                    setupName = `${redStreak}x Red Dump Floor Reversal`;
-                    confidence = 91;
+                    setupName = "Bullish Momentum Expansion";
+                    confidence = 93;
                 }
-                else if (greenStreak >= 4 && upperWickPct >= 35) {
+                else if (bodyPct >= 50 && lowerWickPct <= 20 && !isGreen) {
                     isCall = false;
-                    setupName = `${greenStreak}x Green Pump Roof Reversal`;
+                    setupName = "Bearish Momentum Dump";
+                    confidence = 93;
+                }
+                // LAW 4: GENUINE PINBAR REVERSAL (Requires 50%+ Wick)
+                else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
+                    isCall = true;
+                    setupName = "Confirmed Hammer Rejection Bounce";
                     confidence = 91;
                 }
-                // LAW 5: BODY COLOR DOMINANCE FALLBACK
+                else if (upperWickPct >= 50 && bodyPct <= 35 && greenStreak <= 3) {
+                    isCall = false;
+                    setupName = "Confirmed Shooting Star Drop";
+                    confidence = 91;
+                }
+                // LAW 5: BODY COLOR CONTINUATION
                 else {
                     isCall = isGreen;
-                    setupName = isGreen ? "Bullish Flow Dominance" : "Bearish Flow Dominance";
+                    setupName = isGreen ? "Bullish Candle Dominance" : "Bearish Candle Dominance";
                     confidence = 85;
                 }
+
+                setupEl.innerText = setupName;
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
@@ -441,8 +479,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initApexEngine);
+        document.addEventListener('DOMContentLoaded', initOmniEngine);
     } else {
-        initApexEngine();
+        initOmniEngine();
     }
 })();
