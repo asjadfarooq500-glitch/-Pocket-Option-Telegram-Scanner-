@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Titan Institutional Quant Engine
+// @name         Pocket Option Titan Institutional Range & Floor Guard
 // @namespace    http://tampermonkey.net/
-// @version      20.0
-// @description  Full VSA Breakout, Absolute Body Dominance, SNR Polarity & Zero-Countertrend Traps
+// @version      21.0
+// @description  Swing Floor/Roof Detection, Never-Sell-At-Support Lock, Range Mean-Reversion
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -48,7 +48,6 @@
 
         if (document.getElementById('po-titan-hud')) return;
 
-        // Sound System
         let audioCtx = null;
         function playBeep(freq = 850) {
             try {
@@ -90,13 +89,13 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ TITAN INSTITUTIONAL v20</span>
+                <span>⚡ TITAN FLOOR-GUARD v21</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="t-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="t-price" style="color: #10b981; font-weight: bold;">--</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">SNR ZONE: <span id="t-snr" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">VSA PATTERN: <span id="t-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">FLOOR LEVEL: <span id="t-snr" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="t-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="t-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="t-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
@@ -207,7 +206,7 @@
                         body: Math.abs(curBarClose - curBarOpen),
                         range: Math.max(0.00001, curBarHigh - curBarLow)
                     });
-                    if (candleHistory.length > 15) candleHistory.shift();
+                    if (candleHistory.length > 20) candleHistory.shift();
                 }
 
                 lastMinuteTracked = currentMin;
@@ -226,16 +225,23 @@
                 document.getElementById('t-price').innerText = price.toFixed(price > 100 ? 3 : 5);
                 document.getElementById('t-price').style.color = "#10b981";
 
-                // SNR Proximity
-                let pStr = price.toFixed(price > 100 ? 3 : 5);
-                let lastDigits = parseInt(pStr.slice(-2));
+                // Check Horizontal Support Floor & Roof from History
+                let swingLow = Infinity, swingHigh = -Infinity;
+                for (let c of candleHistory) {
+                    if (c.low < swingLow) swingLow = c.low;
+                    if (c.high > swingHigh) swingHigh = c.high;
+                }
+
                 const snrEl = document.getElementById('t-snr');
-                if (lastDigits >= 95 || lastDigits <= 5) {
-                    snrEl.innerText = "🎯 MAJOR .00 ROUND LEVEL";
-                    snrEl.style.color = "#ec4899";
-                } else if (Math.abs(lastDigits - 50) <= 5) {
-                    snrEl.innerText = "🎯 MID .50 LEVEL";
-                    snrEl.style.color = "#f59e0b";
+                let distToFloor = Math.abs(price - swingLow);
+                let distToRoof = Math.abs(price - swingHigh);
+
+                if (distToFloor < 0.00020) {
+                    snrEl.innerText = "🛡️ AT SUPPORT FLOOR";
+                    snrEl.style.color = "#10b981";
+                } else if (distToRoof < 0.00020) {
+                    snrEl.innerText = "🛑 AT RESISTANCE ROOF";
+                    snrEl.style.color = "#ef4444";
                 } else {
                     snrEl.innerText = "MID CHANNEL";
                     snrEl.style.color = "#64748b";
@@ -246,7 +252,7 @@
             document.getElementById('t-timer').innerText = `${60 - currentSec}s`;
         }, 120);
 
-        // TITAN DEEP SCAN (2.0s)
+        // TITAN FLOOR-GUARD SCAN
         let isScanning = false;
         document.getElementById('t-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
@@ -269,7 +275,7 @@
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "CALCULATING CONFLUENCE...";
+            scanBtn.innerText = "SCANNING LEVELS...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -287,11 +293,11 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateTitanStrategy(tickSamples);
+                    evaluateFloorGuard(tickSamples);
                 }
             }, 100);
 
-            function evaluateTitanStrategy(ticks) {
+            function evaluateFloorGuard(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
                 scanBtn.innerText = "🔬 INSTITUTIONAL SCAN";
@@ -301,7 +307,7 @@
                 const currentSec = now.getSeconds();
                 const latestPrice = ticks[ticks.length - 1] || curBarClose || price;
 
-                // 1. Candlestick Geometry
+                // 1. Candlestick Anatomy
                 let isGreen = latestPrice >= curBarOpen;
                 let bodySize = Math.abs(latestPrice - curBarOpen);
                 let totalRange = Math.max(0.00001, curBarHigh - curBarLow);
@@ -312,14 +318,16 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // Average historical body size (for VSA check)
-                let avgBody = 0.0001;
-                if (candleHistory.length > 0) {
-                    avgBody = candleHistory.reduce((s, c) => s + c.body, 0) / candleHistory.length;
+                // 2. Swing High / Low Floor Detection
+                let swingLow = Infinity, swingHigh = -Infinity;
+                for (let c of candleHistory) {
+                    if (c.low < swingLow) swingLow = c.low;
+                    if (c.high > swingHigh) swingHigh = c.high;
                 }
-                let isGiantImpulse = bodySize >= (avgBody * 1.8);
+                let isAtFloor = Math.abs(latestPrice - swingLow) < 0.00022;
+                let isAtRoof = Math.abs(latestPrice - swingHigh) < 0.00022;
 
-                // 2. Streak
+                // 3. Streak Count
                 let greenStreak = 0, redStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (candleHistory[i].isGreen) {
@@ -333,78 +341,64 @@
                 if (isGreen) greenStreak++;
                 else redStreak++;
 
-                // 3. SNR Level Math
-                let pStr = latestPrice.toFixed(latestPrice > 100 ? 3 : 5);
-                let lastDigits = parseInt(pStr.slice(-2));
-                let atMajorSNR = (lastDigits >= 95 || lastDigits <= 5);
-
                 let isCall = false;
                 let patternName = "";
                 let confidence = 88;
 
                 // ==========================================
-                // TITAN INSTITUTIONAL DECISION LAWS
+                // STRICT FLOOR-GUARD DECISION MATRIX
                 // ==========================================
 
-                // LAW 1: VSA GIANT IMPULSE MARUBOZU (Prevents Image 16 Blunder!)
-                // If a giant green candle erupts with body > 60% and upper wick < 25%, PUT IS 100% FORBIDDEN
-                if (isGreen && (isGiantImpulse || bodyPct >= 65) && upperWickPct <= 25) {
+                // RULE 1: NEVER SELL INTO SUPPORT (Prevents Image 14 Trap!)
+                if (!isGreen && isAtFloor) {
+                    isCall = true; // Red candle dumped into floor = BUY BOUNCE!
+                    patternName = "Support Floor Absorption Bounce";
+                    confidence = 94;
+                }
+                // RULE 2: NEVER BUY INTO RESISTANCE
+                else if (isGreen && isAtRoof) {
+                    isCall = false; // Green candle pumped into roof = SELL REJECTION!
+                    patternName = "Resistance Roof Exhaustion Drop";
+                    confidence = 94;
+                }
+                // RULE 3: VSA GIANT MARUBOZU (In Open Channel)
+                else if (isGreen && bodyPct >= 65 && upperWickPct <= 20 && !isAtRoof) {
                     isCall = true;
                     patternName = "Giant Bullish Marubozu Breakout";
-                    confidence = 96;
+                    confidence = 93;
                 }
-                else if (!isGreen && (isGiantImpulse || bodyPct >= 65) && lowerWickPct <= 25) {
+                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 20 && !isAtFloor) {
                     isCall = false;
                     patternName = "Giant Bearish Marubozu Dump";
-                    confidence = 96;
+                    confidence = 93;
                 }
-                // LAW 2: EXTREME CLIMAX EXHAUSTION (5+ Streak into Major Level)
-                else if (greenStreak >= 5 && upperWickPct >= 35) {
-                    isCall = false;
-                    patternName = `${greenStreak}x Green Climax Exhaustion`;
-                    confidence = 94;
-                }
-                else if (redStreak >= 5 && lowerWickPct >= 35) {
+                // RULE 4: MULTI-BAR EXHAUSTION
+                else if (redStreak >= 4) {
                     isCall = true;
-                    patternName = `${redStreak}x Red Climax Exhaustion`;
-                    confidence = 94;
-                }
-                // LAW 3: INSTITUTIONAL HAMMER / SHOOTING STAR (Pinbar Reversal)
-                else if (lowerWickPct >= 50 && bodyPct <= 35 && upperWickPct <= 15) {
-                    isCall = true;
-                    patternName = "Institutional Hammer Rejection";
+                    patternName = `${redStreak}x Red Selling Climax`;
                     confidence = 92;
                 }
-                else if (upperWickPct >= 50 && bodyPct <= 35 && lowerWickPct <= 15) {
+                else if (greenStreak >= 4) {
                     isCall = false;
-                    patternName = "Institutional Shooting Star Rejection";
+                    patternName = `${greenStreak}x Green Buying Climax`;
                     confidence = 92;
                 }
-                // LAW 4: ENGULFING MOMENTUM (Clear Body Takeover)
-                else if (candleHistory.length > 0 && bodyPct >= 55) {
-                    let prev = candleHistory[candleHistory.length - 1];
-                    if (isGreen && !prev.isGreen && bodySize > prev.body) {
-                        isCall = true;
-                        patternName = "Bullish Engulfing Impulse";
-                        confidence = 91;
-                    } else if (!isGreen && prev.isGreen && bodySize > prev.body) {
-                        isCall = false;
-                        patternName = "Bearish Engulfing Impulse";
-                        confidence = 91;
-                    }
+                // RULE 5: PINBAR REVERSAL
+                else if (lowerWickPct >= 45 && bodyPct <= 35) {
+                    isCall = true;
+                    patternName = "Hammer Floor Reversal";
+                    confidence = 91;
                 }
-                // LAW 5: BODY COLOR DOMINANCE (Micro-ticks NEVER flip a 35%+ body)
-                if (!patternName) {
-                    if (bodyPct >= 35) {
-                        isCall = isGreen;
-                        patternName = isGreen ? "Bullish Candle Dominance" : "Bearish Candle Dominance";
-                        confidence = 88;
-                    } else {
-                        // Tight Doji Resolution
-                        isCall = isGreen;
-                        patternName = "Micro-Range Continuation";
-                        confidence = 83;
-                    }
+                else if (upperWickPct >= 45 && bodyPct <= 35) {
+                    isCall = false;
+                    patternName = "Shooting Star Roof Reversal";
+                    confidence = 91;
+                }
+                // RULE 6: BODY MOMENTUM FALLBACK
+                else {
+                    isCall = isGreen;
+                    patternName = isGreen ? "Bullish Flow Continuation" : "Bearish Flow Continuation";
+                    confidence = 85;
                 }
 
                 patEl.innerText = patternName;
