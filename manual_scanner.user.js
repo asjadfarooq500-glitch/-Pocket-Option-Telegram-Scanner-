@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option Unrestricted Quantum Engine
+// @name         Pocket Option APEX Verified Badge Engine
 // @namespace    http://tampermonkey.net/
-// @version      65.0
-// @description  Zero-Choke Real Breakouts, Screen-Level Watermark Filter & 100% Dynamic Confluence
+// @version      70.0
+// @description  Direct Right-Axis Badge Capture, Ghost-Number Reject, Live Dynamic OHLC & Real Wicks
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,18 +14,39 @@
 (function() {
     'use strict';
 
-    // 1. CLEAN CANVAS HOOK (NO ARTIFICIAL PIP CHOKING)
+    // 1. INJECT COORDINATE-RESTRICTED BADGE HOOK
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        function broadcastPrice(num, x, y) {
-            if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
-            
-            // Strictly reject static top-left watermark text by screen coordinates
-            if (x !== undefined && y !== undefined && x < 220 && y < 140) return;
+        var lastValidPrice = null;
+        var lastValidTime = 0;
 
+        function broadcastPrice(num, x, y, canvasWidth) {
+            if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
+
+            // STRICT FILTER: The live price badge is ONLY drawn on the right side of the screen
+            if (canvasWidth && x !== undefined) {
+                if (x < (canvasWidth * 0.55)) {
+                    return; // Ignore all left-side and center numbers (eliminates 1.89000 ghost bug)
+                }
+            }
+
+            var now = Date.now();
+            if (now - lastValidTime > 1500) {
+                lastValidPrice = null; // Auto-flush on pair change
+            }
+
+            if (lastValidPrice !== null) {
+                var maxJump = lastValidPrice * 0.04; // Max 4% jump
+                if (Math.abs(num - lastValidPrice) > maxJump) {
+                    return; // Ignore distant numbers
+                }
+            }
+
+            lastValidPrice = num;
+            lastValidTime = now;
             document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', Date.now());
+            document.documentElement.setAttribute('data-po-live-time', now);
         }
 
         try {
@@ -34,7 +55,8 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        broadcastPrice(parseFloat(str), x, y);
+                        var w = this.canvas ? this.canvas.width : window.innerWidth;
+                        broadcastPrice(parseFloat(str), x, y, w);
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -44,9 +66,9 @@
     `;
     (document.head || document.documentElement).appendChild(bridgeScript);
 
-    function initEngine() {
+    function initApexEngine() {
         if (!document.body) {
-            setTimeout(initEngine, 200);
+            setTimeout(initApexEngine, 200);
             return;
         }
 
@@ -93,7 +115,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ UNRESTRICTED QUANT v65</span>
+                <span>⚡ APEX VERIFIED v70</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -112,8 +134,7 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">CHART FLOW: <span id="a-flow" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">FLOW: <span id="a-flow" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
@@ -129,7 +150,7 @@
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan between 14s and 5s of candle</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 14s to 6s of candle</div>
         `;
 
         document.body.appendChild(hud);
@@ -156,17 +177,19 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
+        // DIRECT RIGHT-AXIS BADGE EXTRACTOR
         function getLivePrice() {
             let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
             if (hooked && hooked > 0) return hooked;
 
-            const nodes = document.querySelectorAll('*');
-            for (let el of nodes) {
+            // DOM Query: Search exclusively on the rightmost 45% of the screen
+            const allElements = document.querySelectorAll('*');
+            for (let el of allElements) {
                 if (el.children.length === 0 && el.textContent) {
                     let txt = el.textContent.trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
                         let rect = el.getBoundingClientRect();
-                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.45)) {
+                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.55)) {
                             let n = parseFloat(txt);
                             if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100) return n;
                         }
@@ -184,7 +207,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "OTC PAIR";
+            return "AUD/CAD OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
@@ -251,6 +274,7 @@
                 document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
                 document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
 
+                // REAL LIVE WICK & BODY RATIOS
                 let cRange = Math.max(0.00001, candleHigh - candleLow);
                 let cBody = Math.abs(candleClose - candleOpen);
                 let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -304,7 +328,7 @@
         }, 80);
 
         // ==========================================
-        // SCANNER: READS FULL RUNNING CANDLE ACCURATELY
+        // SCANNER: EVALUATION
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
@@ -315,7 +339,6 @@
             const sigText = document.getElementById('a-signal-text');
             const confText = document.getElementById('a-conf-text');
             const desc = document.getElementById('a-desc');
-            const patEl = document.getElementById('a-pattern');
             const scanBtn = document.getElementById('a-scan-btn');
             const pBar = document.getElementById('a-progress-bar');
             const pFill = document.getElementById('a-progress-fill');
@@ -333,7 +356,7 @@
             pFill.style.width = "0%";
 
             let elapsed = 0;
-            const sampleSteps = 12; // 1.2s rapid scan
+            const sampleSteps = 12;
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -342,11 +365,11 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateUnrestrictedDecision();
+                    evaluateVerifiedDecision();
                 }
             }, 100);
 
-            function evaluateUnrestrictedDecision() {
+            function evaluateVerifiedDecision() {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
                 scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
@@ -356,7 +379,6 @@
                 const currentSec = now.getSeconds();
                 const currentPrice = candleClose || getLivePrice();
 
-                // EXACT MATH FROM REAL OHLC (NO CLAMPS)
                 let isGreen = currentPrice >= candleOpen;
                 let bodySize = Math.abs(currentPrice - candleOpen);
                 let totalRange = Math.max(0.00001, candleHigh - candleLow);
@@ -384,33 +406,31 @@
                 let setupName = "";
                 let confidence = 88;
 
-                // STRICT TRADING RULES (NO FALSE REVERSALS ON BREAKOUTS)
-                // RULE 1: STRONG BODY BREAKOUT (Solves Image 23 Error!)
-                // If candle is Green & Body >= 45%, NEVER PUT! Follow the breakout!
+                // STRICT TRADING RULES
+                // RULE 1: BREAKOUT IMPULSE
                 if (isGreen && bodyPct >= 45 && upperWickPct <= 25) {
                     isCall = true;
                     setupName = "Bullish Momentum Breakout";
                     confidence = 94 + Math.floor(bodyPct / 20);
                 }
-                // If candle is Red & Body >= 45%, NEVER CALL!
                 else if (!isGreen && bodyPct >= 45 && lowerWickPct <= 25) {
                     isCall = false;
                     setupName = "Bearish Momentum Dump";
                     confidence = 94 + Math.floor(bodyPct / 20);
                 }
-                // RULE 2: WATERFALL DUMP LOCK
+                // RULE 2: WATERFALL DUMP
                 else if (redStreak >= 4 && lowerWickPct <= 35) {
                     isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
                     confidence = 96;
                 }
-                // RULE 3: ROCKET RALLY LOCK
+                // RULE 3: ROCKET RALLY
                 else if (greenStreak >= 4 && upperWickPct <= 35) {
                     isCall = true;
                     setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
                     confidence = 96;
                 }
-                // RULE 4: CONFIRMED PINBAR REJECTION (Must have 50%+ Wick)
+                // RULE 4: CONFIRMED PINBAR
                 else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
                     isCall = true;
                     setupName = "Confirmed Hammer Rejection Bounce";
@@ -421,14 +441,12 @@
                     setupName = "Confirmed Shooting Star Drop";
                     confidence = 92;
                 }
-                // RULE 5: FALLBACK TO ACTUAL RUNNING CANDLE COLOR
+                // RULE 5: RUNNING CANDLE COLOR
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Volume Dominance" : "Seller Volume Dominance";
                     confidence = 86;
                 }
-
-                patEl.innerText = setupName;
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
@@ -450,8 +468,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initEngine);
+        document.addEventListener('DOMContentLoaded', initApexEngine);
     } else {
-        initEngine();
+        initApexEngine();
     }
 })();
