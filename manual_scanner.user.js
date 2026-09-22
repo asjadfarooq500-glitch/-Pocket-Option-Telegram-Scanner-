@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Auto-Sync Engine
+// @name         Pocket Option APEX True-Wick Engine
 // @namespace    http://tampermonkey.net/
-// @version      35.0
-// @description  Zero-Freeze Pair Auto-Flush, Real-Time High/Low/Wick Engine, Waterfall Trend-Lock
+// @version      40.0
+// @description  Eliminates Top-Left Watermark Bug, Exact High/Low/Wick Ratios & Trend-Lock
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,26 +14,30 @@
 (function() {
     'use strict';
 
-    // 1. INJECT RESILIENT MAIN-WORLD PRICE HOOK WITH AUTO-RECOVERY
+    // 1. INJECT COORDINATE-AWARE MAIN-WORLD PRICE HOOK
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
         var lastValidPrice = null;
         var lastValidTime = 0;
 
-        function broadcastPrice(num) {
+        function broadcastPrice(num, x, y, canvasWidth) {
             if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
 
+            // WATERMARK FILTER: Top-left numbers (x < 45% of width or y < 140) are headers/watermarks!
+            if (canvasWidth && x < (canvasWidth * 0.5)) return;
+            if (x < 180 && y < 150) return;
+
             var now = Date.now();
-            // AUTO-RECOVERY: Agar 1.2 second se naya tick accept na hua ho (Pair change), clamp reset karo
             if (now - lastValidTime > 1200) {
                 lastValidPrice = null;
             }
 
+            // Reject unnatural tick jumps (filters out stray grid/axis numbers)
             if (lastValidPrice !== null) {
-                var maxDev = lastValidPrice * 0.02; // 2% max single tick jump
-                if (Math.abs(num - lastValidPrice) > maxDev) {
-                    return; // Ignore far-away axis grid labels
+                var maxJump = lastValidPrice > 100 ? 0.35 : 0.00085; // Max 85 pips jump
+                if (Math.abs(num - lastValidPrice) > maxJump) {
+                    return;
                 }
             }
 
@@ -49,7 +53,8 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        broadcastPrice(parseFloat(str));
+                        var cWidth = this.canvas ? this.canvas.width : window.innerWidth;
+                        broadcastPrice(parseFloat(str), x, y, cWidth);
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -86,7 +91,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Design
+        // HUD Interface
         const hud = document.createElement('div');
         hud.id = 'po-apex-hud';
         hud.style.cssText = `
@@ -108,7 +113,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX AUTO-SYNC v35</span>
+                <span>⚡ APEX TRUE-WICK v40</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -132,7 +137,7 @@
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 FULL CHART DEEP SCAN
+                🔬 SCAN RUNNING CANDLE
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -140,7 +145,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
@@ -202,9 +207,6 @@
             return "OTC PAIR";
         }
 
-        // ==========================================
-        // DYNAMIC BAR ENGINE (MID-CANDLE AUTO-START)
-        // ==========================================
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
         let lastMinuteTracked = -1;
         let candleHistory = [];
@@ -217,7 +219,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // INSTANT PAIR SWITCH FLUSH
+            // Pair switch flush
             if (storedPair !== "" && currentPair !== storedPair) {
                 candleOpen = price;
                 candleHigh = price || -Infinity;
@@ -230,7 +232,7 @@
             }
             storedPair = currentPair;
 
-            // Minute Rollover (:00.000)
+            // Minute Rollover
             if (currentMin !== lastMinuteTracked) {
                 if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                     candleHistory.push({
@@ -253,15 +255,16 @@
             }
 
             if (price) {
-                // Mid-candle instant recovery if open was empty
                 if (candleOpen === null) {
                     candleOpen = price;
                     candleHigh = price;
                     candleLow = price;
                 }
 
-                if (price > candleHigh) candleHigh = price;
-                if (price < candleLow) candleLow = price;
+                // Clamped High & Low tracking
+                let maxDiff = candleOpen * 0.0015; // Max 15 pips per candle
+                if (price > candleHigh && (price - candleOpen) < maxDiff) candleHigh = price;
+                if (price < candleLow && (candleOpen - price) < maxDiff) candleLow = price;
                 candleClose = price;
 
                 let decimals = price > 100 ? 3 : 5;
@@ -272,7 +275,7 @@
                 document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
                 document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
 
-                // EXACT CANDLE WICK & BODY MATHEMATICS
+                // EXACT WICK & BODY MATHEMATICS
                 let cRange = Math.max(0.00001, candleHigh - candleLow);
                 let cBody = Math.abs(candleClose - candleOpen);
                 let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -286,7 +289,7 @@
                 document.getElementById('a-uwick').innerText = `${uPct}%`;
                 document.getElementById('a-lwick').innerText = `${lPct}%`;
 
-                // Waterfall Crash / Rocket Rally Detector
+                // Waterfall vs Rocket Trend Flow
                 let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (!candleHistory[i].isGreen) {
@@ -318,7 +321,7 @@
         }, 80);
 
         // ==========================================
-        // FULL CHART DEEP SCAN CONFLUENCE MATRIX
+        // SCANNER (VERIFIED HIGH/LOW CONFLUENCE)
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
@@ -342,7 +345,7 @@
 
             isScanning = true;
             scanBtn.style.opacity = "0.6";
-            scanBtn.innerText = "SCANNING CHART MATRIX...";
+            scanBtn.innerText = "READING CANDLE...";
             pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -360,21 +363,20 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateAutoSyncDecision(tickSamples);
+                    evaluateTrueWickDecision(tickSamples);
                 }
             }, 100);
 
-            function evaluateAutoSyncDecision(ticks) {
+            function evaluateTrueWickDecision(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
+                scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
                 pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
                 const latestPrice = ticks[ticks.length - 1] || candleClose || price;
 
-                // 1. Math from Verified Data
                 let isGreen = latestPrice >= candleOpen;
                 let bodySize = Math.abs(latestPrice - candleOpen);
                 let totalRange = Math.max(0.00001, candleHigh - candleLow);
@@ -385,7 +387,6 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // 2. Trend Streak
                 let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (!candleHistory[i].isGreen) {
@@ -403,46 +404,42 @@
                 let setupName = "";
                 let confidence = 88;
 
-                // ==========================================
-                // STRICT TRADING RULES (NO COUNTER-TREND)
-                // ==========================================
-
-                // RULE 1: WATERFALL DUMP LOCK (Prevents Image 17 Blunder!)
-                // In a heavy drop of 4+ Red candles, NEVER BUY! Follow the dump.
+                // STRICT TRADING RULES
+                // RULE 1: WATERFALL DUMP CONTINUATION
                 if (redStreak >= 4 && lowerWickPct <= 35) {
-                    isCall = false; // 100% PUT (Follow the institutional dump!)
+                    isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
                     confidence = 96;
                 }
-                // RULE 2: ROCKET RALLY LOCK
+                // RULE 2: ROCKET RALLY CONTINUATION
                 else if (greenStreak >= 4 && upperWickPct <= 35) {
-                    isCall = true; // 100% CALL (Follow the institutional pump!)
+                    isCall = true;
                     setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
                     confidence = 96;
                 }
-                // RULE 3: DOJI RECOGNITION (Body <= 15%)
-                else if (bodyPct <= 15) {
+                // RULE 3: REAL DOJI (Body <= 18%)
+                else if (bodyPct <= 18) {
                     if (redStreak >= 3) {
-                        isCall = false; // Trend continuation out of pause
+                        isCall = false;
                         setupName = "Bearish Doji Pause (Trend Follow)";
-                        confidence = 89;
+                        confidence = 90;
                     } else if (greenStreak >= 3) {
                         isCall = true;
                         setupName = "Bullish Doji Pause (Trend Follow)";
-                        confidence = 89;
+                        confidence = 90;
                     } else {
                         isCall = isGreen;
-                        setupName = "Doji Breakout Flow";
-                        confidence = 82;
+                        setupName = "Doji Flow Continuation";
+                        confidence = 83;
                     }
                 }
-                // RULE 4: CONFIRMED PINBAR REVERSAL (Requires 50%+ Wick)
-                else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
+                // RULE 4: CONFIRMED PINBAR (Requires 45%+ Wick)
+                else if (lowerWickPct >= 45 && bodyPct <= 40 && redStreak <= 3) {
                     isCall = true;
                     setupName = "Confirmed Hammer Rejection Bounce";
                     confidence = 92;
                 }
-                else if (upperWickPct >= 50 && bodyPct <= 35 && greenStreak <= 3) {
+                else if (upperWickPct >= 45 && bodyPct <= 40 && greenStreak <= 3) {
                     isCall = false;
                     setupName = "Confirmed Shooting Star Drop";
                     confidence = 92;
@@ -453,11 +450,11 @@
                     setupName = isGreen ? "Bullish Volume Impulse" : "Bearish Volume Dump";
                     confidence = 91;
                 }
-                // RULE 6: FLOW CONTINUATION
+                // RULE 6: CANDLE DOMINANCE
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Candle Dominance" : "Seller Candle Dominance";
-                    confidence = 85;
+                    confidence = 86;
                 }
 
                 patEl.innerText = setupName;
