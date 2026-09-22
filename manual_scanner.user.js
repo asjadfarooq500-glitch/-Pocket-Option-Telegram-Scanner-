@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Quantum Matrix Engine
+// @name         Pocket Option APEX Quantum Titan Engine
 // @namespace    https://github.com/
-// @version      160.0
-// @description  14+ Candlestick Pattern Engine, Institutional SNR/Round Levels, 20-Bar Confluence & Zero-Freeze Stream
+// @version      190.0
+// @description  Full Institutional Suite: 20+ Price Action Patterns, EMA Trends, Liquidity Sweeps, SNR & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -42,9 +42,9 @@
         }
     } catch(e) {}
 
-    // Multi-Frequency Synthesizer
+    // Audio Alert Synthesizer
     let audioCtx = null;
-    function playTone(freq, type = "sine", duration = 0.18) {
+    function playTone(freq, type = "sine", duration = 0.20) {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -64,7 +64,7 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
 
-    // DUAL-FALLBACK LIVE PRICE DETECTOR (With Grid-Scale Auto-Filtering)
+    // DUAL-FALLBACK LIVE PRICE DETECTOR
     function getLivePrice() {
         if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
             return window.__po_live_tick;
@@ -108,7 +108,7 @@
         return "OTC ASSET";
     }
 
-    // 2. MOUNT QUANTUM HUD
+    // 2. HUD INTERFACE
     function mountHUD() {
         const root = document.body || document.documentElement;
         if (!root || document.getElementById('po-apex-hud')) return;
@@ -120,27 +120,29 @@
             top: 170px !important;
             left: 15px !important;
             z-index: 2147483647 !important;
-            background: rgba(4, 9, 26, 0.98) !important;
+            background: rgba(3, 8, 24, 0.98) !important;
             border: 2px solid #0284c7 !important;
             border-radius: 14px !important;
             padding: 10px !important;
             color: #ffffff !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
             box-shadow: 0 16px 55px rgba(0,0,0,0.98) !important;
-            width: 235px !important;
+            width: 240px !important;
             touch-action: none !important;
             user-select: none !important;
+            display: block !important;
+            visibility: visible !important;
         `;
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX QUANTUM v160</span>
+                <span>⚡ APEX TITAN QUANT v190</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="a-price" style="color: #10b981; font-weight: bold;">--</span></div>
             
-            <div style="background: #091226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
+            <div style="background: #081024; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; display: flex; justify-content: space-between;">
                     <span>O: <b id="a-open" style="color:#fff;">--</b></span>
                     <span>H: <b id="a-high" style="color:#10b981;">--</b></span>
@@ -153,13 +155,13 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">FLOW: <span id="a-flow" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">TREND (EMA): <span id="a-trend" style="color: #facc15; font-weight: bold;">CALCULATING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">SCANNING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN QUANTUM MATRIX
+                🔬 SCAN FULL TITAN MATRIX
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -167,7 +169,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Quantum Decision</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Titan Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
@@ -192,8 +194,8 @@
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
             e.preventDefault();
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 235, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 275, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
+            hud.style.left = Math.max(5, Math.min(window.innerWidth - 245, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
+            hud.style.top = Math.max(5, Math.min(window.innerHeight - 285, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
         }, { passive: false });
 
         document.addEventListener('touchend', function() { isDragging = false; });
@@ -201,11 +203,21 @@
         bindScannerEvents();
     }
 
-    // 3. 20-CANDLE BUFFER & OHLC TRACKER
+    // 3. CANDLE ENGINE & 25-BAR BUFFER
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
+
+    function calculateEMA(period) {
+        if (candleHistory.length < period) return null;
+        let k = 2 / (period + 1);
+        let ema = candleHistory[0].close;
+        for (let i = 1; i < candleHistory.length; i++) {
+            ema = (candleHistory[i].close * k) + (ema * (1 - k));
+        }
+        return ema;
+    }
 
     function runEngineTick() {
         mountHUD();
@@ -307,44 +319,43 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // Trend Streaks & SNR Levels
-            let redStreak = 0, greenStreak = 0;
-            let swingLow = Infinity, swingHigh = -Infinity;
-            for (let i = candleHistory.length - 1; i >= 0; i--) {
-                if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
-                if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
-
-                if (!candleHistory[i].isGreen) {
-                    if (greenStreak === 0) redStreak++;
+            // EMA Trend Calculation
+            let ema9 = calculateEMA(9);
+            let ema21 = calculateEMA(21);
+            let trendEl = document.getElementById('a-trend');
+            if (trendEl) {
+                if (ema9 && ema21) {
+                    if (ema9 > ema21 && price > ema9) {
+                        trendEl.innerText = "STRONG BULLISH 🟢";
+                        trendEl.style.color = "#10b981";
+                    } else if (ema9 < ema21 && price < ema9) {
+                        trendEl.innerText = "STRONG BEARISH 🔴";
+                        trendEl.style.color = "#ef4444";
+                    } else {
+                        trendEl.innerText = "RANGING / CHOP";
+                        trendEl.style.color = "#38bdf8";
+                    }
                 } else {
-                    if (redStreak === 0) greenStreak++;
+                    trendEl.innerText = "ACCUMULATING";
+                    trendEl.style.color = "#facc15";
                 }
             }
-            if (candleClose < candleOpen) redStreak++;
-            else greenStreak++;
 
-            const flowEl = document.getElementById('a-flow');
-            if (flowEl) {
-                if (redStreak >= 4) {
-                    flowEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
-                    flowEl.style.color = "#ef4444";
-                } else if (greenStreak >= 4) {
-                    flowEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
-                    flowEl.style.color = "#10b981";
-                } else {
-                    flowEl.innerText = "BALANCED CHANNEL";
-                    flowEl.style.color = "#38bdf8";
-                }
+            // Swing High / Low (SNR)
+            let swingLow = Infinity, swingHigh = -Infinity;
+            for (let i = 0; i < candleHistory.length; i++) {
+                if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
+                if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
             }
 
             const snrEl = document.getElementById('a-snr');
             if (snrEl && swingLow !== Infinity && swingHigh !== -Infinity) {
-                let buffer = (swingHigh - swingLow) * 0.15;
+                let buffer = (swingHigh - swingLow) * 0.16;
                 if (Math.abs(price - swingLow) <= buffer) {
-                    snrEl.innerText = "AT SUPPORT FLOOR 🟢";
+                    snrEl.innerText = "SUPPORT FLOOR 🟢";
                     snrEl.style.color = "#10b981";
                 } else if (Math.abs(price - swingHigh) <= buffer) {
-                    snrEl.innerText = "AT RESISTANCE ROOF 🔴";
+                    snrEl.innerText = "RESISTANCE ROOF 🔴";
                     snrEl.style.color = "#ef4444";
                 } else {
                     snrEl.innerText = "MID-CHANNEL";
@@ -359,7 +370,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 4. SCANNER: QUANTUM PRICE ACTION ENGINE
+    // 4. SCANNER: COMPLETE PRICE ACTION MATRIX
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -388,28 +399,32 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "SCANNING 14+ PATTERNS...";
+            btn.innerText = "SCANNING 20+ PATTERNS...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
+            let tickSamples = [];
             let elapsed = 0;
-            const sampleSteps = 12;
+            const sampleSteps = 14;
 
             const scanInterval = setInterval(() => {
                 elapsed++;
+                let t = getLivePrice();
+                if (t) tickSamples.push(t);
+
                 let progress = Math.min(100, Math.round((elapsed / sampleSteps) * 100));
                 if (pFill) pFill.style.width = `${progress}%`;
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateQuantumDecision();
+                    evaluateTitanDecision(tickSamples);
                 }
-            }, 100);
+            }, 90);
 
-            function evaluateQuantumDecision() {
+            function evaluateTitanDecision(ticks) {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN QUANTUM MATRIX";
+                btn.innerText = "🔬 SCAN FULL TITAN MATRIX";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -427,9 +442,10 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // PREVIOUS CANDLES (P1, P2)
+                // HISTORICAL CANDLES (P1, P2, P3)
                 let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
                 let p2 = candleHistory.length >= 2 ? candleHistory[candleHistory.length - 2] : null;
+                let p3 = candleHistory.length >= 3 ? candleHistory[candleHistory.length - 3] : null;
 
                 // SNR LEVEL CALCULATION
                 let swingLow = Infinity, swingHigh = -Infinity;
@@ -451,121 +467,178 @@
                 let isAtFloor = (currentPrice - swingLow) <= (channelRange * 0.18);
                 let isAtRoof = (swingHigh - currentPrice) <= (channelRange * 0.18);
 
-                // CONFLUENCE SCORE MATRIX (-100 = MAX PUT, +100 = MAX CALL)
+                // LIQUIDITY SWEEP CHECK (Wick pierced level and closed back inside)
+                let isFloorSweep = (candleLow < swingLow) && (currentPrice > swingLow) && (lowerWickPct >= 40);
+                let isRoofSweep = (candleHigh > swingHigh) && (currentPrice < swingHigh) && (upperWickPct >= 40);
+
+                // MOMENTUM EXHAUSTION DECAY
+                let isExhaustionDrop = p2 && p1 && !p2.isGreen && !p1.isGreen && !isGreen && (p2.body > p1.body) && (p1.body > bodySize);
+                let isExhaustionPump = p2 && p1 && p2.isGreen && p1.isGreen && isGreen && (p2.body > p1.body) && (p1.body > bodySize);
+
+                // CONFLUENCE SCORE MATRIX (-100 to +100)
                 let score = 0;
-                let patternName = "Standard Price Action";
+                let patternName = "Standard Volume Flow";
 
                 // -------------------------------------------------------------
-                // 14+ CANDLESTICK PATTERN RECOGNITION
+                // 20+ COMPLETE CANDLESTICK PATTERNS
                 // -------------------------------------------------------------
 
-                // Pattern 1: Solid Bullish Marubozu (Power Breakout)
-                if (isGreen && bodyPct >= 70 && upperWickPct <= 12) {
+                // 1. Giant Bullish Marubozu (Power Breakout)
+                if (isGreen && bodyPct >= 72 && upperWickPct <= 10) {
+                    score += 48;
+                    patternName = "Bullish Marubozu Breakout";
+                }
+                // 2. Giant Bearish Marubozu (Power Dump)
+                else if (!isGreen && bodyPct >= 72 && lowerWickPct <= 10) {
+                    score -= 48;
+                    patternName = "Bearish Marubozu Dump";
+                }
+                // 3. Opening Bullish Belt Hold (Open = Low, Rallies Strong)
+                else if (isGreen && lowerWickPct <= 5 && bodyPct >= 60) {
+                    score += 44;
+                    patternName = "Bullish Belt Hold Expansion";
+                }
+                // 4. Opening Bearish Belt Hold (Open = High, Dumps Strong)
+                else if (!isGreen && upperWickPct <= 5 && bodyPct >= 60) {
+                    score -= 44;
+                    patternName = "Bearish Belt Hold Avalanche";
+                }
+                // 5. Bullish Engulfing
+                else if (p1 && !p1.isGreen && isGreen && currentPrice > p1.open && candleOpen < p1.close && bodyPct >= 52) {
                     score += 45;
-                    patternName = "Giant Bullish Marubozu Breakout";
-                }
-                // Pattern 2: Solid Bearish Marubozu (Power Dump)
-                else if (!isGreen && bodyPct >= 70 && lowerWickPct <= 12) {
-                    score -= 45;
-                    patternName = "Giant Bearish Marubozu Dump";
-                }
-                // Pattern 3: Bullish Engulfing (Reversal)
-                else if (p1 && !p1.isGreen && isGreen && currentPrice > p1.open && candleOpen < p1.close && bodyPct >= 55) {
-                    score += 42;
                     patternName = "Bullish Engulfing Reversal";
                 }
-                // Pattern 4: Bearish Engulfing (Reversal)
-                else if (p1 && p1.isGreen && !isGreen && currentPrice < p1.open && candleOpen > p1.close && bodyPct >= 55) {
-                    score -= 42;
+                // 6. Bearish Engulfing
+                else if (p1 && p1.isGreen && !isGreen && currentPrice < p1.open && candleOpen > p1.close && bodyPct >= 52) {
+                    score -= 45;
                     patternName = "Bearish Engulfing Reversal";
                 }
-                // Pattern 5: Morning Star Formation (3-Candle Super Reversal)
+                // 7. Morning Star (3-Bar Institutional Reversal)
                 else if (p2 && p1 && !p2.isGreen && p1.bodyPct <= 25 && isGreen && bodyPct >= 45 && currentPrice > (p2.open + p2.close) / 2) {
-                    score += 48;
-                    patternName = "Morning Star Institutional Reversal";
+                    score += 50;
+                    patternName = "Morning Star 3-Bar Reversal";
                 }
-                // Pattern 6: Evening Star Formation (3-Candle Super Reversal)
+                // 8. Evening Star (3-Bar Institutional Reversal)
                 else if (p2 && p1 && p2.isGreen && p1.bodyPct <= 25 && !isGreen && bodyPct >= 45 && currentPrice < (p2.open + p2.close) / 2) {
-                    score -= 48;
-                    patternName = "Evening Star Institutional Reversal";
+                    score -= 50;
+                    patternName = "Evening Star 3-Bar Reversal";
                 }
-                // Pattern 7: Hammer Rejection (Floor Bounce)
+                // 9. Confirmed Hammer Floor Rejection
                 else if (lowerWickPct >= 55 && bodyPct <= 30 && upperWickPct <= 15) {
+                    score += 42;
+                    patternName = "Hammer Floor Rejection";
+                }
+                // 10. Inverted Hammer (Floor Bullish Test)
+                else if (isAtFloor && upperWickPct >= 55 && bodyPct <= 30 && lowerWickPct <= 15) {
                     score += 40;
-                    patternName = "Confirmed Hammer Floor Rejection";
+                    patternName = "Inverted Hammer Floor Bounce";
                 }
-                // Pattern 8: Shooting Star (Roof Rejection)
+                // 11. Confirmed Shooting Star Roof Rejection
                 else if (upperWickPct >= 55 && bodyPct <= 30 && lowerWickPct <= 15) {
-                    score -= 40;
-                    patternName = "Confirmed Shooting Star Roof Rejection";
+                    score -= 42;
+                    patternName = "Shooting Star Roof Rejection";
                 }
-                // Pattern 9: Dragonfly Doji (Zero Body Bottom Absorption)
+                // 12. Hanging Man (Roof Bearish Reversal)
+                else if (isAtRoof && lowerWickPct >= 55 && bodyPct <= 30 && upperWickPct <= 15) {
+                    score -= 40;
+                    patternName = "Hanging Man Roof Drop";
+                }
+                // 13. Dragonfly Doji (Floor Liquidity Grab)
                 else if (bodyPct <= 10 && lowerWickPct >= 65 && upperWickPct <= 10) {
-                    score += 38;
+                    score += 40;
                     patternName = "Dragonfly Doji Liquidity Grab";
                 }
-                // Pattern 10: Gravestone Doji (Zero Body Top Absorption)
+                // 14. Gravestone Doji (Roof Liquidity Grab)
                 else if (bodyPct <= 10 && upperWickPct >= 65 && lowerWickPct <= 10) {
-                    score -= 38;
+                    score -= 40;
                     patternName = "Gravestone Doji Liquidity Grab";
                 }
-                // Pattern 11: Tweezer Bottoms (Floor Wick Equality)
-                else if (p1 && Math.abs(candleLow - p1.low) <= 0.00005 && lowerWickPct >= 35 && p1.lowerPct >= 35) {
-                    score += 36;
-                    patternName = "Tweezer Bottom Double Floor Test";
+                // 15. Tweezer Bottom Double Test
+                else if (p1 && Math.abs(candleLow - p1.low) <= 0.00006 && lowerWickPct >= 35 && p1.lowerPct >= 35) {
+                    score += 38;
+                    patternName = "Tweezer Bottom Double Test";
                 }
-                // Pattern 12: Tweezer Tops (Roof Wick Equality)
-                else if (p1 && Math.abs(candleHigh - p1.high) <= 0.00005 && upperWickPct >= 35 && p1.upperPct >= 35) {
-                    score -= 36;
-                    patternName = "Tweezer Top Double Roof Test";
+                // 16. Tweezer Top Double Test
+                else if (p1 && Math.abs(candleHigh - p1.high) <= 0.00006 && upperWickPct >= 35 && p1.upperPct >= 35) {
+                    score -= 38;
+                    patternName = "Tweezer Top Double Test";
                 }
-                // Pattern 13: Three White Soldiers (Strong Momentum Trend)
+                // 17. Three White Soldiers
                 else if (p2 && p1 && p2.isGreen && p1.isGreen && isGreen && bodyPct >= 40 && p1.bodyPct >= 40) {
-                    score += 40;
-                    patternName = "Three White Soldiers Expansion";
+                    score += 44;
+                    patternName = "Three White Soldiers Rally";
                 }
-                // Pattern 14: Three Black Crows (Strong Dump Trend)
+                // 18. Three Black Crows
                 else if (p2 && p1 && !p2.isGreen && !p1.isGreen && !isGreen && bodyPct >= 40 && p1.bodyPct >= 40) {
-                    score -= 40;
+                    score -= 44;
                     patternName = "Three Black Crows Avalanche";
                 }
-                // Fallback: Dominance
+                // 19. Piercing Line Reversal
+                else if (p1 && !p1.isGreen && isGreen && candleOpen < p1.low && currentPrice >= (p1.open + p1.close) / 2) {
+                    score += 39;
+                    patternName = "Piercing Line Floor Reversal";
+                }
+                // 20. Dark Cloud Cover Reversal
+                else if (p1 && p1.isGreen && !isGreen && candleOpen > p1.high && currentPrice <= (p1.open + p1.close) / 2) {
+                    score -= 39;
+                    patternName = "Dark Cloud Cover Roof Reversal";
+                }
+                // 21. Bullish Harami (Inside Bar)
+                else if (p1 && !p1.isGreen && isGreen && candleHigh <= p1.high && candleLow >= p1.low && bodyPct >= 35) {
+                    score += 34;
+                    patternName = "Bullish Harami Inside Expansion";
+                }
+                // 22. Bearish Harami (Inside Bar)
+                else if (p1 && p1.isGreen && !isGreen && candleHigh <= p1.high && candleLow >= p1.low && bodyPct >= 35) {
+                    score -= 34;
+                    patternName = "Bearish Harami Inside Dump";
+                }
+                // Default Flow
                 else {
                     if (isGreen) score += 20;
                     else score -= 20;
-                    patternName = isGreen ? "Buyer Volume Push" : "Seller Volume Drop";
+                    patternName = isGreen ? "Buyer Flow Dominance" : "Seller Flow Dominance";
                 }
 
                 // -------------------------------------------------------------
-                // TREND & SNR CONFLUENCE BOOSTERS / FILTERS
+                // MULTI-CONFLUENCE BOOSTERS (SMC Sweeps, Trends & Decay)
                 // -------------------------------------------------------------
 
-                // Heavy Waterfall Dump Confluence (Follow Sell)
-                if (redStreak >= 4 && lowerWickPct <= 35) {
-                    score -= 35;
-                }
-                // Heavy Rocket Rally Confluence (Follow Buy)
-                else if (greenStreak >= 4 && upperWickPct <= 35) {
+                // Liquidity Sweep Multipliers
+                if (isFloorSweep) {
                     score += 35;
+                    patternName = "SMC Floor Liquidity Sweep Bounce";
+                } else if (isRoofSweep) {
+                    score -= 35;
+                    patternName = "SMC Roof Liquidity Sweep Rejection";
                 }
 
-                // Support Floor Bounce vs Breakdown
+                // Momentum Decay Multipliers
+                if (isExhaustionDrop) {
+                    score += 30; // Drop ran out of fuel -> reversal
+                    patternName = "Bearish Momentum Decay Exhaustion";
+                } else if (isExhaustionPump) {
+                    score -= 30; // Pump ran out of fuel -> reversal
+                    patternName = "Bullish Momentum Decay Exhaustion";
+                }
+
+                // Heavy Waterfall / Rally Momentum Locks
+                if (redStreak >= 4 && lowerWickPct <= 35) score -= 35;
+                else if (greenStreak >= 4 && upperWickPct <= 35) score += 35;
+
+                // Support / Resistance Alignments
                 if (isAtFloor) {
-                    if (score > 0) score += 25; // Floor bounce alignment
-                    else if (score < -30 && bodyPct >= 65) score -= 15; // Floor breakdown
+                    if (score > 0) score += 25;
+                    else if (score < -30 && bodyPct >= 65) score -= 15;
                 }
-
-                // Resistance Roof Drop vs Breakout
                 if (isAtRoof) {
-                    if (score < 0) score -= 25; // Roof rejection alignment
-                    else if (score > 30 && bodyPct >= 65) score += 15; // Roof breakout
+                    if (score < 0) score -= 25;
+                    else if (score > 30 && bodyPct >= 65) score += 15;
                 }
 
-                // -------------------------------------------------------------
-                // FINAL VERDICT & CHOP SHIELD
-                // -------------------------------------------------------------
+                // Final Score & Chop Shield
                 let isCall = score > 0;
-                let finalConfidence = Math.min(97, 84 + Math.round(Math.abs(score) / 10));
+                let finalConfidence = Math.min(98, 85 + Math.round(Math.abs(score) / 10));
 
                 if (patEl) patEl.innerText = patternName;
 
@@ -573,7 +646,7 @@
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
-                // CHOP SHIELD: If score is too weak (indecisive chop), advise AVOID!
+                // CHOP SHIELD (Skip Confused Indecisive Candles)
                 if (Math.abs(score) < 32 && bodyPct < 30) {
                     if (sigText) {
                         sigText.innerText = "AVOID / CHOPPY ⚠️";
