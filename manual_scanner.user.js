@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Omni-Stream Engine
+// @name         Pocket Option APEX Ultra-Sync Engine
 // @namespace    http://tampermonkey.net/
-// @version      45.0
-// @description  Matrix Screen Hook, Anti-Freeze Auto-Sync, 100-Pip Sanity Shield & True Wicks
+// @version      50.0
+// @description  Zero-Freeze Multi-Pair Engine, Instant Asset Unlocking & True-Wick Geometry
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,33 +14,54 @@
 (function() {
     'use strict';
 
-    // 1. INJECT ROBUST MATRIX-AWARE PRICE HOOK
+    // 1. INJECT BULLETPROOF MULTI-PAIR PRICE PROXY
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        var runningPriceCluster = null;
+        var activePrice = null;
+        var lastTickTime = 0;
+        var trackedPair = "";
 
-        function broadcastPrice(num, screenX, screenY) {
+        function getActivePairFromDOM() {
+            var el = document.querySelector('.current-symbol, [class*="pair-title"], .asset-select');
+            return el && el.innerText ? el.innerText.split('\\n')[0].trim() : "";
+        }
+
+        // FAST WATCHDOG: Pair change par foran lock tod do
+        setInterval(function() {
+            var p = getActivePairFromDOM();
+            if (p && p !== trackedPair) {
+                trackedPair = p;
+                activePrice = null;
+                lastTickTime = 0;
+            }
+        }, 200);
+
+        function broadcastPrice(num, x, y) {
             if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
 
-            // WATERMARK REJECT: Reject numbers strictly drawn in top-left header zone
-            if (screenX !== null && screenY !== null) {
-                if (screenX < 240 && screenY < 180) {
-                    return; // Ignore top-left pair header watermark
+            var now = Date.now();
+
+            // RECOVERY: Agar 1.2 second tak tick na mila ho toh filter reset karo
+            if (now - lastTickTime > 1200) {
+                activePrice = null;
+            }
+
+            // WATERMARK REJECTION: Reject top-left header zone (x < 150 & y < 140)
+            if (x < 150 && y < 140) return;
+
+            // PAIR SANITY: Agar active price maujood hai toh max 3% jump allow karo
+            if (activePrice !== null) {
+                var maxJump = activePrice * 0.03;
+                if (Math.abs(num - activePrice) > maxJump) {
+                    return; // Ignore axis numbers
                 }
             }
 
-            // SANITY SHIELD: Reject numbers 80+ pips away from active running price
-            if (runningPriceCluster !== null) {
-                var maxDist = runningPriceCluster > 100 ? 1.0 : 0.0015;
-                if (Math.abs(num - runningPriceCluster) > maxDist) {
-                    return; // Ignore far-away axis scale markers
-                }
-            }
-
-            runningPriceCluster = num;
+            activePrice = num;
+            lastTickTime = now;
             document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', Date.now());
+            document.documentElement.setAttribute('data-po-live-time', now);
         }
 
         try {
@@ -49,15 +70,7 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        var realX = x, realY = y;
-                        try {
-                            if (this.getTransform) {
-                                var m = this.getTransform();
-                                realX = m.a * x + m.c * y + m.e;
-                                realY = m.b * x + m.d * y + m.f;
-                            }
-                        } catch(err) {}
-                        broadcastPrice(parseFloat(str), realX, realY);
+                        broadcastPrice(parseFloat(str), x, y);
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -116,7 +129,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX TRUE-STREAM v45</span>
+                <span>⚡ APEX ULTRA-SYNC v50</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -140,7 +153,7 @@
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN RUNNING CANDLE
+                🔬 FULL CHART DEEP SCAN
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -148,7 +161,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
@@ -192,7 +205,7 @@
                         let rect = el.getBoundingClientRect();
                         if (rect.top > 80 && rect.left > (window.innerWidth * 0.45)) {
                             let n = parseFloat(txt);
-                            if (n > 0 && Math.abs(n - 2.62) > 0.05) return n;
+                            if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100) return n;
                         }
                     }
                 }
@@ -208,7 +221,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "AUD/CHF OTC";
+            return "EUR/USD OTC";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
@@ -223,7 +236,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // INSTANT PAIR SWITCH FLUSH
+            // INSTANT PAIR CHANGE FLUSH
             if (storedPair !== "" && currentPair !== storedPair) {
                 candleOpen = price;
                 candleHigh = price || -Infinity;
@@ -277,21 +290,29 @@
                 document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
                 document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
 
-                // EXACT WICK & BODY PROPORTIONS
+                // EXACT WICK & BODY RATIOS
                 let cRange = Math.max(0.00001, candleHigh - candleLow);
                 let cBody = Math.abs(candleClose - candleOpen);
                 let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
                 let cLower = Math.max(0, Math.min(candleOpen, candleClose) - candleLow);
 
-                let bPct = Math.min(100, Math.round((cBody / cRange) * 100));
-                let uPct = Math.min(100, Math.round((cUpper / cRange) * 100));
-                let lPct = Math.min(100, Math.round((cLower / cRange) * 100));
+                let bPct = Math.round((cBody / cRange) * 100);
+                let uPct = Math.round((cUpper / cRange) * 100);
+                let lPct = Math.round((cLower / cRange) * 100);
+
+                let sum = bPct + uPct + lPct;
+                if (sum > 100) {
+                    let factor = 100 / sum;
+                    bPct = Math.round(bPct * factor);
+                    uPct = Math.round(uPct * factor);
+                    lPct = 100 - bPct - uPct;
+                }
 
                 document.getElementById('a-body').innerText = `${bPct}%`;
                 document.getElementById('a-uwick').innerText = `${uPct}%`;
                 document.getElementById('a-lwick').innerText = `${lPct}%`;
 
-                // Trend Streak Analysis
+                // Waterfall vs Rocket Trend Detection
                 let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (!candleHistory[i].isGreen) {
@@ -323,7 +344,7 @@
         }, 80);
 
         // ==========================================
-        // SCANNER (INSTANT RECOVERY & ACCURACY)
+        // DEEP SCAN WITH IMMEDIATE DATA LOCK
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
@@ -365,14 +386,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateStreamDecision(tickSamples);
+                    evaluateUltraSyncDecision(tickSamples);
                 }
             }, 100);
 
-            function evaluateStreamDecision(ticks) {
+            function evaluateUltraSyncDecision(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
+                scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
                 pBar.style.display = "none";
 
                 const now = new Date();
