@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Ultra-Sync Engine
+// @name         Pocket Option APEX Pure-Flow Engine
 // @namespace    http://tampermonkey.net/
-// @version      50.0
-// @description  Zero-Freeze Multi-Pair Engine, Instant Asset Unlocking & True-Wick Geometry
+// @version      55.0
+// @description  Zero-Freeze Pure Stream Hook, 3-Pip Watermark Guard & True Wick/Body Geometry
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,54 +14,14 @@
 (function() {
     'use strict';
 
-    // 1. INJECT BULLETPROOF MULTI-PAIR PRICE PROXY
+    // 1. INJECT UNRESTRICTED REAL-TIME PRICE PROXY
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        var activePrice = null;
-        var lastTickTime = 0;
-        var trackedPair = "";
-
-        function getActivePairFromDOM() {
-            var el = document.querySelector('.current-symbol, [class*="pair-title"], .asset-select');
-            return el && el.innerText ? el.innerText.split('\\n')[0].trim() : "";
-        }
-
-        // FAST WATCHDOG: Pair change par foran lock tod do
-        setInterval(function() {
-            var p = getActivePairFromDOM();
-            if (p && p !== trackedPair) {
-                trackedPair = p;
-                activePrice = null;
-                lastTickTime = 0;
-            }
-        }, 200);
-
-        function broadcastPrice(num, x, y) {
+        function broadcastPrice(num) {
             if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100) return;
-
-            var now = Date.now();
-
-            // RECOVERY: Agar 1.2 second tak tick na mila ho toh filter reset karo
-            if (now - lastTickTime > 1200) {
-                activePrice = null;
-            }
-
-            // WATERMARK REJECTION: Reject top-left header zone (x < 150 & y < 140)
-            if (x < 150 && y < 140) return;
-
-            // PAIR SANITY: Agar active price maujood hai toh max 3% jump allow karo
-            if (activePrice !== null) {
-                var maxJump = activePrice * 0.03;
-                if (Math.abs(num - activePrice) > maxJump) {
-                    return; // Ignore axis numbers
-                }
-            }
-
-            activePrice = num;
-            lastTickTime = now;
             document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', now);
+            document.documentElement.setAttribute('data-po-live-time', Date.now());
         }
 
         try {
@@ -70,7 +30,7 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        broadcastPrice(parseFloat(str), x, y);
+                        broadcastPrice(parseFloat(str));
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -107,7 +67,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Interface
+        // HUD Design
         const hud = document.createElement('div');
         hud.id = 'po-apex-hud';
         hud.style.cssText = `
@@ -129,7 +89,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX ULTRA-SYNC v50</span>
+                <span>⚡ APEX PURE-FLOW v55</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -153,7 +113,7 @@
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 FULL CHART DEEP SCAN
+                🔬 SCAN RUNNING CANDLE
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -161,7 +121,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Decision</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
@@ -196,7 +156,7 @@
             let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
             if (hooked && hooked > 0) return hooked;
 
-            // DOM Fallback
+            // Fast DOM Fallback
             const nodes = document.querySelectorAll('*');
             for (let el of nodes) {
                 if (el.children.length === 0 && el.textContent) {
@@ -224,73 +184,95 @@
             return "EUR/USD OTC";
         }
 
+        // ==========================================
+        // DYNAMIC BAR ENGINE & WATERMARK OUTLIER GUARD
+        // ==========================================
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
         let lastMinuteTracked = -1;
         let candleHistory = [];
         let storedPair = "";
+        let lastValidTick = null;
+        let lastValidTickTime = 0;
 
         setInterval(() => {
             const currentPair = getActivePair();
-            const price = getLivePrice();
+            const rawPrice = getLivePrice();
             const now = new Date();
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
+            const nowMs = Date.now();
 
             // INSTANT PAIR CHANGE FLUSH
             if (storedPair !== "" && currentPair !== storedPair) {
-                candleOpen = price;
-                candleHigh = price || -Infinity;
-                candleLow = price || Infinity;
-                candleClose = price;
+                candleOpen = rawPrice;
+                candleHigh = rawPrice || -Infinity;
+                candleLow = rawPrice || Infinity;
+                candleClose = rawPrice;
                 candleHistory = [];
                 lastMinuteTracked = currentMin;
+                lastValidTick = rawPrice;
                 document.getElementById('a-signal-text').innerText = "PAIR SYNCED";
                 document.getElementById('a-signal-text').style.color = "#facc15";
             }
             storedPair = currentPair;
 
-            // Minute Cycle Rollover
+            // Minute Cycle Rollover (:00.000)
             if (currentMin !== lastMinuteTracked) {
-                if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
+                if (lastMinuteTracked !== -1 && candleOpen !== null && rawPrice) {
                     candleHistory.push({
                         open: candleOpen,
-                        close: price,
+                        close: candleClose || rawPrice,
                         high: candleHigh,
                         low: candleLow,
-                        isGreen: price >= candleOpen,
-                        body: Math.abs(price - candleOpen),
+                        isGreen: (candleClose || rawPrice) >= candleOpen,
+                        body: Math.abs((candleClose || rawPrice) - candleOpen),
                         range: Math.max(0.00001, candleHigh - candleLow)
                     });
                     if (candleHistory.length > 20) candleHistory.shift();
                 }
 
                 lastMinuteTracked = currentMin;
-                candleOpen = price;
-                candleHigh = price || -Infinity;
-                candleLow = price || Infinity;
-                candleClose = price;
+                candleOpen = rawPrice;
+                candleHigh = rawPrice || -Infinity;
+                candleLow = rawPrice || Infinity;
+                candleClose = rawPrice;
             }
 
-            if (price) {
+            if (rawPrice) {
+                // OUTLIER GUARD: Reject far watermark spikes from updating High/Low
+                if (lastValidTick === null || (nowMs - lastValidTickTime > 1500)) {
+                    lastValidTick = rawPrice;
+                } else {
+                    var maxAllowedJump = lastValidTick > 100 ? 0.35 : 0.00035; // Max 3.5 pips jump per tick
+                    if (Math.abs(rawPrice - lastValidTick) > maxAllowedJump) {
+                        // It's the top-left watermark or distant grid line, do NOT update candle metrics!
+                        return;
+                    }
+                    lastValidTick = rawPrice;
+                }
+                lastValidTickTime = nowMs;
+
+                let validPrice = rawPrice;
+
                 if (candleOpen === null) {
-                    candleOpen = price;
-                    candleHigh = price;
-                    candleLow = price;
+                    candleOpen = validPrice;
+                    candleHigh = validPrice;
+                    candleLow = validPrice;
                 }
 
-                if (price > candleHigh) candleHigh = price;
-                if (price < candleLow) candleLow = price;
-                candleClose = price;
+                if (validPrice > candleHigh) candleHigh = validPrice;
+                if (validPrice < candleLow) candleLow = validPrice;
+                candleClose = validPrice;
 
-                let decimals = price > 100 ? 3 : 5;
-                document.getElementById('a-price').innerText = price.toFixed(decimals);
+                let decimals = validPrice > 100 ? 3 : 5;
+                document.getElementById('a-price').innerText = validPrice.toFixed(decimals);
                 document.getElementById('a-price').style.color = "#10b981";
 
                 document.getElementById('a-open').innerText = candleOpen.toFixed(decimals);
                 document.getElementById('a-high').innerText = candleHigh.toFixed(decimals);
                 document.getElementById('a-low').innerText = candleLow.toFixed(decimals);
 
-                // EXACT WICK & BODY RATIOS
+                // EXACT WICK & BODY PROPORTIONS
                 let cRange = Math.max(0.00001, candleHigh - candleLow);
                 let cBody = Math.abs(candleClose - candleOpen);
                 let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -344,13 +326,13 @@
         }, 80);
 
         // ==========================================
-        // DEEP SCAN WITH IMMEDIATE DATA LOCK
+        // SCANNER (ZERO-FREEZE EXECUTION)
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
             if (isScanning) return;
 
-            const price = getLivePrice();
+            const price = lastValidTick || getLivePrice();
             const sigBox = document.getElementById('a-status-box');
             const sigText = document.getElementById('a-signal-text');
             const confText = document.getElementById('a-conf-text');
@@ -378,7 +360,7 @@
 
             const scanInterval = setInterval(() => {
                 elapsed++;
-                let tick = getLivePrice();
+                let tick = lastValidTick || getLivePrice();
                 if (tick) tickSamples.push(tick);
 
                 let progress = Math.min(100, Math.round((elapsed / sampleSteps) * 100));
@@ -386,14 +368,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateUltraSyncDecision(tickSamples);
+                    evaluatePureFlowDecision(tickSamples);
                 }
             }, 100);
 
-            function evaluateUltraSyncDecision(ticks) {
+            function evaluatePureFlowDecision(ticks) {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
-                scanBtn.innerText = "🔬 FULL CHART DEEP SCAN";
+                scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
                 pBar.style.display = "none";
 
                 const now = new Date();
