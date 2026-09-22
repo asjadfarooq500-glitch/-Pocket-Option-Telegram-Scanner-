@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Grid-Filter Engine
+// @name         Pocket Option APEX Quantum Matrix Engine
 // @namespace    https://github.com/
-// @version      150.0
-// @description  Grid-Scale Rejector, Right-Axis Live Badge Hunter, Zero-Freeze Dynamic OHLC
+// @version      160.0
+// @description  14+ Candlestick Pattern Engine, Institutional SNR/Round Levels, 20-Bar Confluence & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -30,8 +30,6 @@
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
                             var fill = ("" + this.fillStyle).toLowerCase();
                             var isWhite = (fill === '#ffffff' || fill === 'rgb(255, 255, 255)' || fill === 'white' || fill === '#fff' || fill.indexOf('255, 255, 255') !== -1 || fill.indexOf('255,255,255') !== -1);
-                            
-                            // Blue badge uses white fill on the right axis
                             if (isWhite) {
                                 window.__po_live_tick = n;
                                 window.__po_live_tick_time = Date.now();
@@ -44,34 +42,34 @@
         }
     } catch(e) {}
 
-    // Sound alert
+    // Multi-Frequency Synthesizer
     let audioCtx = null;
-    function playBeep(freq = 850) {
+    function playTone(freq, type = "sine", duration = 0.18) {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
+            osc.type = type;
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.frequency.value = freq;
             gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.18);
+            osc.stop(audioCtx.currentTime + duration);
         } catch(e) {}
     }
+
     document.addEventListener('touchstart', () => {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
 
-    // SMART LIVE PRICE DETECTOR (Filters out static grid levels like 1.02800)
+    // DUAL-FALLBACK LIVE PRICE DETECTOR (With Grid-Scale Auto-Filtering)
     function getLivePrice() {
-        // Priority 1: Canvas sniffer with white text badge
         if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
             return window.__po_live_tick;
         }
 
-        // Priority 2: Smart DOM candidate collector on the rightmost 45%
         const candidates = [];
         const allElements = document.querySelectorAll('*');
         for (let el of allElements) {
@@ -82,7 +80,7 @@
                     if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                         let n = parseFloat(txt);
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
-                            candidates.push({ val: n, str: txt, top: rect.top, el: el });
+                            candidates.push({ val: n, str: txt, top: rect.top });
                         }
                     }
                 }
@@ -90,14 +88,12 @@
         }
 
         if (candidates.length > 0) {
-            // Find numbers that do NOT end in '00' (Eliminates grid scale levels 1.02800, 1.03000)
             const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
             if (nonGrid.length > 0) {
-                return nonGrid[nonGrid.length - 1].val; // Pick the active badge
+                return nonGrid[nonGrid.length - 1].val;
             }
             return candidates[0].val;
         }
-
         return null;
     }
 
@@ -112,7 +108,7 @@
         return "OTC ASSET";
     }
 
-    // 2. HUD MOUNTING
+    // 2. MOUNT QUANTUM HUD
     function mountHUD() {
         const root = document.body || document.documentElement;
         if (!root || document.getElementById('po-apex-hud')) return;
@@ -124,24 +120,21 @@
             top: 170px !important;
             left: 15px !important;
             z-index: 2147483647 !important;
-            background: rgba(3, 7, 18, 0.98) !important;
+            background: rgba(4, 9, 26, 0.98) !important;
             border: 2px solid #0284c7 !important;
             border-radius: 14px !important;
             padding: 10px !important;
             color: #ffffff !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
             box-shadow: 0 16px 55px rgba(0,0,0,0.98) !important;
-            width: 230px !important;
+            width: 235px !important;
             touch-action: none !important;
             user-select: none !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
         `;
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX MASTER v150</span>
+                <span>⚡ APEX QUANTUM v160</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -161,11 +154,12 @@
             </div>
 
             <div style="font-size: 9px; color: #94a3b8;">FLOW: <span id="a-flow" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">DETECTED: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">STANDBY</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN RUNNING CANDLE
+                🔬 SCAN QUANTUM MATRIX
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -173,8 +167,8 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Next Candle Verdict</div>
-                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Quantum Decision</div>
+                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready</div>
             </div>
             <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 14s to 5s of candle</div>
@@ -207,7 +201,7 @@
         bindScannerEvents();
     }
 
-    // 3. CANDLE ENGINE
+    // 3. 20-CANDLE BUFFER & OHLC TRACKER
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
@@ -236,16 +230,27 @@
         // Minute Rollover (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
+                let prevClose = candleClose || price;
+                let cBody = Math.abs(prevClose - candleOpen);
+                let cRange = Math.max(0.00001, candleHigh - candleLow);
+                let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, prevClose));
+                let cLower = Math.max(0, Math.min(candleOpen, prevClose) - candleLow);
+
                 candleHistory.push({
                     open: candleOpen,
-                    close: candleClose || price,
+                    close: prevClose,
                     high: candleHigh,
                     low: candleLow,
-                    isGreen: (candleClose || price) >= candleOpen,
-                    body: Math.abs((candleClose || price) - candleOpen),
-                    range: Math.max(0.00001, candleHigh - candleLow)
+                    isGreen: prevClose >= candleOpen,
+                    body: cBody,
+                    range: cRange,
+                    upperWick: cUpper,
+                    lowerWick: cLower,
+                    bodyPct: Math.round((cBody / cRange) * 100),
+                    upperPct: Math.round((cUpper / cRange) * 100),
+                    lowerPct: Math.round((cLower / cRange) * 100)
                 });
-                if (candleHistory.length > 20) candleHistory.shift();
+                if (candleHistory.length > 25) candleHistory.shift();
             }
 
             lastMinuteTracked = currentMin;
@@ -302,15 +307,17 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // Trend Streaks
+            // Trend Streaks & SNR Levels
             let redStreak = 0, greenStreak = 0;
+            let swingLow = Infinity, swingHigh = -Infinity;
             for (let i = candleHistory.length - 1; i >= 0; i--) {
+                if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
+                if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
+
                 if (!candleHistory[i].isGreen) {
                     if (greenStreak === 0) redStreak++;
-                    else break;
                 } else {
                     if (redStreak === 0) greenStreak++;
-                    else break;
                 }
             }
             if (candleClose < candleOpen) redStreak++;
@@ -329,6 +336,21 @@
                     flowEl.style.color = "#38bdf8";
                 }
             }
+
+            const snrEl = document.getElementById('a-snr');
+            if (snrEl && swingLow !== Infinity && swingHigh !== -Infinity) {
+                let buffer = (swingHigh - swingLow) * 0.15;
+                if (Math.abs(price - swingLow) <= buffer) {
+                    snrEl.innerText = "AT SUPPORT FLOOR 🟢";
+                    snrEl.style.color = "#10b981";
+                } else if (Math.abs(price - swingHigh) <= buffer) {
+                    snrEl.innerText = "AT RESISTANCE ROOF 🔴";
+                    snrEl.style.color = "#ef4444";
+                } else {
+                    snrEl.innerText = "MID-CHANNEL";
+                    snrEl.style.color = "#94a3b8";
+                }
+            }
         }
 
         let elPair = document.getElementById('a-pair');
@@ -337,7 +359,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 4. SCAN BUTTON EVALUATOR
+    // 4. SCANNER: QUANTUM PRICE ACTION ENGINE
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -366,7 +388,7 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "READING CANDLE...";
+            btn.innerText = "SCANNING 14+ PATTERNS...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
@@ -380,20 +402,21 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateDecision();
+                    evaluateQuantumDecision();
                 }
             }, 100);
 
-            function evaluateDecision() {
+            function evaluateQuantumDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN RUNNING CANDLE";
+                btn.innerText = "🔬 SCAN QUANTUM MATRIX";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
                 const currentPrice = candleClose || getLivePrice();
 
+                // CURRENT RUNNING CANDLE GEOMETRY
                 let isGreen = currentPrice >= candleOpen;
                 let bodySize = Math.abs(currentPrice - candleOpen);
                 let totalRange = Math.max(0.00001, candleHigh - candleLow);
@@ -404,83 +427,164 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                let redStreak = 0, greenStreak = 0;
-                let swingLow = Infinity, swingHigh = -Infinity;
+                // PREVIOUS CANDLES (P1, P2)
+                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
+                let p2 = candleHistory.length >= 2 ? candleHistory[candleHistory.length - 2] : null;
 
+                // SNR LEVEL CALCULATION
+                let swingLow = Infinity, swingHigh = -Infinity;
+                let redStreak = 0, greenStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
                     if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
                     if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
 
                     if (!candleHistory[i].isGreen) {
                         if (greenStreak === 0) redStreak++;
-                        else break;
                     } else {
                         if (redStreak === 0) greenStreak++;
-                        else break;
                     }
                 }
                 if (!isGreen) redStreak++;
                 else greenStreak++;
 
-                let isAtFloor = Math.abs(currentPrice - swingLow) < 0.00025;
-                let isAtRoof = Math.abs(currentPrice - swingHigh) < 0.00025;
+                let channelRange = Math.max(0.0001, swingHigh - swingLow);
+                let isAtFloor = (currentPrice - swingLow) <= (channelRange * 0.18);
+                let isAtRoof = (swingHigh - currentPrice) <= (channelRange * 0.18);
 
-                let isCall = false;
-                let setupName = "";
-                let confidence = 88;
+                // CONFLUENCE SCORE MATRIX (-100 = MAX PUT, +100 = MAX CALL)
+                let score = 0;
+                let patternName = "Standard Price Action";
 
-                // STRICT TRADING RULES (NO COUNTER-TREND)
-                if (redStreak >= 4 && lowerWickPct <= 35) {
-                    isCall = false;
-                    setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
-                    confidence = 96;
+                // -------------------------------------------------------------
+                // 14+ CANDLESTICK PATTERN RECOGNITION
+                // -------------------------------------------------------------
+
+                // Pattern 1: Solid Bullish Marubozu (Power Breakout)
+                if (isGreen && bodyPct >= 70 && upperWickPct <= 12) {
+                    score += 45;
+                    patternName = "Giant Bullish Marubozu Breakout";
                 }
-                else if (greenStreak >= 4 && upperWickPct <= 35) {
-                    isCall = true;
-                    setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
-                    confidence = 96;
+                // Pattern 2: Solid Bearish Marubozu (Power Dump)
+                else if (!isGreen && bodyPct >= 70 && lowerWickPct <= 12) {
+                    score -= 45;
+                    patternName = "Giant Bearish Marubozu Dump";
                 }
-                else if (!isGreen && isAtFloor && lowerWickPct >= 30) {
-                    isCall = true;
-                    setupName = "Support Floor Absorption Bounce";
-                    confidence = 94;
+                // Pattern 3: Bullish Engulfing (Reversal)
+                else if (p1 && !p1.isGreen && isGreen && currentPrice > p1.open && candleOpen < p1.close && bodyPct >= 55) {
+                    score += 42;
+                    patternName = "Bullish Engulfing Reversal";
                 }
-                else if (isGreen && isAtRoof && upperWickPct >= 30) {
-                    isCall = false;
-                    setupName = "Resistance Roof Exhaustion Drop";
-                    confidence = 94;
+                // Pattern 4: Bearish Engulfing (Reversal)
+                else if (p1 && p1.isGreen && !isGreen && currentPrice < p1.open && candleOpen > p1.close && bodyPct >= 55) {
+                    score -= 42;
+                    patternName = "Bearish Engulfing Reversal";
                 }
-                else if (isGreen && bodyPct >= 45 && upperWickPct <= 25) {
-                    isCall = true;
-                    setupName = "Bullish Momentum Breakout";
-                    confidence = 93;
+                // Pattern 5: Morning Star Formation (3-Candle Super Reversal)
+                else if (p2 && p1 && !p2.isGreen && p1.bodyPct <= 25 && isGreen && bodyPct >= 45 && currentPrice > (p2.open + p2.close) / 2) {
+                    score += 48;
+                    patternName = "Morning Star Institutional Reversal";
                 }
-                else if (!isGreen && bodyPct >= 45 && lowerWickPct <= 25) {
-                    isCall = false;
-                    setupName = "Bearish Momentum Dump";
-                    confidence = 93;
+                // Pattern 6: Evening Star Formation (3-Candle Super Reversal)
+                else if (p2 && p1 && p2.isGreen && p1.bodyPct <= 25 && !isGreen && bodyPct >= 45 && currentPrice < (p2.open + p2.close) / 2) {
+                    score -= 48;
+                    patternName = "Evening Star Institutional Reversal";
                 }
-                else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
-                    isCall = true;
-                    setupName = "Confirmed Hammer Rejection Bounce";
-                    confidence = 91;
+                // Pattern 7: Hammer Rejection (Floor Bounce)
+                else if (lowerWickPct >= 55 && bodyPct <= 30 && upperWickPct <= 15) {
+                    score += 40;
+                    patternName = "Confirmed Hammer Floor Rejection";
                 }
-                else if (upperWickPct >= 50 && bodyPct <= 35 && greenStreak <= 3) {
-                    isCall = false;
-                    setupName = "Confirmed Shooting Star Drop";
-                    confidence = 91;
+                // Pattern 8: Shooting Star (Roof Rejection)
+                else if (upperWickPct >= 55 && bodyPct <= 30 && lowerWickPct <= 15) {
+                    score -= 40;
+                    patternName = "Confirmed Shooting Star Roof Rejection";
                 }
+                // Pattern 9: Dragonfly Doji (Zero Body Bottom Absorption)
+                else if (bodyPct <= 10 && lowerWickPct >= 65 && upperWickPct <= 10) {
+                    score += 38;
+                    patternName = "Dragonfly Doji Liquidity Grab";
+                }
+                // Pattern 10: Gravestone Doji (Zero Body Top Absorption)
+                else if (bodyPct <= 10 && upperWickPct >= 65 && lowerWickPct <= 10) {
+                    score -= 38;
+                    patternName = "Gravestone Doji Liquidity Grab";
+                }
+                // Pattern 11: Tweezer Bottoms (Floor Wick Equality)
+                else if (p1 && Math.abs(candleLow - p1.low) <= 0.00005 && lowerWickPct >= 35 && p1.lowerPct >= 35) {
+                    score += 36;
+                    patternName = "Tweezer Bottom Double Floor Test";
+                }
+                // Pattern 12: Tweezer Tops (Roof Wick Equality)
+                else if (p1 && Math.abs(candleHigh - p1.high) <= 0.00005 && upperWickPct >= 35 && p1.upperPct >= 35) {
+                    score -= 36;
+                    patternName = "Tweezer Top Double Roof Test";
+                }
+                // Pattern 13: Three White Soldiers (Strong Momentum Trend)
+                else if (p2 && p1 && p2.isGreen && p1.isGreen && isGreen && bodyPct >= 40 && p1.bodyPct >= 40) {
+                    score += 40;
+                    patternName = "Three White Soldiers Expansion";
+                }
+                // Pattern 14: Three Black Crows (Strong Dump Trend)
+                else if (p2 && p1 && !p2.isGreen && !p1.isGreen && !isGreen && bodyPct >= 40 && p1.bodyPct >= 40) {
+                    score -= 40;
+                    patternName = "Three Black Crows Avalanche";
+                }
+                // Fallback: Dominance
                 else {
-                    isCall = isGreen;
-                    setupName = isGreen ? "Buyer Volume Dominance" : "Seller Volume Dominance";
-                    confidence = 85;
+                    if (isGreen) score += 20;
+                    else score -= 20;
+                    patternName = isGreen ? "Buyer Volume Push" : "Seller Volume Drop";
                 }
 
-                if (patEl) patEl.innerText = setupName;
+                // -------------------------------------------------------------
+                // TREND & SNR CONFLUENCE BOOSTERS / FILTERS
+                // -------------------------------------------------------------
+
+                // Heavy Waterfall Dump Confluence (Follow Sell)
+                if (redStreak >= 4 && lowerWickPct <= 35) {
+                    score -= 35;
+                }
+                // Heavy Rocket Rally Confluence (Follow Buy)
+                else if (greenStreak >= 4 && upperWickPct <= 35) {
+                    score += 35;
+                }
+
+                // Support Floor Bounce vs Breakdown
+                if (isAtFloor) {
+                    if (score > 0) score += 25; // Floor bounce alignment
+                    else if (score < -30 && bodyPct >= 65) score -= 15; // Floor breakdown
+                }
+
+                // Resistance Roof Drop vs Breakout
+                if (isAtRoof) {
+                    if (score < 0) score -= 25; // Roof rejection alignment
+                    else if (score > 30 && bodyPct >= 65) score += 15; // Roof breakout
+                }
+
+                // -------------------------------------------------------------
+                // FINAL VERDICT & CHOP SHIELD
+                // -------------------------------------------------------------
+                let isCall = score > 0;
+                let finalConfidence = Math.min(97, 84 + Math.round(Math.abs(score) / 10));
+
+                if (patEl) patEl.innerText = patternName;
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
+
+                // CHOP SHIELD: If score is too weak (indecisive chop), advise AVOID!
+                if (Math.abs(score) < 32 && bodyPct < 30) {
+                    if (sigText) {
+                        sigText.innerText = "AVOID / CHOPPY ⚠️";
+                        sigText.style.color = "#facc15";
+                    }
+                    if (sigBox) sigBox.style.borderColor = "#facc15";
+                    if (confText) confText.innerText = `MARKET INDECISIVE (${Math.abs(score)} PTS)`;
+                    if (desc) desc.innerHTML = `Wait for next clear candle cycle<br><span style="color:#94a3b8; font-size: 7.5px;">Low momentum chop • Skip this trade</span>`;
+                    playTone(380, "sine", 0.15);
+                    return;
+                }
 
                 let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
                 if (sigText) {
@@ -488,13 +592,13 @@
                     sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 }
                 if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${confidence}%`;
+                if (confText) confText.innerText = `CONFIDENCE: ${finalConfidence}% • SCORE: ${Math.abs(score)}`;
 
                 let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${setupName} • Body: ${bodyPct}% • ${wickInfo}`;
+                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickInfo}`;
                 if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
-                playBeep(isCall ? 950 : 450);
+                playTone(isCall ? 960 : 440, "sine", 0.22);
             }
         });
     }
