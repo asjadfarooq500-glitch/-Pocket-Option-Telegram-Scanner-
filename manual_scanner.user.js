@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Neural Quant Engine
+// @name         Pocket Option APEX Dual-Stream Engine
 // @namespace    http://tampermonkey.net/
-// @version      110.0
-// @description  Retina-Safe Axis Hook, Zero-Freeze Engine, 20-Candle Memory & Master Confluence
+// @version      120.0
+// @description  Zero-Freeze Dual DOM/Canvas Stream, 20-Bar Trend Lock, No-Coordinate Traps
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -14,36 +14,19 @@
 (function() {
     'use strict';
 
-    // 1. INJECT RETINA-SAFE UNRESTRICTED PRICE PROXY
+    // 1. DUAL-LAYER INJECTION (ZERO RESTRICTIONS ON CANVAS / NATIVE TANK)
     const bridgeScript = document.createElement('script');
     bridgeScript.textContent = `
     (function() {
-        var activePrice = null;
-        var lastPriceTime = 0;
+        var lastValidTick = null;
+        var lastTickTimestamp = 0;
 
-        function broadcastPrice(num, rawX) {
-            if (num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100 || Math.abs(num - 1.89) < 0.01) return;
-
-            var now = Date.now();
-            if (now - lastPriceTime > 2000) {
-                activePrice = null; // Auto-flush on pair switch
-            }
-
-            // Reject static top-left watermark (x < 120)
-            if (rawX !== undefined && rawX < 120) return;
-
-            // Reject unnatural single-tick spikes (filters out distant axis scale labels)
-            if (activePrice !== null) {
-                var maxJump = activePrice > 100 ? 0.8 : 0.0035;
-                if (Math.abs(num - activePrice) > maxJump) {
-                    return;
-                }
-            }
-
-            activePrice = num;
-            lastPriceTime = now;
+        function submitPrice(num) {
+            if (!num || num <= 0 || Math.abs(num - 2.62) < 0.05 || num === 100 || Math.abs(num - 1.89) < 0.01) return;
+            lastValidTick = num;
+            lastTickTimestamp = Date.now();
             document.documentElement.setAttribute('data-po-live-price', num);
-            document.documentElement.setAttribute('data-po-live-time', now);
+            document.documentElement.setAttribute('data-po-live-time', lastTickTimestamp);
         }
 
         try {
@@ -52,7 +35,7 @@
                 if (text && typeof text === 'string') {
                     var str = text.trim();
                     if (/^\\d{1,6}\\.\\d{2,6}$/.test(str)) {
-                        broadcastPrice(parseFloat(str), x);
+                        submitPrice(parseFloat(str));
                     }
                 }
                 return origFill.apply(this, arguments);
@@ -89,7 +72,7 @@
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }, { once: true });
 
-        // HUD Design
+        // HUD Interface
         const hud = document.createElement('div');
         hud.id = 'po-apex-hud';
         hud.style.cssText = `
@@ -111,7 +94,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX NEURAL QUANT v110</span>
+                <span>⚡ APEX DUAL-STREAM v120</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -174,24 +157,29 @@
 
         document.addEventListener('touchend', function() { isDragging = false; });
 
+        // DUAL-FALLBACK LIVE PRICE GETTER (DOM First, Hook Second)
         function getLivePrice() {
-            let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
-            if (hooked && hooked > 0) return hooked;
-
-            // DOM fallback for right-side badge
+            // Priority 1: Direct DOM extraction from right-axis price badges
             const allElements = document.querySelectorAll('*');
             for (let el of allElements) {
                 if (el.children.length === 0 && el.textContent) {
                     let txt = el.textContent.trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
                         let rect = el.getBoundingClientRect();
-                        if (rect.top > 80 && rect.left > (window.innerWidth * 0.55)) {
+                        if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                             let n = parseFloat(txt);
-                            if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) return n;
+                            if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
+                                return n;
+                            }
                         }
                     }
                 }
             }
+
+            // Priority 2: Hook attribute
+            let hooked = parseFloat(document.documentElement.getAttribute('data-po-live-price'));
+            if (hooked && hooked > 0) return hooked;
+
             return null;
         }
 
@@ -203,7 +191,7 @@
                     return el.innerText.split('\n')[0].trim();
                 }
             }
-            return "AUD/CAD OTC";
+            return "OTC ASSET";
         }
 
         let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
@@ -218,7 +206,7 @@
             const currentSec = now.getSeconds();
             const currentMin = now.getMinutes();
 
-            // Instant Pair Switch Flush
+            // Auto-Flush on pair switch
             if (storedPair !== "" && currentPair !== storedPair) {
                 candleOpen = price;
                 candleHigh = price || -Infinity;
@@ -226,8 +214,6 @@
                 candleClose = price;
                 candleHistory = [];
                 lastMinuteTracked = currentMin;
-                document.getElementById('a-signal-text').innerText = "PAIR SYNCED";
-                document.getElementById('a-signal-text').style.color = "#facc15";
             }
             storedPair = currentPair;
 
@@ -326,7 +312,7 @@
         }, 80);
 
         // ==========================================
-        // SCANNER: 20-CANDLE CONFLUENCE EVALUATOR
+        // SCANNER: ZERO-FREEZE CONFLUENCE EVALUATOR
         // ==========================================
         let isScanning = false;
         document.getElementById('a-scan-btn').addEventListener('click', function() {
@@ -364,11 +350,11 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateMasterQuantDecision();
+                    evaluateDecision();
                 }
             }, 100);
 
-            function evaluateMasterQuantDecision() {
+            function evaluateDecision() {
                 isScanning = false;
                 scanBtn.style.opacity = "1";
                 scanBtn.innerText = "🔬 SCAN RUNNING CANDLE";
@@ -413,61 +399,58 @@
                 let setupName = "";
                 let confidence = 88;
 
-                // ==========================================
-                // STRICT MASTER TRADING RULES
-                // ==========================================
-
-                // RULE 1: NEVER SELL INTO SUPPORT FLOOR
-                if (!isGreen && isAtFloor && lowerWickPct >= 30) {
-                    isCall = true;
-                    setupName = "Support Floor Absorption Bounce";
-                    confidence = 95;
-                }
-                // RULE 2: NEVER BUY INTO RESISTANCE ROOF
-                else if (isGreen && isAtRoof && upperWickPct >= 30) {
-                    isCall = false;
-                    setupName = "Resistance Roof Exhaustion Drop";
-                    confidence = 95;
-                }
-                // RULE 3: WATERFALL DUMP LOCK (Follow the Drop)
-                else if (redStreak >= 4 && lowerWickPct <= 35) {
+                // STRICT TRADING RULES (NO COUNTER-TREND)
+                // RULE 1: WATERFALL DUMP LOCK (Never Buy into 4+ Red Waterfall)
+                if (redStreak >= 4 && lowerWickPct <= 35) {
                     isCall = false;
                     setupName = `${redStreak}x Red Waterfall Dump (Follow Sell)`;
                     confidence = 96;
                 }
-                // RULE 4: ROCKET RALLY LOCK (Follow the Pump)
+                // RULE 2: ROCKET RALLY LOCK (Never Sell into 4+ Green Moon)
                 else if (greenStreak >= 4 && upperWickPct <= 35) {
                     isCall = true;
                     setupName = `${greenStreak}x Green Rocket Rally (Follow Buy)`;
                     confidence = 96;
                 }
+                // RULE 3: SUPPORT FLOOR ABSORPTION BOUNCE
+                else if (!isGreen && isAtFloor && lowerWickPct >= 30) {
+                    isCall = true;
+                    setupName = "Support Floor Absorption Bounce";
+                    confidence = 94;
+                }
+                // RULE 4: RESISTANCE ROOF EXHAUSTION DROP
+                else if (isGreen && isAtRoof && upperWickPct >= 30) {
+                    isCall = false;
+                    setupName = "Resistance Roof Exhaustion Drop";
+                    confidence = 94;
+                }
                 // RULE 5: SOLID MOMENTUM BREAKOUT (Body >= 45%)
                 else if (isGreen && bodyPct >= 45 && upperWickPct <= 25) {
                     isCall = true;
                     setupName = "Bullish Momentum Breakout";
-                    confidence = 94 + Math.floor(bodyPct / 20);
+                    confidence = 93;
                 }
                 else if (!isGreen && bodyPct >= 45 && lowerWickPct <= 25) {
                     isCall = false;
                     setupName = "Bearish Momentum Dump";
-                    confidence = 94 + Math.floor(bodyPct / 20);
+                    confidence = 93;
                 }
                 // RULE 6: CONFIRMED PINBAR REJECTION
                 else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak <= 3) {
                     isCall = true;
                     setupName = "Confirmed Hammer Rejection Bounce";
-                    confidence = 92;
+                    confidence = 91;
                 }
                 else if (upperWickPct >= 50 && bodyPct <= 35 && greenStreak <= 3) {
                     isCall = false;
                     setupName = "Confirmed Shooting Star Drop";
-                    confidence = 92;
+                    confidence = 91;
                 }
-                // RULE 7: DEFAULT TO CURRENT CANDLE COLOR
+                // RULE 7: DEFAULT CANDLE FLOW
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Volume Dominance" : "Seller Volume Dominance";
-                    confidence = 86;
+                    confidence = 85;
                 }
 
                 patEl.innerText = setupName;
@@ -492,8 +475,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initApexEngine);
+        document.addEventListener('DOMContentLoaded', initEngine);
     } else {
-        initApexEngine();
+        initEngine();
     }
 })();
