@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Anti-Mutation Shield Engine
+// @name         Pocket Option APEX Structural Titan Engine
 // @namespace    https://github.com/
-// @version      320.0
-// @description  Real-Time Signal Invalidation on Spikes, Rocket Rampage Put-Lock, Trend-Weighted Confluence
+// @version      330.0
+// @description  Higher-Low Trap Shield, Resistance Squeeze Filter, Multi-Bar Retracement Logic & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX ANTI-MUTATION v320</span>
+                <span>⚡ APEX STRUCTURAL v330</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">EUR/USD OTC</span></div>
@@ -155,13 +155,13 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">MACRO TREND: <span id="a-trend" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">STRUCTURE: <span id="a-struct" style="color: #10b981; font-weight: bold;">HIGHER-HIGHS</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN EXACT CONFLUENCE
+                🔬 SCAN STRUCTURAL CONFLUENCE
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -169,9 +169,9 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Protected Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Structural Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Anti-Mutation Active</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Trap Protection Active</div>
             </div>
             <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
         `;
@@ -208,8 +208,6 @@
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
-
-    // Active Signal Watchdog (Checks for shape mutations in last 3 seconds)
     let activeSignalObj = null;
 
     function runEngineTick() {
@@ -260,7 +258,7 @@
             candleHigh = price || -Infinity;
             candleLow = price || Infinity;
             candleClose = price;
-            activeSignalObj = null; // Clear on new candle
+            activeSignalObj = null;
         }
 
         if (price) {
@@ -285,13 +283,12 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // REAL WICK & BODY RATIOS
+            // WICK & BODY MATH
             let cRange = Math.max(0.00001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
             let cLower = Math.max(0, Math.min(candleOpen, candleClose) - candleLow);
 
-            // Micro-Deadzone Filter
             if (cUpper < 0.000025 || (cUpper / cRange) < 0.04) cUpper = 0;
             if (cLower < 0.000025 || (cLower / cRange) < 0.04) cLower = 0;
 
@@ -314,36 +311,30 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // Trend Streaks
-            let redStreak = 0, greenStreak = 0;
-            for (let i = candleHistory.length - 1; i >= 0; i--) {
-                if (!candleHistory[i].isGreen) {
-                    if (greenStreak === 0) redStreak++;
-                    else break;
-                } else {
-                    if (redStreak === 0) greenStreak++;
-                    else break;
-                }
+            // MARKET STRUCTURE (HH / LL TRACKER)
+            let higherLowsCount = 0;
+            let lowerHighsCount = 0;
+            for (let i = 1; i < candleHistory.length; i++) {
+                if (candleHistory[i].low > candleHistory[i - 1].low) higherLowsCount++;
+                if (candleHistory[i].high < candleHistory[i - 1].high) lowerHighsCount++;
             }
-            if (candleClose < candleOpen) redStreak++;
-            else greenStreak++;
 
-            let trendEl = document.getElementById('a-trend');
-            if (trendEl) {
-                if (greenStreak >= 4) {
-                    trendEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
-                    trendEl.style.color = "#10b981";
-                } else if (redStreak >= 4) {
-                    trendEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
-                    trendEl.style.color = "#ef4444";
+            let structEl = document.getElementById('a-struct');
+            if (structEl) {
+                if (higherLowsCount >= 3) {
+                    structEl.innerText = "BULLISH HIGHER-LOWS 🟢";
+                    structEl.style.color = "#10b981";
+                } else if (lowerHighsCount >= 3) {
+                    structEl.innerText = "BEARISH LOWER-HIGHS 🔴";
+                    structEl.style.color = "#ef4444";
                 } else {
-                    trendEl.innerText = "BALANCED FLOW";
-                    trendEl.style.color = "#38bdf8";
+                    structEl.innerText = "BALANCED CHANNEL";
+                    structEl.style.color = "#38bdf8";
                 }
             }
 
             let isGreen = candleClose >= candleOpen;
-            let livePat = isGreen ? "Buyer Momentum 🟢" : "Seller Momentum 🔴";
+            let livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
             if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
             else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
             else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
@@ -374,33 +365,28 @@
                 }
             }
 
-            // =================================================================
-            // LIVE SIGNAL MUTATION WATCHDOG (Cancels signal if price spikes)
-            // =================================================================
+            // SIGNAL MUTATION WATCHDOG
             if (activeSignalObj && currentSec >= 50) {
                 let sigText = document.getElementById('a-signal-text');
                 let sigBox = document.getElementById('a-status-box');
                 let confText = document.getElementById('a-conf-text');
                 let desc = document.getElementById('a-desc');
 
-                // Case 1: Was PUT (Shooting Star/Drop), but candle spiked UP into strong GREEN body!
-                if (!activeSignalObj.isCall && isGreen && bPct >= 50) {
+                if (!activeSignalObj.isCall && isGreen && bPct >= 45) {
                     sigText.innerText = "SIGNAL ABORTED ⚠️";
                     sigText.style.color = "#f43f5e";
                     sigBox.style.borderColor = "#f43f5e";
-                    confText.innerText = "SHAPE MUTATED: CANDLE PUMPED UP";
-                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Wick collapsed into solid green body • DO NOT ENTER PUT!</span>`;
-                    activeSignalObj = null; // Kill signal
+                    confText.innerText = "PUMP MUTATION: CANDLE TURNED GREEN";
+                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Resistance broken by green impulse • DO NOT ENTER PUT!</span>`;
+                    activeSignalObj = null;
                     playTone(250, "sawtooth", 0.3);
-                }
-                // Case 2: Was CALL (Hammer/Bounce), but candle dumped DOWN into strong RED body!
-                else if (activeSignalObj.isCall && !isGreen && bPct >= 50) {
+                } else if (activeSignalObj.isCall && !isGreen && bPct >= 45) {
                     sigText.innerText = "SIGNAL ABORTED ⚠️";
                     sigText.style.color = "#f43f5e";
                     sigBox.style.borderColor = "#f43f5e";
-                    confText.innerText = "SHAPE MUTATED: CANDLE DUMPED DOWN";
-                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Support failed, candle dumped red • DO NOT ENTER CALL!</span>`;
-                    activeSignalObj = null; // Kill signal
+                    confText.innerText = "DUMP MUTATION: CANDLE TURNED RED";
+                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Support broken by red dump • DO NOT ENTER CALL!</span>`;
+                    activeSignalObj = null;
                     playTone(250, "sawtooth", 0.3);
                 }
             }
@@ -412,7 +398,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 4. SCANNER WITH ROCKET PUMP PROTECTION
+    // 4. SCANNER: STRUCTURAL PULLBACK VS BREAKOUT EVALUATOR
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -440,7 +426,7 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "SCANNING FINAL MOMENTUM...";
+            btn.innerText = "ANALYZING STRUCTURE...";
             if (pBar) pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -454,14 +440,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateProtectedDecision();
+                    evaluateStructuralDecision();
                 }
             }, 60);
 
-            function evaluateProtectedDecision() {
+            function evaluateStructuralDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN EXACT CONFLUENCE";
+                btn.innerText = "🔬 SCAN STRUCTURAL CONFLUENCE";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -481,73 +467,86 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                let redStreak = 0, greenStreak = 0;
+                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
+
+                // STRUCTURE CHECK (Image 11 Fix)
+                let isHigherLowPullback = false;
+                if (p1 && p1.isGreen && !isGreen) {
+                    // Current is red, but its Low is higher than previous green candle's Low!
+                    if (candleLow > p1.low && bodySize < p1.body) {
+                        isHigherLowPullback = true;
+                    }
+                }
+
+                // Green/Red Trend Streaks
+                let greenStreak = 0, redStreak = 0;
                 for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (!candleHistory[i].isGreen) {
-                        if (greenStreak === 0) redStreak++;
+                    if (candleHistory[i].isGreen) {
+                        if (redStreak === 0) greenStreak++;
                         else break;
                     } else {
-                        if (redStreak === 0) greenStreak++;
+                        if (greenStreak === 0) redStreak++;
                         else break;
                     }
                 }
-                if (!isGreen) redStreak++;
-                else greenStreak++;
 
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
                 // =============================================================
-                // LAW 1: ROCKET RAMPAGE PROTOCOL (FIX FOR IMAGE 10)
+                // LAW 1: HIGHER-LOW TRAP PROTOCOL (FIX FOR IMAGE 11)
                 // =============================================================
-                if (greenStreak >= 4) {
-                    // When 4+ continuous green candles are climbing a staircase, counter-trend PUT is illegal!
+                if (isHigherLowPullback && greenStreak >= 2) {
+                    // Small red candle inside an uptrend is a TRAP, NOT a reversal!
                     isCall = true;
-                    setupName = `${greenStreak}x Rocket Rampage (Follow Buy • Put Banned)`;
-                    confidence = 96;
+                    setupName = "Higher-Low Pullback Trap (Continuation BUY 🟢)";
+                    confidence = 94;
                 }
-                // LAW 2: WATERFALL DUMP PROTOCOL
-                else if (redStreak >= 4) {
+                // LAW 2: MASSIVE ROCKET RALLY (4+ Green)
+                else if (greenStreak >= 4 && isGreen) {
+                    isCall = true;
+                    setupName = "Rocket Momentum Continuation 🟢";
+                    confidence = 95;
+                }
+                // LAW 3: MASSIVE WATERFALL CRASH (4+ Red)
+                else if (redStreak >= 4 && !isGreen) {
                     isCall = false;
-                    setupName = `${redStreak}x Waterfall Dump (Follow Sell • Call Banned)`;
-                    confidence = 96;
+                    setupName = "Waterfall Dump Continuation 🔴";
+                    confidence = 95;
                 }
-                // LAW 3: SOLID BREAKOUT EXPANSIONS
-                else if (isGreen && bodyPct >= 55 && upperWickPct <= 20) {
+                // LAW 4: SOLID MARUBOZU EXPANSIONS
+                else if (isGreen && bodyPct >= 65 && upperWickPct <= 10) {
                     isCall = true;
                     setupName = "Bullish Solid Expansion 🟢";
-                    confidence = 93;
+                    confidence = 92;
                 }
-                else if (!isGreen && bodyPct >= 55 && lowerWickPct <= 20) {
+                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10) {
                     isCall = false;
                     setupName = "Bearish Solid Avalanche 🔴";
-                    confidence = 93;
+                    confidence = 92;
                 }
-                // LAW 4: CONFIRMED PINBAR REJECTIONS (ONLY in normal/balanced market)
-                else if (lowerWickPct >= 48 && bodyPct <= 35 && redStreak <= 2) {
+                // LAW 5: GENUINE REVERSAL PINBARS (Only when structure supports it)
+                else if (lowerWickPct >= 48 && bodyPct <= 35) {
                     isCall = true;
                     setupName = "Hammer Floor Rejection Bounce 🟢";
-                    confidence = 91;
+                    confidence = 90;
                 }
-                else if (upperWickPct >= 48 && bodyPct <= 35 && greenStreak <= 2) {
+                else if (upperWickPct >= 48 && bodyPct <= 35 && !isHigherLowPullback) {
                     isCall = false;
                     setupName = "Shooting Star Roof Drop 🔴";
-                    confidence = 91;
+                    confidence = 90;
                 }
-                // LAW 5: DEFAULT COLOR DOMINANCE
+                // LAW 6: FLOW BIAS
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
-                    confidence = 86;
+                    confidence = 85;
                 }
 
-                // Register Signal in Watchdog
                 activeSignalObj = {
                     isCall: isCall,
-                    bodyPct: bodyPct,
-                    upperWickPct: upperWickPct,
-                    lowerWickPct: lowerWickPct
+                    bodyPct: bodyPct
                 };
 
                 let secondsToNext = 60 - currentSec;
