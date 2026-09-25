@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Supreme Omni-Engine
+// @name         Pocket Option APEX Revolution Engine
 // @namespace    https://github.com/
-// @version      370.0
-// @description  Absolute Trend Veto Kill-Switch, Anti-Waterfall Counter-Trading Ban, Multi-Cycle Confluence & Zero-Freeze Stream
+// @version      380.0
+// @description  Instant Minute Rollover Purge, Bullish Marubozu Put-Lock, Resistance Breakout Expansion & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX SUPREME OMNI v370</span>
+                <span>⚡ APEX REVOLUTION v380</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">CAD/JPY OTC</span></div>
@@ -155,14 +155,13 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">MACRO TREND: <span id="a-trend" style="color: #ef4444; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">CYCLE RHYTHM: <span id="a-cycle" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">MACRO TREND: <span id="a-trend" style="color: #10b981; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN SUPREME MATRIX
+                🔬 SCAN EXACT REVOLUTION
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -170,9 +169,9 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Supreme Confluence Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Revolution Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Trend-Veto Protected</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Synced & Armed</div>
             </div>
             <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
         `;
@@ -204,7 +203,7 @@
         bindScannerEvents();
     }
 
-    // 3. CANDLE ENGINE WITH TREND RECOVERY & VETO MEMORY
+    // 3. CANDLE ENGINE WITH INSTANT ROLLOVER PURGE
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
@@ -226,10 +225,11 @@
             candleClose = price;
             candleHistory = [];
             lastMinuteTracked = currentMin;
+            resetStatusBox();
         }
         storedPair = currentPair;
 
-        // Minute Rollover (:00.000)
+        // INSTANT MINUTE ROLLOVER PURGE (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                 let prevClose = candleClose || price;
@@ -257,6 +257,9 @@
             candleHigh = price || -Infinity;
             candleLow = price || Infinity;
             candleClose = price;
+
+            // FORAN PURANA SIGNAL FLUSH KARO TA KE CONFUSION NA HO
+            resetStatusBox();
         }
 
         if (price) {
@@ -309,7 +312,18 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // COUNT STREAKS DIRECTLY
+            // LIVE PATTERN IDENTIFICATION
+            let isGreen = candleClose >= candleOpen;
+            let livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
+            if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
+            else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
+            else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
+            else if (uPct >= 45 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
+
+            let patEl = document.getElementById('a-pattern');
+            if (patEl) patEl.innerText = livePat;
+
+            // STREAKS
             let redStreak = 0, greenStreak = 0;
             for (let i = candleHistory.length - 1; i >= 0; i--) {
                 if (!candleHistory[i].isGreen) {
@@ -325,55 +339,17 @@
 
             let trendEl = document.getElementById('a-trend');
             if (trendEl) {
-                if (redStreak >= 3) {
-                    trendEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
-                    trendEl.style.color = "#ef4444";
-                } else if (greenStreak >= 3) {
-                    trendEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
+                if (greenStreak >= 3) {
+                    trendEl.innerText = `BULLISH RALLY (${greenStreak}x GREEN) 🟢`;
                     trendEl.style.color = "#10b981";
+                } else if (redStreak >= 3) {
+                    trendEl.innerText = `BEARISH DUMP (${redStreak}x RED) 🔴`;
+                    trendEl.style.color = "#ef4444";
                 } else {
                     trendEl.innerText = "BALANCED CHANNEL";
                     trendEl.style.color = "#38bdf8";
                 }
             }
-
-            // SEQUENCE RHYTHM
-            let isGreen = candleClose >= candleOpen;
-            let histColors = candleHistory.slice(-5).map(c => c.isGreen ? "G" : "R");
-            histColors.push(isGreen ? "G" : "R");
-            let seq = histColors.join("-");
-
-            let isPingPong = seq.endsWith("G-R-G-R") || seq.endsWith("R-G-R-G") || seq.endsWith("G-R-G") || seq.endsWith("R-G-R");
-            let is3_1 = seq.endsWith("G-G-G-R") || seq.endsWith("R-R-R-G");
-
-            let cycleEl = document.getElementById('a-cycle');
-            if (cycleEl) {
-                if (redStreak >= 3) {
-                    cycleEl.innerText = "AVALANCHE WAVE 🔴";
-                    cycleEl.style.color = "#ef4444";
-                } else if (greenStreak >= 3) {
-                    cycleEl.innerText = "RAMPAGE PUMP 🟢";
-                    cycleEl.style.color = "#10b981";
-                } else if (isPingPong) {
-                    cycleEl.innerText = "1-1 PING-PONG CYCLE 🏓";
-                    cycleEl.style.color = "#facc15";
-                } else if (is3_1) {
-                    cycleEl.innerText = "3-1 RECHARGE WAVE ⚡";
-                    cycleEl.style.color = "#38bdf8";
-                } else {
-                    cycleEl.innerText = "NORMAL FLOW";
-                    cycleEl.style.color = "#94a3b8";
-                }
-            }
-
-            let livePat = isGreen ? "Buyer Momentum 🟢" : "Seller Momentum 🔴";
-            if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
-            else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
-            else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
-            else if (uPct >= 45 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
-
-            let patEl = document.getElementById('a-pattern');
-            if (patEl) patEl.innerText = livePat;
 
             // SNR
             let swingLow = Infinity, swingHigh = -Infinity;
@@ -404,7 +380,18 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 4. SCANNER: SUPREME DECISION WITH ABSOLUTE TREND VETO
+    function resetStatusBox() {
+        let sigText = document.getElementById('a-signal-text');
+        let sigBox = document.getElementById('a-status-box');
+        let confText = document.getElementById('a-conf-text');
+        let desc = document.getElementById('a-desc');
+        if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
+        if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
+        if (confText) { confText.innerText = "Synced & Armed"; }
+        if (desc) { desc.innerHTML = "Scan in last 12s to 5s of candle"; }
+    }
+
+    // 4. SCANNER: SUPREME REVOLUTION WITH MARUBOZU PUT-LOCK
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -432,7 +419,7 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "RESOLVING SUPREME CONFLUENCE...";
+            btn.innerText = "RESOLVING REVOLUTION...";
             if (pBar) pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -446,14 +433,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateSupremeDecision();
+                    evaluateRevolutionDecision();
                 }
             }, 60);
 
-            function evaluateSupremeDecision() {
+            function evaluateRevolutionDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN SUPREME MATRIX";
+                btn.innerText = "🔬 SCAN EXACT REVOLUTION";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -473,88 +460,49 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                // RECENT CANDLE STREAK
-                let redStreak = 0, greenStreak = 0;
-                for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (!candleHistory[i].isGreen) {
-                        if (greenStreak === 0) redStreak++;
-                        else break;
-                    } else {
-                        if (redStreak === 0) greenStreak++;
-                        else break;
-                    }
-                }
-                if (!isGreen) redStreak++;
-                else greenStreak++;
-
-                // SEQUENCE CODE
-                let histColors = candleHistory.slice(-5).map(c => c.isGreen ? "G" : "R");
-                histColors.push(isGreen ? "G" : "R");
-                let seq = histColors.join("-");
-
-                let isPingPong = seq.endsWith("G-R-G-R") || seq.endsWith("R-G-R-G") || seq.endsWith("G-R-G") || seq.endsWith("R-G-R");
-
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
                 // =============================================================
-                // SUPREME LAW 1: WATERFALL DUMP PROTOCOL (FIX FOR IMAGE 9)
+                // LAW 1: BULLISH MARUBOZU ABSOLUTE RULE (FIX FOR IMAGE 10)
                 // =============================================================
-                // If 3 or more continuous red candles are falling, CALL is 100% ILLEGAL!
-                if (redStreak >= 3 || (!isGreen && bodyPct >= 50 && upperWickPct >= 40)) {
-                    isCall = false;
-                    setupName = `Waterfall Crash (${redStreak}x RED Dump • Counter-Trade CALL Banned)`;
-                    confidence = 97;
-                }
-                // SUPREME LAW 2: ROCKET RALLY PROTOCOL
-                // If 3 or more continuous green candles are climbing, PUT is 100% ILLEGAL!
-                else if (greenStreak >= 3 || (isGreen && bodyPct >= 50 && lowerWickPct >= 40)) {
+                // Agar candle green hai aur body 65%+ hai aur upper wick choti hai, toh PUT 100% ILLEGAL hai!
+                if (isGreen && bodyPct >= 65 && upperWickPct <= 10) {
                     isCall = true;
-                    setupName = `Rocket Rally (${greenStreak}x GREEN Pump • Counter-Trade PUT Banned)`;
-                    confidence = 97;
+                    setupName = "Bullish Solid Marubozu Breakout (PUT Banned • BUY 🟢)";
+                    confidence = 96;
                 }
-                // SUPREME LAW 3: 1-1 PING-PONG CYCLE (ONLY IN CHOPPY BALANCED MARKETS)
-                else if (isPingPong && redStreak < 2 && greenStreak < 2) {
-                    isCall = !isGreen;
-                    setupName = isCall ? "1-1 Ping-Pong Alternation (Flip BUY 🟢)" : "1-1 Ping-Pong Alternation (Flip SELL 🔴)";
-                    confidence = 92;
-                }
-                // SUPREME LAW 4: SOLID MARUBOZU CONTINUATION
-                else if (isGreen && bodyPct >= 60 && upperWickPct <= 10) {
-                    isCall = true;
-                    setupName = "Bullish Solid Expansion 🟢";
-                    confidence = 93;
-                }
-                else if (!isGreen && bodyPct >= 60 && lowerWickPct <= 10) {
+                // LAW 2: BEARISH MARUBOZU ABSOLUTE RULE
+                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10) {
                     isCall = false;
-                    setupName = "Bearish Solid Avalanche 🔴";
-                    confidence = 93;
+                    setupName = "Bearish Solid Marubozu Breakdown (CALL Banned • SELL 🔴)";
+                    confidence = 96;
                 }
-                // SUPREME LAW 5: REJECTION PINBARS (Only outside heavy trends)
-                else if (lowerWickPct >= 50 && bodyPct <= 35 && redStreak < 2) {
+                // LAW 3: CONFIRMED PINBAR REJECTIONS
+                else if (lowerWickPct >= 48 && bodyPct <= 35) {
                     isCall = true;
                     setupName = "Hammer Floor Rejection Bounce 🟢";
-                    confidence = 90;
+                    confidence = 91;
                 }
-                else if (upperWickPct >= 50 && bodyPct <= 35 && greenStreak < 2) {
+                else if (upperWickPct >= 48 && bodyPct <= 35) {
                     isCall = false;
                     setupName = "Shooting Star Roof Drop 🔴";
-                    confidence = 90;
+                    confidence = 91;
                 }
-                // DEFAULT FLOW
+                // LAW 4: COLOR FLOW
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
-                    confidence = 85;
+                    confidence = 86;
                 }
 
                 // =============================================================
-                // ABSOLUTE SANITY CHECK (NEVER ALLOW COUNTER-TREND AGAINST RED DUMP)
+                // CRITICAL SAFETY CHECK: NEVER PERMIT CONTRADICTING VERDICT
                 // =============================================================
-                if (redStreak >= 3 && isCall) {
-                    isCall = false;
-                    setupName = "Waterfall Emergency Veto (Flipped to PUT 🔴)";
+                if (isGreen && bodyPct >= 60 && !isCall) {
+                    isCall = true; // Overrule to CALL
+                    setupName = "Bullish Momentum Veto (Flipped to CALL 🟢)";
                 }
 
                 let secondsToNext = 60 - currentSec;
