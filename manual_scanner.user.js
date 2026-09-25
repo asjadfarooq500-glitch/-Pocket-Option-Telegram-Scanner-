@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Smart Pivot & Exhaustion Engine
+// @name         Pocket Option APEX True-Geometry Engine
 // @namespace    https://github.com/
-// @version      300.0
-// @description  Dynamic Continuation vs Reversal Pivot Matrix, Exhaustion Detector & Zero-Freeze Stream
+// @version      310.0
+// @description  Zero-Leak Grid Purge, Micro-Wick Deadzone, Exact Real-Time OHLC & Body/Wick Sync
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -65,7 +65,7 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
 
-    // DUAL-FALLBACK LIVE PRICE GETTER
+    // ZERO-LEAK LIVE PRICE DETECTOR (No Grid Leak Allowed)
     function getLivePrice() {
         if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
             return window.__po_live_tick;
@@ -80,6 +80,7 @@
                     let rect = el.getBoundingClientRect();
                     if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                         let n = parseFloat(txt);
+                        // Strict check: Ignore static payout and common multipliers
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
                             candidates.push({ val: n, str: txt, top: rect.top });
                         }
@@ -89,11 +90,13 @@
         }
 
         if (candidates.length > 0) {
+            // Strictly exclude static grid lines ending in 00 or 50
             const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
             if (nonGrid.length > 0) {
                 return nonGrid[nonGrid.length - 1].val;
             }
-            return candidates[0].val;
+            // NEVER return grid candidate fallback!
+            return null;
         }
         return null;
     }
@@ -140,10 +143,10 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX SMART PIVOT v300</span>
+                <span>⚡ APEX TRUE-GEOMETRY v310</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">EUR/USD OTC</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="a-price" style="color: #10b981; font-weight: bold;">--</span></div>
             
             <div style="background: #081024; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
@@ -153,9 +156,9 @@
                     <span>L: <b id="a-low" style="color:#ef4444;">--</b></span>
                 </div>
                 <div style="font-size: 8px; color: #94a3b8; margin-top: 3px; display: flex; justify-content: space-between;">
-                    <span>BODY: <b id="a-body" style="color:#38bdf8;">--%</b></span>
-                    <span>U-WICK: <b id="a-uwick" style="color:#facc15;">--%</b></span>
-                    <span>L-WICK: <b id="a-lwick" style="color:#facc15;">--%</b></span>
+                    <span>BODY: <b id="a-body" style="color:#38bdf8;">0%</b></span>
+                    <span>U-WICK: <b id="a-uwick" style="color:#facc15;">0%</b></span>
+                    <span>L-WICK: <b id="a-lwick" style="color:#facc15;">0%</b></span>
                 </div>
             </div>
 
@@ -165,7 +168,7 @@
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN PIVOT MATRIX
+                🔬 SCAN EXACT MATRIX
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -173,7 +176,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Smart Pivot Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Exact Confluence Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Live & Synced</div>
             </div>
@@ -207,7 +210,9 @@
         bindScannerEvents();
     }
 
-    // 3. CANDLE ENGINE
+    // =========================================================================
+    // 3. CANDLE ENGINE WITH MICRO-WICK DEADZONE SUPPRESSOR
+    // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
@@ -222,6 +227,7 @@
         const currentSec = now.getSeconds();
         const currentMin = now.getMinutes();
 
+        // Pair Switch Auto-Flush
         if (storedPair !== "" && currentPair !== storedPair && currentPair.length > 3) {
             candleOpen = price;
             candleHigh = price || -Infinity;
@@ -232,6 +238,7 @@
         }
         storedPair = currentPair;
 
+        // Minute Rollover (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                 let prevClose = candleClose || price;
@@ -249,10 +256,7 @@
                     body: cBody,
                     range: cRange,
                     upperWick: cUpper,
-                    lowerWick: cLower,
-                    bodyPct: Math.round((cBody / cRange) * 100),
-                    upperPct: Math.round((cUpper / cRange) * 100),
-                    lowerPct: Math.round((cLower / cRange) * 100)
+                    lowerWick: cLower
                 });
                 if (candleHistory.length > 30) candleHistory.shift();
             }
@@ -286,22 +290,27 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // WICK & BODY RATIOS
+            // REAL LIVE WICK & BODY RATIOS (WITH MICRO-DEADZONE)
             let cRange = Math.max(0.00001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
             let cLower = Math.max(0, Math.min(candleOpen, candleClose) - candleLow);
 
+            // DEADZONE: Agar wick 2 sub-pips (0.000025) se choti ho ya range ka 4% se kam ho, to 0% snap karo
+            if (cUpper < 0.000025 || (cUpper / cRange) < 0.04) cUpper = 0;
+            if (cLower < 0.000025 || (cLower / cRange) < 0.04) cLower = 0;
+
             let bPct = Math.round((cBody / cRange) * 100);
             let uPct = Math.round((cUpper / cRange) * 100);
             let lPct = Math.round((cLower / cRange) * 100);
 
+            // Balance total to 100%
             let sum = bPct + uPct + lPct;
             if (sum > 100) {
                 let factor = 100 / sum;
                 bPct = Math.round(bPct * factor);
                 uPct = Math.round(uPct * factor);
-                lPct = 100 - bPct - uPct;
+                lPct = Math.max(0, 100 - bPct - uPct);
             }
 
             let elBody = document.getElementById('a-body');
@@ -313,23 +322,23 @@
 
             let isGreen = candleClose >= candleOpen;
             let livePat = "Volume Flow";
-            if (isGreen && bPct >= 65 && uPct <= 12) livePat = "Bullish Marubozu (Continuation)";
-            else if (!isGreen && bPct >= 65 && lPct <= 12) livePat = "Bearish Marubozu (Continuation)";
-            else if (lPct >= 45 && bPct <= 40) livePat = "Hammer Rejection (Pivot Bounce)";
-            else if (uPct >= 45 && bPct <= 40) livePat = "Shooting Star (Pivot Drop)";
-            else if (bPct <= 12) livePat = "Indecision Doji ⚠️";
-            else livePat = isGreen ? "Buyer Momentum" : "Seller Momentum";
+            if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
+            else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
+            else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
+            else if (uPct >= 45 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
+            else if (bPct <= 10) livePat = "Doji Indecision ⚠️";
+            else livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
 
             let patEl = document.getElementById('a-pattern');
             if (patEl) patEl.innerText = livePat;
 
             let stateEl = document.getElementById('a-state');
             if (stateEl) {
-                if (lPct >= 45 || uPct >= 45) {
+                if (lPct >= 40 || uPct >= 40) {
                     stateEl.innerText = "REJECTION / PIVOT 🔄";
                     stateEl.style.color = "#facc15";
-                } else if (bPct >= 65) {
-                    stateEl.innerText = "STRONG CONTINUATION ⚡";
+                } else if (bPct >= 60) {
+                    stateEl.innerText = "STRONG MOMENTUM ⚡";
                     stateEl.style.color = "#10b981";
                 } else {
                     stateEl.innerText = "BALANCED FLOW";
@@ -365,7 +374,9 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // 4. SCANNER: SMART PIVOT & EXHAUSTION ENGINE
+    // =========================================================================
+    // 4. SCANNER: TRUE-GEOMETRY CONFLUENCE EVALUATOR
+    // =========================================================================
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -393,9 +404,9 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "ANALYZING PIVOTS...";
+            btn.innerText = "EVALUATING EXACT GEOMETRY...";
             if (pBar) pBar.style.display = "block";
-            if (pFill) pFill.style.width = "0%";
+            pFill.style.width = "0%";
 
             let elapsed = 0;
             const sampleSteps = 12;
@@ -403,18 +414,18 @@
             const scanInterval = setInterval(() => {
                 elapsed++;
                 let progress = Math.min(100, Math.round((elapsed / sampleSteps) * 100));
-                if (pFill) pFill.style.width = `${progress}%`;
+                pFill.style.width = `${progress}%`;
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateSmartPivotDecision();
+                    evaluateExactGeometryDecision();
                 }
             }, 75);
 
-            function evaluateSmartPivotDecision() {
+            function evaluateExactGeometryDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN PIVOT MATRIX";
+                btn.innerText = "🔬 SCAN EXACT MATRIX";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -427,11 +438,12 @@
                 let upperWick = Math.max(0, candleHigh - Math.max(candleOpen, currentPrice));
                 let lowerWick = Math.max(0, Math.min(candleOpen, currentPrice) - candleLow);
 
+                if (upperWick < 0.000025 || (upperWick / totalRange) < 0.04) upperWick = 0;
+                if (lowerWick < 0.000025 || (lowerWick / totalRange) < 0.04) lowerWick = 0;
+
                 let bodyPct = Math.round((bodySize / totalRange) * 100);
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
-
-                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
 
                 let swingLow = Infinity, swingHigh = -Infinity;
                 for (let i = 0; i < candleHistory.length; i++) {
@@ -444,52 +456,43 @@
                 let isAtRoof = (swingHigh - currentPrice) <= (channelRange * 0.18);
 
                 let isCall = false;
-                let logicName = "";
+                let setupName = "";
                 let confidence = 88;
 
-                // =============================================================
-                // SMART PIVOT & EXHAUSTION INTELLIGENCE
-                // =============================================================
-
-                // 1. REJECTION PIVOT (Bounce from Support Floor)
-                if (lowerWickPct >= 42 && isAtFloor) {
+                // 1. REJECTION PIVOT AT SNR
+                if (lowerWickPct >= 40 && isAtFloor) {
                     isCall = true;
-                    logicName = "Support Floor Rejection Pivot (Bounce 🟢)";
+                    setupName = "Support Floor Rejection Pivot 🟢";
+                    confidence = 94;
+                } else if (upperWickPct >= 40 && isAtRoof) {
+                    isCall = false;
+                    setupName = "Resistance Roof Rejection Pivot 🔴";
                     confidence = 94;
                 }
-                // 2. REJECTION PIVOT (Drop from Resistance Roof)
-                else if (upperWickPct >= 42 && isAtRoof) {
-                    isCall = false;
-                    logicName = "Resistance Roof Rejection Pivot (Drop 🔴)";
-                    confidence = 94;
-                }
-                // 3. EXHAUSTION REVERSAL (Strong Red Candle with Massive Lower Wick -> Next Green)
-                else if (!isGreen && lowerWickPct >= 50 && bodyPct <= 40) {
+                // 2. EXHAUSTION PINBARS (Without SNR requirement)
+                else if (!isGreen && lowerWickPct >= 48 && bodyPct <= 40) {
                     isCall = true;
-                    logicName = "Exhaustion Reversal Pivot (Next Candle Green 🟢)";
+                    setupName = "Exhaustion Hammer Bounce 🟢";
+                    confidence = 93;
+                } else if (isGreen && upperWickPct >= 48 && bodyPct <= 40) {
+                    isCall = false;
+                    setupName = "Exhaustion Star Drop 🔴";
                     confidence = 93;
                 }
-                // 4. EXHAUSTION REVERSAL (Strong Green Candle with Massive Upper Wick -> Next Red)
-                else if (isGreen && upperWickPct >= 50 && bodyPct <= 40) {
-                    isCall = false;
-                    logicName = "Exhaustion Reversal Pivot (Next Candle Red 🔴)";
-                    confidence = 93;
-                }
-                // 5. TRUE CONTINUATION (Clean Marubozu / Big Body, No Wicks)
-                else if (isGreen && bodyPct >= 70 && upperWickPct <= 10) {
+                // 3. CLEAN MOMENTUM BREAKOUTS (No wicks)
+                else if (isGreen && bodyPct >= 65 && upperWickPct <= 10) {
                     isCall = true;
-                    logicName = "True Bullish Marubozu Continuation 🟢";
+                    setupName = "Bullish Solid Expansion 🟢";
                     confidence = 92;
-                }
-                else if (!isGreen && bodyPct >= 70 && lowerWickPct <= 10) {
+                } else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10) {
                     isCall = false;
-                    logicName = "True Bearish Marubozu Continuation 🔴";
+                    setupName = "Bearish Solid Avalanche 🔴";
                     confidence = 92;
                 }
-                // 6. DEFAULT PRICE ACTION FLOW
+                // 4. FLOW CONTINUATION
                 else {
                     isCall = isGreen;
-                    logicName = isGreen ? "Standard Buyer Flow Continuation" : "Standard Seller Flow Continuation";
+                    setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
                     confidence = 86;
                 }
 
@@ -506,7 +509,7 @@
                 if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • ${action}`;
 
                 let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${logicName} • Body: ${bodyPct}% • ${wickInfo}`;
+                let dynamicReason = `${setupName} • Body: ${bodyPct}% • ${wickInfo}`;
                 if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playTone(isCall ? 960 : 440, "sine", 0.22);
