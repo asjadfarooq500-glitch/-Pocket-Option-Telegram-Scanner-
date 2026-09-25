@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Dual-Regime Titan Engine
+// @name         Pocket Option APEX 5-Sec Deep Matrix Engine
 // @namespace    https://github.com/
-// @version      430.0
-// @description  Mean-Reversion Climax Engine, Exhaustion Flip Predictor, Round-Number Barrier Math, Tick-VWAP & Delta
+// @version      520.0
+// @description  5-Second Active Multi-Angle Deep Scanner, Bollinger Exhaustion Flips, Tick-VWAP & Zero-Bias Quant Math
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -17,9 +17,7 @@
     'use strict';
     if (window.top !== window.self) return;
 
-    // =========================================================================
     // 1. IN-PAGE CANVAS BADGE SNIFFER
-    // =========================================================================
     try {
         if (typeof CanvasRenderingContext2D !== 'undefined') {
             const origFill = CanvasRenderingContext2D.prototype.fillText;
@@ -140,7 +138,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX DUAL-REGIME v430</span>
+                <span>⚡ APEX 5-SEC DEEP MATRIX v520</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -159,27 +157,25 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">PREDICT MODE: <span id="a-mode" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">BOLLINGER: <span id="a-bb" style="color: #38bdf8; font-weight: bold;">IN RANGE</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">RSI (7): <span id="a-rsi" style="color: #38bdf8; font-weight: bold;">50.0</span></div>
             <div style="font-size: 9px; color: #94a3b8;">FLOW DELTA: <span id="a-delta" style="color: #10b981; font-weight: bold;">0 (NEUTRAL)</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">ROUND LVL: <span id="a-round" style="color: #38bdf8; font-weight: bold;">NONE</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN EXACT REGIME MATRIX
+                🔬 5-SEC DEEP QUANT SCAN
             </button>
 
-            <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="a-progress-fill" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.08s linear;"></div>
+            <div id="a-progress-bar" style="display: none; width: 100%; height: 6px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+                <div id="a-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.08s linear;"></div>
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Dual-Regime Verdict</div>
-                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Exhaustion Flip Engine Armed</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Quantitative Verdict</div>
+                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Ready for Deep Calculation</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Hit scan between 14s and 6s of candle</div>
         `;
 
         root.appendChild(hud);
@@ -210,7 +206,7 @@
     }
 
     // =========================================================================
-    // 3. CANDLE ENGINE WITH DUAL-REGIME (CONTINUATION VS REVERSAL)
+    // 3. CANDLE ENGINE WITH BOLLINGER & RSI
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
@@ -221,6 +217,38 @@
     let lastRecordedTickPrice = null;
     let tickPriceSum = 0, totalTicksCount = 0;
 
+    function calculateBollinger(period = 20, multiplier = 2.0) {
+        if (candleHistory.length < 5) return null;
+        let p = Math.min(period, candleHistory.length);
+        let sum = 0;
+        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
+            sum += candleHistory[i].close;
+        }
+        let sma = sum / p;
+        let variance = 0;
+        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
+            variance += Math.pow(candleHistory[i].close - sma, 2);
+        }
+        let stdDev = Math.sqrt(variance / p);
+        return {
+            upper: sma + (multiplier * stdDev),
+            lower: sma - (multiplier * stdDev)
+        };
+    }
+
+    function calculateRSI(period = 7) {
+        if (candleHistory.length < period + 1) return 50.0;
+        let gains = 0, losses = 0;
+        for (let i = candleHistory.length - period; i < candleHistory.length; i++) {
+            let diff = candleHistory[i].close - candleHistory[i - 1].close;
+            if (diff >= 0) gains += diff;
+            else losses += Math.abs(diff);
+        }
+        if (losses === 0) return 100.0;
+        let rs = gains / losses;
+        return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
+    }
+
     function runEngineTick() {
         mountHUD();
 
@@ -230,7 +258,7 @@
         const currentSec = now.getSeconds();
         const currentMin = now.getMinutes();
 
-        // Pair Switch Auto-Flush
+        // Pair Switch Flush
         if (storedPair !== "" && currentPair !== storedPair && currentPair.length > 3) {
             candleOpen = price;
             candleHigh = price || -Infinity;
@@ -245,7 +273,7 @@
         }
         storedPair = currentPair;
 
-        // INSTANT MINUTE ROLLOVER PURGE (:00.000)
+        // INSTANT MINUTE ROLLOVER (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                 let prevClose = candleClose || price;
@@ -290,20 +318,12 @@
                 lastRecordedTickPrice = price;
             }
 
-            // VWAP Accumulator
             tickPriceSum += price;
             totalTicksCount++;
-            let vwap = tickPriceSum / totalTicksCount;
 
-            // Tick Delta Engine
             if (lastRecordedTickPrice !== null) {
-                if (price > lastRecordedTickPrice) {
-                    buyTicks++;
-                    tickDelta++;
-                } else if (price < lastRecordedTickPrice) {
-                    sellTicks++;
-                    tickDelta--;
-                }
+                if (price > lastRecordedTickPrice) { buyTicks++; tickDelta++; }
+                else if (price < lastRecordedTickPrice) { sellTicks++; tickDelta--; }
             }
             lastRecordedTickPrice = price;
 
@@ -350,88 +370,38 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // ROUND NUMBER BARRIER DETECTION (.800, .500, .000)
-            let pStr = price.toFixed(decimals);
-            let sub = pStr.slice(-3);
-            let isNearRound = (sub === "000" || sub === "500" || sub === "800" || Math.abs(parseInt(sub) - 800) <= 12 || Math.abs(parseInt(sub) - 500) <= 12 || Math.abs(parseInt(sub) - 0) <= 12);
-            let roundEl = document.getElementById('a-round');
-            if (roundEl) {
-                if (isNearRound) {
-                    roundEl.innerText = `BARRIER .${sub} ⚠️`;
-                    roundEl.style.color = "#facc15";
+            // BOLLINGER BANDS
+            let bb = calculateBollinger(20, 2.0);
+            let bbEl = document.getElementById('a-bb');
+            if (bbEl && bb) {
+                if (price >= bb.upper) {
+                    bbEl.innerText = "OVERBOUGHT (+2σ) 🔴";
+                    bbEl.style.color = "#ef4444";
+                } else if (price <= bb.lower) {
+                    bbEl.innerText = "OVERSOLD (-2σ) 🟢";
+                    bbEl.style.color = "#10b981";
                 } else {
-                    roundEl.innerText = "CLEAR";
-                    roundEl.style.color = "#10b981";
+                    bbEl.innerText = "INSIDE RANGE";
+                    bbEl.style.color = "#38bdf8";
                 }
             }
 
-            // EXHAUSTION CLIMAX DETECTION (Image 12 Fix)
-            let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
-            let isGreen = candleClose >= candleOpen;
-            let isBullishClimax = (p1 && p1.isGreen && isGreen && isNearRound && (uPct >= 15 || bPct >= 60));
-            let isBearishClimax = (p1 && !p1.isGreen && !isGreen && isNearRound && (lPct >= 15 || bPct >= 60));
-
-            let modeEl = document.getElementById('a-mode');
-            if (modeEl) {
-                if (isBullishClimax) {
-                    modeEl.innerText = "EXHAUSTION CLIMAX 🔄 (EXPECT RED)";
-                    modeEl.style.color = "#ef4444";
-                } else if (isBearishClimax) {
-                    modeEl.innerText = "OVERSOLD CLIMAX 🔄 (EXPECT GREEN)";
-                    modeEl.style.color = "#10b981";
-                } else if (bPct >= 65) {
-                    modeEl.innerText = "MOMENTUM CONTINUATION ⚡";
-                    modeEl.style.color = "#38bdf8";
-                } else {
-                    modeEl.innerText = "BALANCED CHANNEL";
-                    modeEl.style.color = "#94a3b8";
-                }
+            // RSI
+            let currentRsi = calculateRSI(7);
+            let rsiEl = document.getElementById('a-rsi');
+            if (rsiEl) {
+                rsiEl.innerText = currentRsi.toString();
+                if (currentRsi >= 70) rsiEl.style.color = "#ef4444";
+                else if (currentRsi <= 30) rsiEl.style.color = "#10b981";
+                else rsiEl.style.color = "#38bdf8";
             }
 
-            // FLOW DELTA DISPLAY
+            // DELTA DISPLAY
             let deltaEl = document.getElementById('a-delta');
             if (deltaEl) {
-                if (tickDelta >= 10) {
-                    deltaEl.innerText = `+${tickDelta} (BUYERS 🟢)`;
-                    deltaEl.style.color = "#10b981";
-                } else if (tickDelta <= -10) {
-                    deltaEl.innerText = `${tickDelta} (SELLERS 🔴)`;
-                    deltaEl.style.color = "#ef4444";
-                } else {
-                    deltaEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta} (NEUTRAL ⚠️)`;
-                    deltaEl.style.color = "#94a3b8";
-                }
-            }
-
-            let livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
-            if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
-            else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
-            else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
-            else if (uPct >= 45 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
-
-            let patEl = document.getElementById('a-pattern');
-            if (patEl) patEl.innerText = livePat;
-
-            // SNR LEVELS
-            let swingLow = Infinity, swingHigh = -Infinity;
-            for (let i = 0; i < candleHistory.length; i++) {
-                if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
-                if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
-            }
-
-            const snrEl = document.getElementById('a-snr');
-            if (snrEl && swingLow !== Infinity && swingHigh !== -Infinity) {
-                let buffer = (swingHigh - swingLow) * 0.16;
-                if (Math.abs(price - swingLow) <= buffer) {
-                    snrEl.innerText = "SUPPORT FLOOR 🟢";
-                    snrEl.style.color = "#10b981";
-                } else if (Math.abs(price - swingHigh) <= buffer) {
-                    snrEl.innerText = "RESISTANCE ROOF 🔴";
-                    snrEl.style.color = "#ef4444";
-                } else {
-                    snrEl.innerText = "MID-CHANNEL";
-                    snrEl.style.color = "#94a3b8";
-                }
+                if (tickDelta >= 10) { deltaEl.innerText = `+${tickDelta} (BUYERS 🟢)`; deltaEl.style.color = "#10b981"; }
+                else if (tickDelta <= -10) { deltaEl.innerText = `${tickDelta} (SELLERS 🔴)`; deltaEl.style.color = "#ef4444"; }
+                else { deltaEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta} (NOISE ⚠️)`; deltaEl.style.color = "#94a3b8"; }
             }
         }
 
@@ -446,23 +416,24 @@
         let sigBox = document.getElementById('a-status-box');
         let confText = document.getElementById('a-conf-text');
         let desc = document.getElementById('a-desc');
-        if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
+        if (sigText) { sigText.innerText = "STANDBY"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Exhaustion Flip Engine Armed"; }
-        if (desc) { desc.innerHTML = "Scan in last 12s to 5s of candle"; }
+        if (confText) { confText.innerText = "Ready for Deep Calculation"; }
+        if (desc) { desc.innerHTML = "Hit scan between 14s and 6s of candle"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: EXACT DUAL-REGIME CONFLUENCE RESOLVER
+    // 4. SCANNER: TRUE 5-SECOND DEEP QUANTUM SAMPLER
     // =========================================================================
-    let isScanning = false;
+    let isDeepScanning = false;
+
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
         if (!btn || btn.dataset.bound) return;
         btn.dataset.bound = "true";
 
         btn.addEventListener('click', function() {
-            if (isScanning) return;
+            if (isDeepScanning) return;
 
             const price = getLivePrice();
             const sigBox = document.getElementById('a-status-box');
@@ -473,37 +444,44 @@
             const pFill = document.getElementById('a-progress-fill');
 
             if (!price || candleOpen === null) {
-                if (sigText) {
-                    sigText.innerText = "WAITING FOR TICK";
-                    sigText.style.color = "#f43f5e";
-                }
+                if (sigText) { sigText.innerText = "WAITING FOR TICK"; sigText.style.color = "#f43f5e"; }
                 return;
             }
 
-            isScanning = true;
-            btn.style.opacity = "0.6";
-            btn.innerText = "RESOLVING DUAL-REGIME...";
+            isDeepScanning = true;
+            btn.style.opacity = "0.5";
+            btn.innerText = "DEEP SCANNING (5 SECONDS)...";
             if (pBar) pBar.style.display = "block";
-            pFill.style.width = "0%";
+            if (pFill) pFill.style.width = "0%";
 
-            let elapsed = 0;
-            const sampleSteps = 10;
+            let sampleSteps = 50; // 50 steps * 100ms = 5.0 Seconds!
+            let step = 0;
+            let tickSamples = [];
+            let startScanDelta = tickDelta;
 
             const scanInterval = setInterval(() => {
-                elapsed++;
-                let progress = Math.min(100, Math.round((elapsed / sampleSteps) * 100));
-                pFill.style.width = `${progress}%`;
+                step++;
+                let currentTick = getLivePrice();
+                if (currentTick) tickSamples.push(currentTick);
 
-                if (elapsed >= sampleSteps) {
+                let progress = Math.min(100, Math.round((step / sampleSteps) * 100));
+                if (pFill) pFill.style.width = `${progress}%`;
+
+                // Live Stage Messages during 5 seconds
+                if (step === 10 && confText) confText.innerText = "Sampling Bollinger Band Deviations...";
+                if (step === 25 && confText) confText.innerText = "Analyzing Cumulative Order Flow...";
+                if (step === 40 && confText) confText.innerText = "Synthesizing Exhaustion vs Momentum...";
+
+                if (step >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateDualRegimeDecision();
+                    evaluate5SecondDeepMatrix(tickSamples, startScanDelta);
                 }
-            }, 60);
+            }, 100);
 
-            function evaluateDualRegimeDecision() {
-                isScanning = false;
+            function evaluate5SecondDeepMatrix(samples, initialDelta) {
+                isDeepScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN EXACT REGIME MATRIX";
+                btn.innerText = "🔬 5-SEC DEEP QUANT SCAN";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -523,96 +501,104 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
+                let bb = calculateBollinger(20, 2.0);
+                let currentRsi = calculateRSI(7);
 
-                // ROUND NUMBER LEVEL CALCULATION
-                let decimals = currentPrice > 100 ? 3 : 5;
-                let pStr = currentPrice.toFixed(decimals);
-                let sub = pStr.slice(-3);
-                let isAtRoundBarrier = (sub === "000" || sub === "500" || sub === "800" || Math.abs(parseInt(sub) - 800) <= 12 || Math.abs(parseInt(sub) - 500) <= 12 || Math.abs(parseInt(sub) - 0) <= 12);
+                let isOverboughtBB = bb ? currentPrice >= bb.upper : false;
+                let isOversoldBB = bb ? currentPrice <= bb.lower : false;
 
-                // CLIMAX EXHAUSTION EVALUATION (Image 12 Fix)
-                let isBullishClimaxAtBarrier = (p1 && p1.isGreen && isGreen && isAtRoundBarrier && (upperWickPct >= 15 || bodyPct >= 55));
-                let isBearishClimaxAtBarrier = (p1 && !p1.isGreen && !isGreen && isAtRoundBarrier && (lowerWickPct >= 15 || bodyPct >= 55));
+                // 5-Second Delta Velocity
+                let deltaShiftIn5s = tickDelta - initialDelta;
 
-                let isCall = false;
+                // Tick-VWAP
+                let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
+                let isVwapBullish = vwap > candleOpen;
+                let isVwapBearish = vwap < candleOpen;
+
+                let decision = "WAIT";
                 let setupName = "";
-                let confidence = 88;
+                let confidence = 0;
 
                 // =============================================================
-                // DUAL-REGIME MATHEMATICAL MATRIX
+                // ZERO-COLOR-BIAS QUANT LAWS (5-SECOND CONFLUENCE)
                 // =============================================================
 
-                // CASE 1: EXHAUSTION CLIMAX AT BARRIER -> PREDICT OPPOSITE CANDLE (Image 12 Fix)
-                if (isBullishClimaxAtBarrier) {
-                    // Two consecutive big green candles hitting a barrier -> Expect RED FLIP!
-                    isCall = false;
-                    setupName = `Bullish Climax at .${sub} (Exhaustion Reversal -> Next RED 🔴)`;
-                    confidence = 96;
+                // 1. STATISTICAL MEAN-REVERSION (Predict OPPOSITE color on Exhaustion)
+                // If candle is GREEN, but hits Upper Band + RSI Overbought + Upper Wick -> Next is RED!
+                if (isGreen && isOverboughtBB && currentRsi >= 65 && upperWickPct >= 15) {
+                    decision = "PUT";
+                    setupName = "Upper Bollinger Climax (Predict Next RED 🔴)";
+                    confidence = 95;
                 }
-                else if (isBearishClimaxAtBarrier) {
-                    // Two consecutive big red candles dumping into a barrier -> Expect GREEN FLIP!
-                    isCall = true;
-                    setupName = `Bearish Climax at .${sub} (Oversold Bounce -> Next GREEN 🟢)`;
-                    confidence = 96;
+                // If candle is RED, but hits Lower Band + RSI Oversold + Lower Wick -> Next is GREEN!
+                else if (!isGreen && isOversoldBB && currentRsi <= 35 && lowerWickPct >= 15) {
+                    decision = "CALL";
+                    setupName = "Lower Bollinger Climax (Predict Next GREEN 🟢)";
+                    confidence = 95;
                 }
-                // CASE 2: CLEAN UNOPPOSED MARUBOZU (No barrier nearby -> True Momentum)
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 8 && !isAtRoundBarrier) {
-                    isCall = true;
-                    setupName = "Confirmed Bullish Marubozu (Clean Continuation BUY 🟢)";
-                    confidence = 94;
+                // 2. TICK DELTA DIVERGENCE TRAP (Opposite Order-Flow)
+                else if (isGreen && tickDelta <= -12) {
+                    decision = "PUT"; // Green candle but heavy sell delta -> Fake Pump!
+                    setupName = `Negative Delta Trap (Sellers Pushing: ${tickDelta} 🔴)`;
+                    confidence = 93;
                 }
-                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 8 && !isAtRoundBarrier) {
-                    isCall = false;
-                    setupName = "Confirmed Bearish Marubozu (Clean Breakdown SELL 🔴)";
-                    confidence = 94;
+                else if (!isGreen && tickDelta >= 12) {
+                    decision = "CALL"; // Red candle but heavy buy delta -> Fake Dump!
+                    setupName = `Positive Delta Trap (Buyers Pushing: +${tickDelta} 🟢)`;
+                    confidence = 93;
                 }
-                // CASE 3: PINBAR REVERSAL BOUNCE
-                else if (lowerWickPct >= 48 && bodyPct <= 35) {
-                    isCall = true;
-                    setupName = "Floor Rejection Hammer (Bounce BUY 🟢)";
+                // 3. CLEAN UNCONTESTED MOMENTUM BREAKOUT (True Breakout)
+                else if (isGreen && bodyPct >= 70 && upperWickPct <= 6 && !isOverboughtBB && deltaShiftIn5s >= 3) {
+                    decision = "CALL";
+                    setupName = "Confirmed Volume Breakout Continuation 🟢";
+                    confidence = 92;
+                }
+                else if (!isGreen && bodyPct >= 70 && lowerWickPct <= 6 && !isOversoldBB && deltaShiftIn5s <= -3) {
+                    decision = "PUT";
+                    setupName = "Confirmed Volume Breakdown Continuation 🔴";
+                    confidence = 92;
+                }
+                // 4. HAMMER / SHOOTING STAR LIQUIDITY GRABS
+                else if (lowerWickPct >= 50 && bodyPct <= 30 && currentRsi <= 40) {
+                    decision = "CALL";
+                    setupName = "Hammer Floor Liquidity Bounce 🟢";
                     confidence = 91;
                 }
-                else if (upperWickPct >= 48 && bodyPct <= 35) {
-                    isCall = false;
-                    setupName = "Roof Rejection Star (Drop SELL 🔴)";
+                else if (upperWickPct >= 50 && bodyPct <= 30 && currentRsi >= 60) {
+                    decision = "PUT";
+                    setupName = "Shooting Star Roof Liquidity Drop 🔴";
                     confidence = 91;
                 }
-                // CASE 4: DELTA FLOW DOMINANCE
-                else if (tickDelta >= 12) {
-                    isCall = true;
-                    setupName = `Heavy Buyer Delta Flow (+${tickDelta} 🟢)`;
-                    confidence = 90;
-                }
-                else if (tickDelta <= -12) {
-                    isCall = false;
-                    setupName = `Heavy Seller Delta Flow (${tickDelta} 🔴)`;
-                    confidence = 90;
-                }
-                // DEFAULT BIAS
+                // 5. NO EDGE -> DO NOT GUESS!
                 else {
-                    isCall = isGreen;
-                    setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
-                    confidence = 85;
+                    decision = "WAIT";
+                    setupName = "No Statistically Viable Edge (Skip Candle)";
+                    confidence = 0;
                 }
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
-                let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
-                if (sigText) {
-                    sigText.innerText = action;
-                    sigText.style.color = isCall ? "#10b981" : "#ef4444";
+                if (decision === "CALL") {
+                    if (sigText) { sigText.innerText = "CALL (BUY) 🟢"; sigText.style.color = "#10b981"; }
+                    if (sigBox) sigBox.style.borderColor = "#10b981";
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 5s CONFLUENCE`;
+                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • RSI: ${currentRsi}</span>`;
+                    playTone(960, "sine", 0.22);
+                } else if (decision === "PUT") {
+                    if (sigText) { sigText.innerText = "PUT (SELL) 🔴"; sigText.style.color = "#ef4444"; }
+                    if (sigBox) sigBox.style.borderColor = "#ef4444";
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 5s CONFLUENCE`;
+                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • RSI: ${currentRsi}</span>`;
+                    playTone(440, "sine", 0.22);
+                } else {
+                    if (sigText) { sigText.innerText = "NO TRADE (WAIT ⚪)"; sigText.style.color = "#94a3b8"; }
+                    if (sigBox) sigBox.style.borderColor = "#475569";
+                    if (confText) confText.innerText = "Edge Uncertain • Capital Protected";
+                    if (desc) desc.innerHTML = `<span style="color:#94a3b8; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • RSI: ${currentRsi}</span>`;
+                    playTone(300, "sine", 0.10);
                 }
-                if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • ${action}`;
-
-                let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${setupName} • Delta: ${tickDelta > 0 ? "+" + tickDelta : tickDelta} • Body: ${bodyPct}% • ${wickInfo}`;
-                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
-
-                playTone(isCall ? 960 : 440, "sine", 0.22);
             }
         });
     }
