@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX True-Geometry Engine
+// @name         Pocket Option APEX Anti-Mutation Shield Engine
 // @namespace    https://github.com/
-// @version      310.0
-// @description  Zero-Leak Grid Purge, Micro-Wick Deadzone, Exact Real-Time OHLC & Body/Wick Sync
+// @version      320.0
+// @description  Real-Time Signal Invalidation on Spikes, Rocket Rampage Put-Lock, Trend-Weighted Confluence
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -17,9 +17,7 @@
     'use strict';
     if (window.top !== window.self) return;
 
-    // =========================================================================
     // 1. IN-PAGE CANVAS BADGE SNIFFER
-    // =========================================================================
     try {
         if (typeof CanvasRenderingContext2D !== 'undefined') {
             const origFill = CanvasRenderingContext2D.prototype.fillText;
@@ -65,7 +63,7 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }, { once: true });
 
-    // ZERO-LEAK LIVE PRICE DETECTOR (No Grid Leak Allowed)
+    // DUAL-FALLBACK LIVE PRICE GETTER
     function getLivePrice() {
         if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
             return window.__po_live_tick;
@@ -80,7 +78,6 @@
                     let rect = el.getBoundingClientRect();
                     if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                         let n = parseFloat(txt);
-                        // Strict check: Ignore static payout and common multipliers
                         if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
                             candidates.push({ val: n, str: txt, top: rect.top });
                         }
@@ -90,12 +87,10 @@
         }
 
         if (candidates.length > 0) {
-            // Strictly exclude static grid lines ending in 00 or 50
             const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
             if (nonGrid.length > 0) {
                 return nonGrid[nonGrid.length - 1].val;
             }
-            // NEVER return grid candidate fallback!
             return null;
         }
         return null;
@@ -113,9 +108,7 @@
         return "EUR/USD OTC";
     }
 
-    // =========================================================================
     // 2. HUD INTERFACE
-    // =========================================================================
     function mountHUD() {
         const root = document.body || document.documentElement;
         if (!root || document.getElementById('po-apex-hud')) return;
@@ -143,10 +136,10 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX TRUE-GEOMETRY v310</span>
+                <span>⚡ APEX ANTI-MUTATION v320</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
-            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">EUR/USD OTC</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE TICK: <span id="a-price" style="color: #10b981; font-weight: bold;">--</span></div>
             
             <div style="background: #081024; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b;">
@@ -162,13 +155,13 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">STATE: <span id="a-state" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">MACRO TREND: <span id="a-trend" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN EXACT MATRIX
+                🔬 SCAN EXACT CONFLUENCE
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -176,11 +169,11 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Exact Confluence Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Protected Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Live & Synced</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Anti-Mutation Active</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 14s to 5s of candle</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
         `;
 
         root.appendChild(hud);
@@ -210,13 +203,14 @@
         bindScannerEvents();
     }
 
-    // =========================================================================
-    // 3. CANDLE ENGINE WITH MICRO-WICK DEADZONE SUPPRESSOR
-    // =========================================================================
+    // 3. CANDLE ENGINE
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
+
+    // Active Signal Watchdog (Checks for shape mutations in last 3 seconds)
+    let activeSignalObj = null;
 
     function runEngineTick() {
         mountHUD();
@@ -227,7 +221,6 @@
         const currentSec = now.getSeconds();
         const currentMin = now.getMinutes();
 
-        // Pair Switch Auto-Flush
         if (storedPair !== "" && currentPair !== storedPair && currentPair.length > 3) {
             candleOpen = price;
             candleHigh = price || -Infinity;
@@ -235,6 +228,7 @@
             candleClose = price;
             candleHistory = [];
             lastMinuteTracked = currentMin;
+            activeSignalObj = null;
         }
         storedPair = currentPair;
 
@@ -266,6 +260,7 @@
             candleHigh = price || -Infinity;
             candleLow = price || Infinity;
             candleClose = price;
+            activeSignalObj = null; // Clear on new candle
         }
 
         if (price) {
@@ -290,13 +285,13 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // REAL LIVE WICK & BODY RATIOS (WITH MICRO-DEADZONE)
+            // REAL WICK & BODY RATIOS
             let cRange = Math.max(0.00001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
             let cLower = Math.max(0, Math.min(candleOpen, candleClose) - candleLow);
 
-            // DEADZONE: Agar wick 2 sub-pips (0.000025) se choti ho ya range ka 4% se kam ho, to 0% snap karo
+            // Micro-Deadzone Filter
             if (cUpper < 0.000025 || (cUpper / cRange) < 0.04) cUpper = 0;
             if (cLower < 0.000025 || (cLower / cRange) < 0.04) cLower = 0;
 
@@ -304,7 +299,6 @@
             let uPct = Math.round((cUpper / cRange) * 100);
             let lPct = Math.round((cLower / cRange) * 100);
 
-            // Balance total to 100%
             let sum = bPct + uPct + lPct;
             if (sum > 100) {
                 let factor = 100 / sum;
@@ -320,32 +314,45 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
+            // Trend Streaks
+            let redStreak = 0, greenStreak = 0;
+            for (let i = candleHistory.length - 1; i >= 0; i--) {
+                if (!candleHistory[i].isGreen) {
+                    if (greenStreak === 0) redStreak++;
+                    else break;
+                } else {
+                    if (redStreak === 0) greenStreak++;
+                    else break;
+                }
+            }
+            if (candleClose < candleOpen) redStreak++;
+            else greenStreak++;
+
+            let trendEl = document.getElementById('a-trend');
+            if (trendEl) {
+                if (greenStreak >= 4) {
+                    trendEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
+                    trendEl.style.color = "#10b981";
+                } else if (redStreak >= 4) {
+                    trendEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
+                    trendEl.style.color = "#ef4444";
+                } else {
+                    trendEl.innerText = "BALANCED FLOW";
+                    trendEl.style.color = "#38bdf8";
+                }
+            }
+
             let isGreen = candleClose >= candleOpen;
-            let livePat = "Volume Flow";
+            let livePat = isGreen ? "Buyer Momentum 🟢" : "Seller Momentum 🔴";
             if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
             else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
             else if (lPct >= 45 && bPct <= 35) livePat = "Hammer Rejection 🟢";
             else if (uPct >= 45 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
-            else if (bPct <= 10) livePat = "Doji Indecision ⚠️";
-            else livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
 
             let patEl = document.getElementById('a-pattern');
             if (patEl) patEl.innerText = livePat;
 
-            let stateEl = document.getElementById('a-state');
-            if (stateEl) {
-                if (lPct >= 40 || uPct >= 40) {
-                    stateEl.innerText = "REJECTION / PIVOT 🔄";
-                    stateEl.style.color = "#facc15";
-                } else if (bPct >= 60) {
-                    stateEl.innerText = "STRONG MOMENTUM ⚡";
-                    stateEl.style.color = "#10b981";
-                } else {
-                    stateEl.innerText = "BALANCED FLOW";
-                    stateEl.style.color = "#38bdf8";
-                }
-            }
-
+            // SNR
             let swingLow = Infinity, swingHigh = -Infinity;
             for (let i = 0; i < candleHistory.length; i++) {
                 if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
@@ -366,6 +373,37 @@
                     snrEl.style.color = "#94a3b8";
                 }
             }
+
+            // =================================================================
+            // LIVE SIGNAL MUTATION WATCHDOG (Cancels signal if price spikes)
+            // =================================================================
+            if (activeSignalObj && currentSec >= 50) {
+                let sigText = document.getElementById('a-signal-text');
+                let sigBox = document.getElementById('a-status-box');
+                let confText = document.getElementById('a-conf-text');
+                let desc = document.getElementById('a-desc');
+
+                // Case 1: Was PUT (Shooting Star/Drop), but candle spiked UP into strong GREEN body!
+                if (!activeSignalObj.isCall && isGreen && bPct >= 50) {
+                    sigText.innerText = "SIGNAL ABORTED ⚠️";
+                    sigText.style.color = "#f43f5e";
+                    sigBox.style.borderColor = "#f43f5e";
+                    confText.innerText = "SHAPE MUTATED: CANDLE PUMPED UP";
+                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Wick collapsed into solid green body • DO NOT ENTER PUT!</span>`;
+                    activeSignalObj = null; // Kill signal
+                    playTone(250, "sawtooth", 0.3);
+                }
+                // Case 2: Was CALL (Hammer/Bounce), but candle dumped DOWN into strong RED body!
+                else if (activeSignalObj.isCall && !isGreen && bPct >= 50) {
+                    sigText.innerText = "SIGNAL ABORTED ⚠️";
+                    sigText.style.color = "#f43f5e";
+                    sigBox.style.borderColor = "#f43f5e";
+                    confText.innerText = "SHAPE MUTATED: CANDLE DUMPED DOWN";
+                    desc.innerHTML = `<span style="color:#f43f5e; font-size:7.5px;">Support failed, candle dumped red • DO NOT ENTER CALL!</span>`;
+                    activeSignalObj = null; // Kill signal
+                    playTone(250, "sawtooth", 0.3);
+                }
+            }
         }
 
         let elPair = document.getElementById('a-pair');
@@ -374,9 +412,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // =========================================================================
-    // 4. SCANNER: TRUE-GEOMETRY CONFLUENCE EVALUATOR
-    // =========================================================================
+    // 4. SCANNER WITH ROCKET PUMP PROTECTION
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -404,12 +440,12 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "EVALUATING EXACT GEOMETRY...";
+            btn.innerText = "SCANNING FINAL MOMENTUM...";
             if (pBar) pBar.style.display = "block";
             pFill.style.width = "0%";
 
             let elapsed = 0;
-            const sampleSteps = 12;
+            const sampleSteps = 10;
 
             const scanInterval = setInterval(() => {
                 elapsed++;
@@ -418,14 +454,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateExactGeometryDecision();
+                    evaluateProtectedDecision();
                 }
-            }, 75);
+            }, 60);
 
-            function evaluateExactGeometryDecision() {
+            function evaluateProtectedDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN EXACT MATRIX";
+                btn.innerText = "🔬 SCAN EXACT CONFLUENCE";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -445,56 +481,74 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                let swingLow = Infinity, swingHigh = -Infinity;
-                for (let i = 0; i < candleHistory.length; i++) {
-                    if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
-                    if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
+                let redStreak = 0, greenStreak = 0;
+                for (let i = candleHistory.length - 1; i >= 0; i--) {
+                    if (!candleHistory[i].isGreen) {
+                        if (greenStreak === 0) redStreak++;
+                        else break;
+                    } else {
+                        if (redStreak === 0) greenStreak++;
+                        else break;
+                    }
                 }
-
-                let channelRange = Math.max(0.0001, swingHigh - swingLow);
-                let isAtFloor = (currentPrice - swingLow) <= (channelRange * 0.18);
-                let isAtRoof = (swingHigh - currentPrice) <= (channelRange * 0.18);
+                if (!isGreen) redStreak++;
+                else greenStreak++;
 
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
-                // 1. REJECTION PIVOT AT SNR
-                if (lowerWickPct >= 40 && isAtFloor) {
+                // =============================================================
+                // LAW 1: ROCKET RAMPAGE PROTOCOL (FIX FOR IMAGE 10)
+                // =============================================================
+                if (greenStreak >= 4) {
+                    // When 4+ continuous green candles are climbing a staircase, counter-trend PUT is illegal!
                     isCall = true;
-                    setupName = "Support Floor Rejection Pivot 🟢";
-                    confidence = 94;
-                } else if (upperWickPct >= 40 && isAtRoof) {
-                    isCall = false;
-                    setupName = "Resistance Roof Rejection Pivot 🔴";
-                    confidence = 94;
+                    setupName = `${greenStreak}x Rocket Rampage (Follow Buy • Put Banned)`;
+                    confidence = 96;
                 }
-                // 2. EXHAUSTION PINBARS (Without SNR requirement)
-                else if (!isGreen && lowerWickPct >= 48 && bodyPct <= 40) {
-                    isCall = true;
-                    setupName = "Exhaustion Hammer Bounce 🟢";
-                    confidence = 93;
-                } else if (isGreen && upperWickPct >= 48 && bodyPct <= 40) {
+                // LAW 2: WATERFALL DUMP PROTOCOL
+                else if (redStreak >= 4) {
                     isCall = false;
-                    setupName = "Exhaustion Star Drop 🔴";
-                    confidence = 93;
+                    setupName = `${redStreak}x Waterfall Dump (Follow Sell • Call Banned)`;
+                    confidence = 96;
                 }
-                // 3. CLEAN MOMENTUM BREAKOUTS (No wicks)
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 10) {
+                // LAW 3: SOLID BREAKOUT EXPANSIONS
+                else if (isGreen && bodyPct >= 55 && upperWickPct <= 20) {
                     isCall = true;
                     setupName = "Bullish Solid Expansion 🟢";
-                    confidence = 92;
-                } else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10) {
+                    confidence = 93;
+                }
+                else if (!isGreen && bodyPct >= 55 && lowerWickPct <= 20) {
                     isCall = false;
                     setupName = "Bearish Solid Avalanche 🔴";
-                    confidence = 92;
+                    confidence = 93;
                 }
-                // 4. FLOW CONTINUATION
+                // LAW 4: CONFIRMED PINBAR REJECTIONS (ONLY in normal/balanced market)
+                else if (lowerWickPct >= 48 && bodyPct <= 35 && redStreak <= 2) {
+                    isCall = true;
+                    setupName = "Hammer Floor Rejection Bounce 🟢";
+                    confidence = 91;
+                }
+                else if (upperWickPct >= 48 && bodyPct <= 35 && greenStreak <= 2) {
+                    isCall = false;
+                    setupName = "Shooting Star Roof Drop 🔴";
+                    confidence = 91;
+                }
+                // LAW 5: DEFAULT COLOR DOMINANCE
                 else {
                     isCall = isGreen;
                     setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
                     confidence = 86;
                 }
+
+                // Register Signal in Watchdog
+                activeSignalObj = {
+                    isCall: isCall,
+                    bodyPct: bodyPct,
+                    upperWickPct: upperWickPct,
+                    lowerWickPct: lowerWickPct
+                };
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
