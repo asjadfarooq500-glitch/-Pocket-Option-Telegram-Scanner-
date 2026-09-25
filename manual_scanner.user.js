@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Hysteresis Quantum Engine
+// @name         Pocket Option APEX Absolute Shield Quantum Engine
 // @namespace    https://github.com/
-// @version      410.0
-// @description  Tick-VWAP Center of Gravity, Hysteresis Noise Filter (±10 Threshold), Persistence Lock & Zero-Freeze Stream
+// @version      420.0
+// @description  Hard Macro-Trend Lockout, Delta Gatekeeper, Anti-Single-Pause-Trap Guard, Tick-VWAP & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -140,7 +140,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX HYSTERESIS v410</span>
+                <span>⚡ APEX CRASH-SHIELD v420</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -159,15 +159,15 @@
                 </div>
             </div>
 
+            <div style="font-size: 9px; color: #94a3b8;">MACRO REGIME: <span id="a-regime" style="color: #ef4444; font-weight: bold;">ANALYZING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TICK-VWAP: <span id="a-vwap" style="color: #10b981; font-weight: bold;">NEUTRAL</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">FLOW DELTA: <span id="a-delta" style="color: #10b981; font-weight: bold;">0 (NOISE)</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">CYCLE RHYTHM: <span id="a-cycle" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">FLOW DELTA: <span id="a-delta" style="color: #10b981; font-weight: bold;">0 (NEUTRAL)</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN TRUE INSTITUTIONAL FLOW
+                🔬 SCAN CRASH-SHIELD MATRIX
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -175,9 +175,9 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Institutional Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Protected Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Hysteresis Filter Armed</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Macro Crash-Shield Active</div>
             </div>
             <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
         `;
@@ -210,14 +210,13 @@
     }
 
     // =========================================================================
-    // 3. CANDLE ENGINE & TICK-VWAP CALCULATION
+    // 3. CANDLE ENGINE WITH MACRO-CRASH DETECTION & VWAP
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
 
-    // Flow & VWAP Variables
     let buyTicks = 0, sellTicks = 0, tickDelta = 0;
     let lastRecordedTickPrice = null;
     let tickPriceSum = 0, totalTicksCount = 0;
@@ -276,7 +275,6 @@
             candleLow = price || Infinity;
             candleClose = price;
 
-            // Reset Flow
             buyTicks = 0; sellTicks = 0; tickDelta = 0;
             tickPriceSum = 0; totalTicksCount = 0;
             lastRecordedTickPrice = price;
@@ -292,12 +290,12 @@
                 lastRecordedTickPrice = price;
             }
 
-            // TICK-VWAP ACCUMULATOR
+            // VWAP Accumulator
             tickPriceSum += price;
             totalTicksCount++;
             let vwap = tickPriceSum / totalTicksCount;
 
-            // CUMULATIVE TICK DELTA ENGINE
+            // Tick Delta Engine
             if (lastRecordedTickPrice !== null) {
                 if (price > lastRecordedTickPrice) {
                     buyTicks++;
@@ -352,7 +350,34 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // VWAP CENTER DISPLAY
+            // MACRO-CRASH REGIME DETECTOR (Pichli 10 candles ka count)
+            let redCount10 = 0, greenCount10 = 0;
+            let checkLen = Math.min(10, candleHistory.length);
+            for (let i = candleHistory.length - checkLen; i < candleHistory.length; i++) {
+                if (candleHistory[i].isGreen) greenCount10++;
+                else redCount10++;
+            }
+            if (candleClose < candleOpen) redCount10++;
+            else greenCount10++;
+
+            let isMacroCrash = redCount10 >= 7; // Heavy 70%+ selling crash
+            let isMacroRally = greenCount10 >= 7;
+
+            let regimeEl = document.getElementById('a-regime');
+            if (regimeEl) {
+                if (isMacroCrash) {
+                    regimeEl.innerText = `HEAVY CRASH (${redCount10}/10 RED) 🔴 [CALL BANNED]`;
+                    regimeEl.style.color = "#ef4444";
+                } else if (isMacroRally) {
+                    regimeEl.innerText = `HEAVY RALLY (${greenCount10}/10 GREEN) 🟢 [PUT BANNED]`;
+                    regimeEl.style.color = "#10b981";
+                } else {
+                    regimeEl.innerText = "BALANCED MARKET";
+                    regimeEl.style.color = "#38bdf8";
+                }
+            }
+
+            // VWAP DISPLAY
             let vwapEl = document.getElementById('a-vwap');
             if (vwapEl) {
                 if (vwap > candleOpen) {
@@ -367,14 +392,14 @@
                 }
             }
 
-            // HYSTERESIS DELTA DISPLAY (Filters out ±8 micro-jitter)
+            // FLOW DELTA DISPLAY
             let deltaEl = document.getElementById('a-delta');
             if (deltaEl) {
-                if (tickDelta >= 12) {
-                    deltaEl.innerText = `+${tickDelta} (STRONG BUYERS 🟢)`;
+                if (tickDelta >= 10) {
+                    deltaEl.innerText = `+${tickDelta} (BUYERS 🟢)`;
                     deltaEl.style.color = "#10b981";
-                } else if (tickDelta <= -12) {
-                    deltaEl.innerText = `${tickDelta} (STRONG SELLERS 🔴)`;
+                } else if (tickDelta <= -10) {
+                    deltaEl.innerText = `${tickDelta} (SELLERS 🔴)`;
                     deltaEl.style.color = "#ef4444";
                 } else {
                     deltaEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta} (NOISE JITTER ⚠️)`;
@@ -382,48 +407,7 @@
                 }
             }
 
-            // 7-CYCLE RECOGNITION
             let isGreen = candleClose >= candleOpen;
-            let histColors = candleHistory.slice(-5).map(c => c.isGreen ? "G" : "R");
-            histColors.push(isGreen ? "G" : "R");
-            let seq = histColors.join("-");
-
-            let redStreak = 0, greenStreak = 0;
-            for (let i = candleHistory.length - 1; i >= 0; i--) {
-                if (!candleHistory[i].isGreen) {
-                    if (greenStreak === 0) redStreak++;
-                    else break;
-                } else {
-                    if (redStreak === 0) greenStreak++;
-                    else break;
-                }
-            }
-            if (candleClose < candleOpen) redStreak++;
-            else greenStreak++;
-
-            let cycleEl = document.getElementById('a-cycle');
-            if (cycleEl) {
-                if (redStreak >= 4) {
-                    cycleEl.innerText = `WATERFALL CRASH (${redStreak}x RED) 🔴`;
-                    cycleEl.style.color = "#ef4444";
-                } else if (greenStreak >= 4) {
-                    cycleEl.innerText = `ROCKET RALLY (${greenStreak}x GREEN) 🟢`;
-                    cycleEl.style.color = "#10b981";
-                } else if (seq.endsWith("G-R-G-R") || seq.endsWith("R-G-R-G") || seq.endsWith("G-R-G") || seq.endsWith("R-G-R")) {
-                    cycleEl.innerText = "1-1 PING-PONG CYCLE 🏓";
-                    cycleEl.style.color = "#facc15";
-                } else if (seq.endsWith("G-G-G-R") || seq.endsWith("R-R-R-G")) {
-                    cycleEl.innerText = "3-1 TREND RECHARGE ⚡";
-                    cycleEl.style.color = "#38bdf8";
-                } else if (seq.endsWith("G-G-R") || seq.endsWith("R-R-G")) {
-                    cycleEl.innerText = "2-1 PULLBACK STAIRCASE 📈";
-                    cycleEl.style.color = "#10b981";
-                } else {
-                    cycleEl.innerText = "BALANCED FLOW";
-                    cycleEl.style.color = "#94a3b8";
-                }
-            }
-
             let livePat = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
             if (isGreen && bPct >= 65 && uPct <= 8) livePat = "Bullish Marubozu 🟢";
             else if (!isGreen && bPct >= 65 && lPct <= 8) livePat = "Bearish Marubozu 🔴";
@@ -433,7 +417,7 @@
             let patEl = document.getElementById('a-pattern');
             if (patEl) patEl.innerText = livePat;
 
-            // SNR
+            // SNR LEVELS
             let swingLow = Infinity, swingHigh = -Infinity;
             for (let i = 0; i < candleHistory.length; i++) {
                 if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
@@ -469,12 +453,12 @@
         let desc = document.getElementById('a-desc');
         if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Hysteresis Filter Armed"; }
+        if (confText) { confText.innerText = "Macro Crash-Shield Active"; }
         if (desc) { desc.innerHTML = "Scan in last 12s to 5s of candle"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: TRUE INSTITUTIONAL FLOW WITH HYSTERESIS & VWAP
+    // 4. SCANNER: CRASH-SHIELD WITH DELTA & MACRO GATEKEEPERS
     // =========================================================================
     let isScanning = false;
     function bindScannerEvents() {
@@ -503,7 +487,7 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "FILTERING MICRO-NOISE...";
+            btn.innerText = "EVALUATING CRASH SHIELD...";
             if (pBar) pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -517,14 +501,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateNoiseImmuneDecision();
+                    evaluateProtectedDecision();
                 }
             }, 60);
 
-            function evaluateNoiseImmuneDecision() {
+            function evaluateProtectedDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN TRUE INSTITUTIONAL FLOW";
+                btn.innerText = "🔬 SCAN CRASH-SHIELD MATRIX";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -548,98 +532,100 @@
                 let isVwapBullish = vwap > candleOpen;
                 let isVwapBearish = vwap < candleOpen;
 
-                // STREAKS
-                let redStreak = 0, greenStreak = 0;
-                for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (!candleHistory[i].isGreen) {
-                        if (greenStreak === 0) redStreak++;
-                        else break;
-                    } else {
-                        if (redStreak === 0) greenStreak++;
-                        else break;
-                    }
+                // MACRO TREND CALCULATION (Pichli 10 candles)
+                let redCount10 = 0, greenCount10 = 0;
+                let checkLen = Math.min(10, candleHistory.length);
+                for (let i = candleHistory.length - checkLen; i < candleHistory.length; i++) {
+                    if (candleHistory[i].isGreen) greenCount10++;
+                    else redCount10++;
                 }
-                if (!isGreen) redStreak++;
-                else greenStreak++;
+                if (!isGreen) redCount10++;
+                else greenCount10++;
+
+                let isMacroCrash = redCount10 >= 7; // Severe Waterfall Crash
+                let isMacroRally = greenCount10 >= 7;
+
+                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
+                let p2 = candleHistory.length >= 2 ? candleHistory[candleHistory.length - 2] : null;
+
+                // SINGLE PAUSE TRAP CHECK (Fix for Screenshot 11)
+                // If previous was 1 green pause after a red dump, and current is failing
+                let isSinglePauseTrap = (p2 && p1 && !p2.isGreen && p1.isGreen && !isGreen);
 
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
                 // =============================================================
-                // HYSTERESIS QUANTUM RULES (IMMUNITY TO 2-4 TICK FAKES)
+                // ABSOLUTE GATEKEEPER LAWS (NO COUNTER-TREND TRADES)
                 // =============================================================
 
-                // RULE 1: WATERFALL DUMP VETO (CALL IS 100% BANNED)
-                if (redStreak >= 4 || (!isGreen && bodyPct >= 50 && tickDelta <= -10)) {
+                // GATE 1: MACRO CRASH LOCK (CALL IS 100% FORBIDDEN IN A CRASH)
+                if (isMacroCrash) {
+                    isCall = false; // Strictly SELL!
+                    setupName = `Severe Macro Crash (${redCount10}/10 RED • CALL Permanently Banned 🔴)`;
+                    confidence = 98;
+                }
+                // GATE 2: MACRO RALLY LOCK (PUT IS 100% FORBIDDEN IN A RALLY)
+                else if (isMacroRally) {
+                    isCall = true; // Strictly BUY!
+                    setupName = `Severe Macro Rally (${greenCount10}/10 GREEN • PUT Permanently Banned 🟢)`;
+                    confidence = 98;
+                }
+                // GATE 3: SINGLE PAUSE TRAP (Catches fake green retracements)
+                else if (isSinglePauseTrap) {
+                    isCall = false; // Next is SELL!
+                    setupName = "Single Pause Trap Completion (Follow Avalanche SELL 🔴)";
+                    confidence = 96;
+                }
+                // GATE 4: DELTA GATEKEEPER (If Sellers are -10 or worse, NEVER CALL!)
+                else if (tickDelta <= -10 && isVwapBearish) {
                     isCall = false;
-                    setupName = `Waterfall Flow (${redStreak}x RED Dump • Sellers Delta: ${tickDelta} 🔴)`;
-                    confidence = 97;
+                    setupName = `Heavy Seller Delta Flow (${tickDelta} • CALL Blocked 🔴)`;
+                    confidence = 94;
                 }
-                // RULE 2: ROCKET RALLY VETO (PUT IS 100% BANNED)
-                else if (greenStreak >= 4 || (isGreen && bodyPct >= 50 && tickDelta >= 10)) {
+                // GATE 5: DELTA GATEKEEPER (If Buyers are +10 or better, NEVER PUT!)
+                else if (tickDelta >= 10 && isVwapBullish) {
                     isCall = true;
-                    setupName = `Rocket Flow (${greenStreak}x GREEN Pump • Buyers Delta: +${tickDelta} 🟢)`;
-                    confidence = 97;
+                    setupName = `Heavy Buyer Delta Flow (+${tickDelta} • PUT Blocked 🟢)`;
+                    confidence = 94;
                 }
-                // RULE 3: SOLID MARUBOZU BREAKOUTS (Aligned with Tick-VWAP)
+                // GATE 6: SOLID BREAKOUTS
                 else if (isGreen && bodyPct >= 65 && upperWickPct <= 10 && isVwapBullish) {
                     isCall = true;
-                    setupName = "Confirmed Bullish Marubozu (VWAP + Momentum 🟢)";
-                    confidence = 96;
+                    setupName = "Confirmed Bullish Marubozu Breakout 🟢";
+                    confidence = 93;
                 }
                 else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10 && isVwapBearish) {
                     isCall = false;
-                    setupName = "Confirmed Bearish Marubozu (VWAP + Breakdown 🔴)";
-                    confidence = 96;
+                    setupName = "Confirmed Bearish Marubozu Breakdown 🔴";
+                    confidence = 93;
                 }
-                // RULE 4: DELTA DIVERGENCE TRAP (Catches fake micro-spikes)
-                else if (isGreen && tickDelta <= -12) {
-                    isCall = false; // Green candle but heavy sell volume -> FAKE PUMP!
-                    setupName = `Fake Buyer Pump (Bearish Delta Trap: ${tickDelta} 🔴)`;
-                    confidence = 94;
-                }
-                else if (!isGreen && tickDelta >= 12) {
-                    isCall = true; // Red candle but heavy buy volume -> FAKE DUMP!
-                    setupName = `Fake Seller Dump (Bullish Delta Trap: +${tickDelta} 🟢)`;
-                    confidence = 94;
-                }
-                // RULE 5: SUSTAINED DELTA FLOW (Must exceed hysteresis threshold ±12)
-                else if (tickDelta >= 12 && isVwapBullish) {
+                // GATE 7: CONFIRMED REVERSAL HAMMER (Only in balanced market)
+                else if (lowerWickPct >= 50 && bodyPct <= 35 && !isMacroCrash && tickDelta > -5) {
                     isCall = true;
-                    setupName = `Sustained Buyer Dominance (Delta: +${tickDelta} 🟢)`;
-                    confidence = 92;
-                }
-                else if (tickDelta <= -12 && isVwapBearish) {
-                    isCall = false;
-                    setupName = `Sustained Seller Dominance (Delta: ${tickDelta} 🔴)`;
-                    confidence = 92;
-                }
-                // RULE 6: CONFIRMED PINBAR REJECTIONS
-                else if (lowerWickPct >= 48 && bodyPct <= 35 && redStreak <= 2) {
-                    isCall = true;
-                    setupName = "Hammer Floor Rejection Bounce 🟢";
+                    setupName = "Confirmed Hammer Floor Bounce 🟢";
                     confidence = 90;
                 }
-                else if (upperWickPct >= 48 && bodyPct <= 35 && greenStreak <= 2) {
+                else if (upperWickPct >= 50 && bodyPct <= 35 && !isMacroRally && tickDelta < 5) {
                     isCall = false;
-                    setupName = "Shooting Star Roof Drop 🔴";
+                    setupName = "Confirmed Shooting Star Roof Drop 🔴";
                     confidence = 90;
                 }
-                // RULE 7: DEFAULT TO VWAP CENTER (Noise Protection)
+                // DEFAULT FLOW (Noise Protected)
                 else {
-                    isCall = isVwapBullish; // Rely on where the bulk of ticks lived!
+                    isCall = isVwapBullish;
                     setupName = isVwapBullish ? "VWAP Center Buyer Flow 🟢" : "VWAP Center Seller Flow 🔴";
                     confidence = 85;
                 }
 
-                // ABSOLUTE ANTI-CONTRADICTION SANITY CHECK
-                if (!isGreen && bodyPct >= 55 && isCall && tickDelta < 10) {
-                    isCall = false; // Never permit CALL on a strong dumping red candle!
-                    setupName = "Sanity Override: Solid Red Dump (Flipped to PUT 🔴)";
-                } else if (isGreen && bodyPct >= 55 && !isCall && tickDelta > -10) {
-                    isCall = true; // Never permit PUT on a strong pumping green candle!
-                    setupName = "Sanity Override: Solid Green Pump (Flipped to CALL 🟢)";
+                // ABSOLUTE SANITY CHECK (HARD RED DUMP OVERRIDE)
+                if (tickDelta <= -15 && isCall) {
+                    isCall = false;
+                    setupName = "Hard Delta Override (Sellers Crushing • Flipped to PUT 🔴)";
+                } else if (tickDelta >= 15 && !isCall) {
+                    isCall = true;
+                    setupName = "Hard Delta Override (Buyers Crushing • Flipped to CALL 🟢)";
                 }
 
                 let secondsToNext = 60 - currentSec;
