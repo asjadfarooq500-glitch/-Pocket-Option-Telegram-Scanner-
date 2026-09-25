@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Real-Time Titan Engine
+// @name         Pocket Option APEX Smart Pivot & Exhaustion Engine
 // @namespace    https://github.com/
-// @version      240.0
-// @description  Zero-Wait Bootstrap, Live Dynamic Pattern Engine, Anti-Flicker Memory, Dual EMA & RSI
+// @version      300.0
+// @description  Dynamic Continuation vs Reversal Pivot Matrix, Exhaustion Detector & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -140,7 +140,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX TITAN REAL-TIME v240</span>
+                <span>⚡ APEX SMART PIVOT v300</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">EUR/USD OTC</span></div>
@@ -159,14 +159,13 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">FAST RSI (7): <span id="a-rsi" style="color: #38bdf8; font-weight: bold;">50.0</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">TREND (EMA): <span id="a-trend" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">STATE: <span id="a-state" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN CONFLUENCE NOW
+                🔬 SCAN PIVOT MATRIX
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -174,7 +173,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Candle-by-Candle Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Smart Pivot Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
                 <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Live & Synced</div>
             </div>
@@ -208,38 +207,11 @@
         bindScannerEvents();
     }
 
-    // =========================================================================
-    // 3. CANDLE ENGINE & REAL-TIME PATTERN TRACKER
-    // =========================================================================
+    // 3. CANDLE ENGINE
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
-
-    function calculateEMA(period) {
-        if (candleHistory.length < 2) return candleClose;
-        let p = Math.min(period, candleHistory.length);
-        let k = 2 / (p + 1);
-        let ema = candleHistory[0].close;
-        for (let i = 1; i < candleHistory.length; i++) {
-            ema = (candleHistory[i].close * k) + (ema * (1 - k));
-        }
-        return ema;
-    }
-
-    function calculateRSI(period = 7) {
-        if (candleHistory.length < 2) return 50.0;
-        let p = Math.min(period, candleHistory.length - 1);
-        let gains = 0, losses = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
-            let diff = candleHistory[i].close - candleHistory[i - 1].close;
-            if (diff >= 0) gains += diff;
-            else losses += Math.abs(diff);
-        }
-        if (losses === 0) return 80.0;
-        let rs = gains / losses;
-        return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
-    }
 
     function runEngineTick() {
         mountHUD();
@@ -250,7 +222,6 @@
         const currentSec = now.getSeconds();
         const currentMin = now.getMinutes();
 
-        // Strict Anti-Flicker Pair Switch Flush
         if (storedPair !== "" && currentPair !== storedPair && currentPair.length > 3) {
             candleOpen = price;
             candleHigh = price || -Infinity;
@@ -261,7 +232,6 @@
         }
         storedPair = currentPair;
 
-        // Minute Rollover (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                 let prevClose = candleClose || price;
@@ -316,7 +286,7 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // LIVE WICK & BODY RATIOS
+            // WICK & BODY RATIOS
             let cRange = Math.max(0.00001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -341,48 +311,32 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // LIVE PATTERN ENGINE (UPDATES EVERY 100ms)
             let isGreen = candleClose >= candleOpen;
             let livePat = "Volume Flow";
-            if (isGreen && bPct >= 65 && uPct <= 12) livePat = "Bullish Marubozu 🟢";
-            else if (!isGreen && bPct >= 65 && lPct <= 12) livePat = "Bearish Marubozu 🔴";
-            else if (lPct >= 48 && bPct <= 35) livePat = "Hammer Rejection 🟢";
-            else if (uPct >= 48 && bPct <= 35) livePat = "Shooting Star Rejection 🔴";
+            if (isGreen && bPct >= 65 && uPct <= 12) livePat = "Bullish Marubozu (Continuation)";
+            else if (!isGreen && bPct >= 65 && lPct <= 12) livePat = "Bearish Marubozu (Continuation)";
+            else if (lPct >= 45 && bPct <= 40) livePat = "Hammer Rejection (Pivot Bounce)";
+            else if (uPct >= 45 && bPct <= 40) livePat = "Shooting Star (Pivot Drop)";
             else if (bPct <= 12) livePat = "Indecision Doji ⚠️";
-            else livePat = isGreen ? "Buyer Momentum 🟢" : "Seller Momentum 🔴";
+            else livePat = isGreen ? "Buyer Momentum" : "Seller Momentum";
 
             let patEl = document.getElementById('a-pattern');
             if (patEl) patEl.innerText = livePat;
 
-            // RSI & EMA
-            let currentRsi = calculateRSI(7);
-            let rsiEl = document.getElementById('a-rsi');
-            if (rsiEl) {
-                rsiEl.innerText = currentRsi.toString();
-                if (currentRsi >= 70) rsiEl.style.color = "#ef4444";
-                else if (currentRsi <= 30) rsiEl.style.color = "#10b981";
-                else rsiEl.style.color = "#38bdf8";
-            }
-
-            let trendEl = document.getElementById('a-trend');
-            if (trendEl) {
-                let ema5 = calculateEMA(5);
-                let ema13 = calculateEMA(13);
-                if (ema5 && ema13) {
-                    if (ema5 > ema13) {
-                        trendEl.innerText = "BULLISH FLOW 🟢";
-                        trendEl.style.color = "#10b981";
-                    } else {
-                        trendEl.innerText = "BEARISH FLOW 🔴";
-                        trendEl.style.color = "#ef4444";
-                    }
+            let stateEl = document.getElementById('a-state');
+            if (stateEl) {
+                if (lPct >= 45 || uPct >= 45) {
+                    stateEl.innerText = "REJECTION / PIVOT 🔄";
+                    stateEl.style.color = "#facc15";
+                } else if (bPct >= 65) {
+                    stateEl.innerText = "STRONG CONTINUATION ⚡";
+                    stateEl.style.color = "#10b981";
                 } else {
-                    trendEl.innerText = isGreen ? "BULLISH BIAS 🟢" : "BEARISH BIAS 🔴";
-                    trendEl.style.color = isGreen ? "#10b981" : "#ef4444";
+                    stateEl.innerText = "BALANCED FLOW";
+                    stateEl.style.color = "#38bdf8";
                 }
             }
 
-            // Swing SNR Levels
             let swingLow = Infinity, swingHigh = -Infinity;
             for (let i = 0; i < candleHistory.length; i++) {
                 if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
@@ -411,9 +365,7 @@
         if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
     }
 
-    // =========================================================================
-    // 4. SCANNER: ZERO-WAIT MULTI-CONFLUENCE EVALUATOR
-    // =========================================================================
+    // 4. SCANNER: SMART PIVOT & EXHAUSTION ENGINE
     let isScanning = false;
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -441,39 +393,34 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "EVALUATING MATRIX...";
+            btn.innerText = "ANALYZING PIVOTS...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
-            let tickSamples = [];
             let elapsed = 0;
             const sampleSteps = 12;
 
             const scanInterval = setInterval(() => {
                 elapsed++;
-                let t = getLivePrice();
-                if (t) tickSamples.push(t);
-
                 let progress = Math.min(100, Math.round((elapsed / sampleSteps) * 100));
                 if (pFill) pFill.style.width = `${progress}%`;
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateRealTimeDecision(tickSamples);
+                    evaluateSmartPivotDecision();
                 }
             }, 75);
 
-            function evaluateRealTimeDecision(ticks) {
+            function evaluateSmartPivotDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN CONFLUENCE NOW";
+                btn.innerText = "🔬 SCAN PIVOT MATRIX";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
                 const currentSec = now.getSeconds();
                 const currentPrice = candleClose || getLivePrice();
 
-                // CANDLE GEOMETRY
                 let isGreen = currentPrice >= candleOpen;
                 let bodySize = Math.abs(currentPrice - candleOpen);
                 let totalRange = Math.max(0.00001, candleHigh - candleLow);
@@ -486,9 +433,8 @@
 
                 let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
 
-                // SNR LEVEL CALCULATION
                 let swingLow = Infinity, swingHigh = -Infinity;
-                for (let i = candleHistory.length - 1; i >= 0; i--) {
+                for (let i = 0; i < candleHistory.length; i++) {
                     if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
                     if (candleHistory[i].high > swingHigh) swingHigh = candleHistory[i].high;
                 }
@@ -497,70 +443,55 @@
                 let isAtFloor = (currentPrice - swingLow) <= (channelRange * 0.18);
                 let isAtRoof = (swingHigh - currentPrice) <= (channelRange * 0.18);
 
-                // Floor Reversal Bounce Check
-                let isFloorBounce = (isAtFloor || currentPrice <= swingLow) && isGreen && (lowerWickPct >= 20 || bodyPct >= 40);
+                let isCall = false;
+                let logicName = "";
+                let confidence = 88;
 
-                // Tick Velocity
-                let tickVelocityScore = 0;
-                if (ticks.length >= 4) {
-                    let diff = ticks[ticks.length - 1] - ticks[0];
-                    if (diff > 0.00002) tickVelocityScore = 15;
-                    else if (diff < -0.00002) tickVelocityScore = -15;
+                // =============================================================
+                // SMART PIVOT & EXHAUSTION INTELLIGENCE
+                // =============================================================
+
+                // 1. REJECTION PIVOT (Bounce from Support Floor)
+                if (lowerWickPct >= 42 && isAtFloor) {
+                    isCall = true;
+                    logicName = "Support Floor Rejection Pivot (Bounce 🟢)";
+                    confidence = 94;
                 }
-
-                // Fast RSI Score
-                let rsiVal = calculateRSI(7);
-                let rsiScore = 0;
-                if (rsiVal >= 72) rsiScore = -25;
-                else if (rsiVal <= 28) rsiScore = 25;
-
-                // CONFLUENCE SCORE MATRIX (-100 to +100)
-                let score = 0;
-                let patternName = "Standard Flow";
-
-                if (isGreen && bodyPct >= 65 && upperWickPct <= 12) {
-                    score += 48;
-                    patternName = "Bullish Marubozu Expansion";
-                } else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 12) {
-                    score -= 48;
-                    patternName = "Bearish Marubozu Dump";
-                } else if (lowerWickPct >= 48 && bodyPct <= 35 && upperWickPct <= 15) {
-                    score += 45;
-                    patternName = "Hammer Floor Rejection";
-                } else if (upperWickPct >= 48 && bodyPct <= 35 && lowerWickPct <= 15) {
-                    score -= 45;
-                    patternName = "Shooting Star Roof Rejection";
-                } else if (p1 && !p1.isGreen && isGreen && currentPrice > p1.open && bodyPct >= 45) {
-                    score += 44;
-                    patternName = "Bullish Engulfing Reversal";
-                } else if (p1 && p1.isGreen && !isGreen && currentPrice < p1.open && bodyPct >= 45) {
-                    score -= 44;
-                    patternName = "Bearish Engulfing Reversal";
-                } else {
-                    score += isGreen ? 25 : -25;
-                    patternName = isGreen ? "Buyer Pressure Momentum" : "Seller Pressure Momentum";
+                // 2. REJECTION PIVOT (Drop from Resistance Roof)
+                else if (upperWickPct >= 42 && isAtRoof) {
+                    isCall = false;
+                    logicName = "Resistance Roof Rejection Pivot (Drop 🔴)";
+                    confidence = 94;
                 }
-
-                score += rsiScore;
-                score += tickVelocityScore;
-
-                // Support Floor Bounce Priority
-                if (isFloorBounce) {
-                    score += 40;
-                    patternName = "Support Floor Reversal Bounce 🟢";
+                // 3. EXHAUSTION REVERSAL (Strong Red Candle with Massive Lower Wick -> Next Green)
+                else if (!isGreen && lowerWickPct >= 50 && bodyPct <= 40) {
+                    isCall = true;
+                    logicName = "Exhaustion Reversal Pivot (Next Candle Green 🟢)";
+                    confidence = 93;
                 }
-
-                // ANTI-OPPOSITE SAFEGUARD
-                if (isGreen && score < 0 && !(upperWickPct >= 55 && isAtRoof)) {
-                    score = 25;
-                    patternName = "Buyer Flow Absorption (PUT Blocked)";
-                } else if (!isGreen && score > 0 && !(lowerWickPct >= 55 && isAtFloor)) {
-                    score = -25;
-                    patternName = "Seller Flow Pressure (CALL Blocked)";
+                // 4. EXHAUSTION REVERSAL (Strong Green Candle with Massive Upper Wick -> Next Red)
+                else if (isGreen && upperWickPct >= 50 && bodyPct <= 40) {
+                    isCall = false;
+                    logicName = "Exhaustion Reversal Pivot (Next Candle Red 🔴)";
+                    confidence = 93;
                 }
-
-                let isCall = score >= 0;
-                let finalConfidence = Math.min(98, 84 + Math.round(Math.abs(score) / 7));
+                // 5. TRUE CONTINUATION (Clean Marubozu / Big Body, No Wicks)
+                else if (isGreen && bodyPct >= 70 && upperWickPct <= 10) {
+                    isCall = true;
+                    logicName = "True Bullish Marubozu Continuation 🟢";
+                    confidence = 92;
+                }
+                else if (!isGreen && bodyPct >= 70 && lowerWickPct <= 10) {
+                    isCall = false;
+                    logicName = "True Bearish Marubozu Continuation 🔴";
+                    confidence = 92;
+                }
+                // 6. DEFAULT PRICE ACTION FLOW
+                else {
+                    isCall = isGreen;
+                    logicName = isGreen ? "Standard Buyer Flow Continuation" : "Standard Seller Flow Continuation";
+                    confidence = 86;
+                }
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
@@ -572,10 +503,10 @@
                     sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 }
                 if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${finalConfidence}% • SCORE: ${Math.abs(score)}`;
+                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • ${action}`;
 
                 let wickInfo = isCall ? `LowerWick: ${lowerWickPct}%` : `UpperWick: ${upperWickPct}%`;
-                let dynamicReason = `${patternName} • Body: ${bodyPct}% • ${wickInfo}`;
+                let dynamicReason = `${logicName} • Body: ${bodyPct}% • ${wickInfo}`;
                 if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#38bdf8; font-size: 7.5px;">${dynamicReason}</span>`;
 
                 playTone(isCall ? 960 : 440, "sine", 0.22);
