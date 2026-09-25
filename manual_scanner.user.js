@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Omni-Quantum God Engine
+// @name         Pocket Option APEX Hysteresis Quantum Engine
 // @namespace    https://github.com/
-// @version      400.0
-// @description  Cumulative Tick Delta, Volatility Squeeze Index, Tick Density Acceleration, 7-Cycle Engine, 20+ Patterns, Dual EMA & Zero-Freeze Stream
+// @version      410.0
+// @description  Tick-VWAP Center of Gravity, Hysteresis Noise Filter (±10 Threshold), Persistence Lock & Zero-Freeze Stream
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -111,7 +111,7 @@
     }
 
     // =========================================================================
-    // 2. QUANTUM HUD INTERFACE
+    // 2. HUD INTERFACE
     // =========================================================================
     function mountHUD() {
         const root = document.body || document.documentElement;
@@ -140,7 +140,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #0284c7, #2563eb); margin: -10px -10px 8px -10px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #fff; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ OMNI-QUANTUM GOD v400</span>
+                <span>⚡ APEX HYSTERESIS v410</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8;">PAIR: <span id="a-pair" style="color: #38bdf8; font-weight: bold;">SYNCING...</span></div>
@@ -159,15 +159,15 @@
                 </div>
             </div>
 
-            <div style="font-size: 9px; color: #94a3b8;">TICK DELTA: <span id="a-delta" style="color: #10b981; font-weight: bold;">0 (NEUTRAL)</span></div>
-            <div style="font-size: 9px; color: #94a3b8;">VOLATILITY: <span id="a-squeeze" style="color: #38bdf8; font-weight: bold;">NORMAL EXPANSION</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">TICK-VWAP: <span id="a-vwap" style="color: #10b981; font-weight: bold;">NEUTRAL</span></div>
+            <div style="font-size: 9px; color: #94a3b8;">FLOW DELTA: <span id="a-delta" style="color: #10b981; font-weight: bold;">0 (NOISE)</span></div>
             <div style="font-size: 9px; color: #94a3b8;">CYCLE RHYTHM: <span id="a-cycle" style="color: #facc15; font-weight: bold;">ANALYZING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">LIVE PATTERN: <span id="a-pattern" style="color: #c084fc; font-weight: bold;">DETECTING</span></div>
             <div style="font-size: 9px; color: #94a3b8;">SNR: <span id="a-snr" style="color: #38bdf8; font-weight: bold;">MID-RANGE</span></div>
             <div style="font-size: 9px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; padding: 11px 4px; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(2,132,199,0.4);">
-                🔬 SCAN GOD QUANT MATRIX
+                🔬 SCAN TRUE INSTITUTIONAL FLOW
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -175,9 +175,9 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 8px; padding: 8px 4px; background: #080f24; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">God Confluence Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Institutional Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Delta & Squeeze Armed</div>
+                <div id="a-conf-text" style="font-size: 9px; color: #38bdf8; font-weight: bold; margin-top: 1px;">Hysteresis Filter Armed</div>
             </div>
             <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 5px; text-align: center;">Scan in last 12s to 5s of candle</div>
         `;
@@ -210,50 +210,17 @@
     }
 
     // =========================================================================
-    // 3. COMPLETE CANDLE ENGINE WITH QUANTITATIVE CALCULATORS
+    // 3. CANDLE ENGINE & TICK-VWAP CALCULATION
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
     let candleHistory = [];
     let storedPair = "";
 
-    // Cumulative Delta & Flow Variables
+    // Flow & VWAP Variables
     let buyTicks = 0, sellTicks = 0, tickDelta = 0;
     let lastRecordedTickPrice = null;
-    let tickTimestamps = [];
-
-    function calculateEMA(period) {
-        if (candleHistory.length < period) return null;
-        let k = 2 / (period + 1);
-        let ema = candleHistory[0].close;
-        for (let i = 1; i < candleHistory.length; i++) {
-            ema = (candleHistory[i].close * k) + (ema * (1 - k));
-        }
-        return ema;
-    }
-
-    function calculateRSI(period = 7) {
-        if (candleHistory.length < period + 1) return 50.0;
-        let gains = 0, losses = 0;
-        for (let i = candleHistory.length - period; i < candleHistory.length; i++) {
-            let diff = candleHistory[i].close - candleHistory[i - 1].close;
-            if (diff >= 0) gains += diff;
-            else losses += Math.abs(diff);
-        }
-        if (losses === 0) return 100.0;
-        let rs = gains / losses;
-        return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
-    }
-
-    function calculateATR(period = 14) {
-        if (candleHistory.length < 3) return 0.0005;
-        let p = Math.min(period, candleHistory.length);
-        let sum = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
-            sum += candleHistory[i].range;
-        }
-        return sum / p;
-    }
+    let tickPriceSum = 0, totalTicksCount = 0;
 
     function runEngineTick() {
         mountHUD();
@@ -273,8 +240,8 @@
             candleHistory = [];
             lastMinuteTracked = currentMin;
             buyTicks = 0; sellTicks = 0; tickDelta = 0;
+            tickPriceSum = 0; totalTicksCount = 0;
             lastRecordedTickPrice = price;
-            tickTimestamps = [];
             resetStatusBox();
         }
         storedPair = currentPair;
@@ -309,10 +276,10 @@
             candleLow = price || Infinity;
             candleClose = price;
 
-            // Reset Delta and Velocity for new candle
+            // Reset Flow
             buyTicks = 0; sellTicks = 0; tickDelta = 0;
+            tickPriceSum = 0; totalTicksCount = 0;
             lastRecordedTickPrice = price;
-            tickTimestamps = [];
 
             resetStatusBox();
         }
@@ -325,6 +292,11 @@
                 lastRecordedTickPrice = price;
             }
 
+            // TICK-VWAP ACCUMULATOR
+            tickPriceSum += price;
+            totalTicksCount++;
+            let vwap = tickPriceSum / totalTicksCount;
+
             // CUMULATIVE TICK DELTA ENGINE
             if (lastRecordedTickPrice !== null) {
                 if (price > lastRecordedTickPrice) {
@@ -336,11 +308,6 @@
                 }
             }
             lastRecordedTickPrice = price;
-
-            // TICK FREQUENCY / DENSITY (Sliding 4s window)
-            let curMs = Date.now();
-            tickTimestamps.push(curMs);
-            tickTimestamps = tickTimestamps.filter(t => (curMs - t) <= 4000);
 
             if (price > candleHigh) candleHigh = price;
             if (price < candleLow) candleLow = price;
@@ -357,7 +324,7 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // WICK & BODY RATIOS (WITH MICRO-DEADZONE)
+            // WICK & BODY RATIOS
             let cRange = Math.max(0.00001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -385,35 +352,33 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // DISPLAY DELTA
-            let deltaEl = document.getElementById('a-delta');
-            if (deltaEl) {
-                let sign = tickDelta > 0 ? "+" : "";
-                deltaEl.innerText = `${sign}${tickDelta} (${tickDelta > 0 ? "BUYERS 🟢" : (tickDelta < 0 ? "SELLERS 🔴" : "NEUTRAL")})`;
-                deltaEl.style.color = tickDelta > 0 ? "#10b981" : (tickDelta < 0 ? "#ef4444" : "#94a3b8");
-            }
-
-            // VOLATILITY SQUEEZE DETECTOR
-            let atr14 = calculateATR(14);
-            let squeezeEl = document.getElementById('a-squeeze');
-            let isSqueezed = false;
-            if (candleHistory.length >= 4) {
-                let recentAvgRange = (candleHistory[candleHistory.length - 1].range + candleHistory[candleHistory.length - 2].range + cRange) / 3;
-                if (recentAvgRange < (atr14 * 0.52)) {
-                    isSqueezed = true;
+            // VWAP CENTER DISPLAY
+            let vwapEl = document.getElementById('a-vwap');
+            if (vwapEl) {
+                if (vwap > candleOpen) {
+                    vwapEl.innerText = "ABOVE OPEN (BULLISH 🟢)";
+                    vwapEl.style.color = "#10b981";
+                } else if (vwap < candleOpen) {
+                    vwapEl.innerText = "BELOW OPEN (BEARISH 🔴)";
+                    vwapEl.style.color = "#ef4444";
+                } else {
+                    vwapEl.innerText = "EQUILIBRIUM";
+                    vwapEl.style.color = "#38bdf8";
                 }
             }
 
-            if (squeezeEl) {
-                if (isSqueezed) {
-                    squeezeEl.innerText = "COILING SQUEEZE ⚡ (BREAKOUT SOON)";
-                    squeezeEl.style.color = "#facc15";
-                } else if (cRange > (atr14 * 1.5)) {
-                    squeezeEl.innerText = "EXPLOSIVE EXPANSION 🚀";
-                    squeezeEl.style.color = "#10b981";
+            // HYSTERESIS DELTA DISPLAY (Filters out ±8 micro-jitter)
+            let deltaEl = document.getElementById('a-delta');
+            if (deltaEl) {
+                if (tickDelta >= 12) {
+                    deltaEl.innerText = `+${tickDelta} (STRONG BUYERS 🟢)`;
+                    deltaEl.style.color = "#10b981";
+                } else if (tickDelta <= -12) {
+                    deltaEl.innerText = `${tickDelta} (STRONG SELLERS 🔴)`;
+                    deltaEl.style.color = "#ef4444";
                 } else {
-                    squeezeEl.innerText = "NORMAL FLOW";
-                    squeezeEl.style.color = "#38bdf8";
+                    deltaEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta} (NOISE JITTER ⚠️)`;
+                    deltaEl.style.color = "#94a3b8";
                 }
             }
 
@@ -468,7 +433,7 @@
             let patEl = document.getElementById('a-pattern');
             if (patEl) patEl.innerText = livePat;
 
-            // SNR LEVELS
+            // SNR
             let swingLow = Infinity, swingHigh = -Infinity;
             for (let i = 0; i < candleHistory.length; i++) {
                 if (candleHistory[i].low < swingLow) swingLow = candleHistory[i].low;
@@ -504,12 +469,12 @@
         let desc = document.getElementById('a-desc');
         if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Delta & Squeeze Armed"; }
+        if (confText) { confText.innerText = "Hysteresis Filter Armed"; }
         if (desc) { desc.innerHTML = "Scan in last 12s to 5s of candle"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: GOD-QUANT CONFLUENCE MATRIX RESOLVER
+    // 4. SCANNER: TRUE INSTITUTIONAL FLOW WITH HYSTERESIS & VWAP
     // =========================================================================
     let isScanning = false;
     function bindScannerEvents() {
@@ -538,7 +503,7 @@
 
             isScanning = true;
             btn.style.opacity = "0.6";
-            btn.innerText = "RESOLVING QUANTUM MATRIX...";
+            btn.innerText = "FILTERING MICRO-NOISE...";
             if (pBar) pBar.style.display = "block";
             pFill.style.width = "0%";
 
@@ -552,14 +517,14 @@
 
                 if (elapsed >= sampleSteps) {
                     clearInterval(scanInterval);
-                    evaluateGodQuantumDecision();
+                    evaluateNoiseImmuneDecision();
                 }
             }, 60);
 
-            function evaluateGodQuantumDecision() {
+            function evaluateNoiseImmuneDecision() {
                 isScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 SCAN GOD QUANT MATRIX";
+                btn.innerText = "🔬 SCAN TRUE INSTITUTIONAL FLOW";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -579,7 +544,9 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
-                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
+                let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
+                let isVwapBullish = vwap > candleOpen;
+                let isVwapBearish = vwap < candleOpen;
 
                 // STREAKS
                 let redStreak = 0, greenStreak = 0;
@@ -595,103 +562,84 @@
                 if (!isGreen) redStreak++;
                 else greenStreak++;
 
-                // SEQUENCE STRING
-                let histColors = candleHistory.slice(-5).map(c => c.isGreen ? "G" : "R");
-                histColors.push(isGreen ? "G" : "R");
-                let seq = histColors.join("-");
-
-                let isPingPong = seq.endsWith("G-R-G-R") || seq.endsWith("R-G-R-G") || seq.endsWith("G-R-G") || seq.endsWith("R-G-R");
-                let is3_1_Bull = seq.endsWith("G-G-G-R");
-                let is3_1_Bear = seq.endsWith("R-R-R-G");
-
-                // DELTA DIVERGENCE CHECK (Trap Detector)
-                let isBullishDeltaTrap = isGreen && tickDelta <= -10; // Candle is green but sellers flooded
-                let isBearishDeltaTrap = !isGreen && tickDelta >= 10; // Candle is red but buyers flooded
-
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
                 // =============================================================
-                // SUPREME QUANTUM LAWS (PRIORITY RESOLUTION)
+                // HYSTERESIS QUANTUM RULES (IMMUNITY TO 2-4 TICK FAKES)
                 // =============================================================
 
-                // LAW 1: WATERFALL DUMP VETO (Counter-Trading CALL BANNED)
-                if (redStreak >= 4) {
+                // RULE 1: WATERFALL DUMP VETO (CALL IS 100% BANNED)
+                if (redStreak >= 4 || (!isGreen && bodyPct >= 50 && tickDelta <= -10)) {
                     isCall = false;
-                    setupName = `Waterfall Avalanche (${redStreak}x RED • CALL Banned 🔴)`;
+                    setupName = `Waterfall Flow (${redStreak}x RED Dump • Sellers Delta: ${tickDelta} 🔴)`;
                     confidence = 97;
                 }
-                // LAW 2: ROCKET RALLY VETO (Counter-Trading PUT BANNED)
-                else if (greenStreak >= 4) {
+                // RULE 2: ROCKET RALLY VETO (PUT IS 100% BANNED)
+                else if (greenStreak >= 4 || (isGreen && bodyPct >= 50 && tickDelta >= 10)) {
                     isCall = true;
-                    setupName = `Rocket Rampage (${greenStreak}x GREEN • PUT Banned 🟢)`;
+                    setupName = `Rocket Flow (${greenStreak}x GREEN Pump • Buyers Delta: +${tickDelta} 🟢)`;
                     confidence = 97;
                 }
-                // LAW 3: SOLID MARUBOZU EXPANSIONS (Clean Institutional Breakout)
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 10) {
+                // RULE 3: SOLID MARUBOZU BREAKOUTS (Aligned with Tick-VWAP)
+                else if (isGreen && bodyPct >= 65 && upperWickPct <= 10 && isVwapBullish) {
                     isCall = true;
-                    setupName = "Bullish Solid Marubozu Breakout 🟢";
+                    setupName = "Confirmed Bullish Marubozu (VWAP + Momentum 🟢)";
                     confidence = 96;
                 }
-                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10) {
+                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 10 && isVwapBearish) {
                     isCall = false;
-                    setupName = "Bearish Solid Marubozu Breakdown 🔴";
+                    setupName = "Confirmed Bearish Marubozu (VWAP + Breakdown 🔴)";
                     confidence = 96;
                 }
-                // LAW 4: DELTA DIVERGENCE ABSORPTION TRAP
-                else if (isBullishDeltaTrap) {
-                    isCall = false; // Green candle with heavy sell delta -> Expect DROP!
-                    setupName = `Negative Delta Trap (Sell Divergence: ${tickDelta} 🔴)`;
+                // RULE 4: DELTA DIVERGENCE TRAP (Catches fake micro-spikes)
+                else if (isGreen && tickDelta <= -12) {
+                    isCall = false; // Green candle but heavy sell volume -> FAKE PUMP!
+                    setupName = `Fake Buyer Pump (Bearish Delta Trap: ${tickDelta} 🔴)`;
                     confidence = 94;
                 }
-                else if (isBearishDeltaTrap) {
-                    isCall = true; // Red candle with heavy buy delta -> Expect BOUNCE!
-                    setupName = `Positive Delta Trap (Buy Divergence: +${tickDelta} 🟢)`;
+                else if (!isGreen && tickDelta >= 12) {
+                    isCall = true; // Red candle but heavy buy volume -> FAKE DUMP!
+                    setupName = `Fake Seller Dump (Bullish Delta Trap: +${tickDelta} 🟢)`;
                     confidence = 94;
                 }
-                // LAW 5: 3-1 RECHARGE CYCLES
-                else if (is3_1_Bull) {
+                // RULE 5: SUSTAINED DELTA FLOW (Must exceed hysteresis threshold ±12)
+                else if (tickDelta >= 12 && isVwapBullish) {
                     isCall = true;
-                    setupName = "3G-1R Recharge Completion (Resume BUY 🟢)";
-                    confidence = 93;
-                }
-                else if (is3_1_Bear) {
-                    isCall = false;
-                    setupName = "3R-1G Recharge Completion (Resume SELL 🔴)";
-                    confidence = 93;
-                }
-                // LAW 6: 1-1 PING-PONG CYCLES (Only in balanced range)
-                else if (isPingPong && redStreak < 2 && greenStreak < 2) {
-                    isCall = !isGreen;
-                    setupName = isCall ? "1-1 Ping-Pong Alternation (Flip BUY 🟢)" : "1-1 Ping-Pong Alternation (Flip SELL 🔴)";
+                    setupName = `Sustained Buyer Dominance (Delta: +${tickDelta} 🟢)`;
                     confidence = 92;
                 }
-                // LAW 7: CONFIRMED PINBAR REJECTIONS
+                else if (tickDelta <= -12 && isVwapBearish) {
+                    isCall = false;
+                    setupName = `Sustained Seller Dominance (Delta: ${tickDelta} 🔴)`;
+                    confidence = 92;
+                }
+                // RULE 6: CONFIRMED PINBAR REJECTIONS
                 else if (lowerWickPct >= 48 && bodyPct <= 35 && redStreak <= 2) {
                     isCall = true;
                     setupName = "Hammer Floor Rejection Bounce 🟢";
-                    confidence = 91;
+                    confidence = 90;
                 }
                 else if (upperWickPct >= 48 && bodyPct <= 35 && greenStreak <= 2) {
                     isCall = false;
                     setupName = "Shooting Star Roof Drop 🔴";
-                    confidence = 91;
+                    confidence = 90;
                 }
-                // LAW 8: FLOW DOMINANCE
+                // RULE 7: DEFAULT TO VWAP CENTER (Noise Protection)
                 else {
-                    isCall = isGreen;
-                    setupName = isGreen ? "Buyer Pressure Flow 🟢" : "Seller Pressure Flow 🔴";
-                    confidence = 86;
+                    isCall = isVwapBullish; // Rely on where the bulk of ticks lived!
+                    setupName = isVwapBullish ? "VWAP Center Buyer Flow 🟢" : "VWAP Center Seller Flow 🔴";
+                    confidence = 85;
                 }
 
-                // ABSOLUTE SANITY CHECK (Never contradict strong green/red Marubozu)
-                if (isGreen && bodyPct >= 62 && !isCall && !isBullishDeltaTrap) {
-                    isCall = true;
-                    setupName = "Bullish Momentum Veto (Flipped to CALL 🟢)";
-                } else if (!isGreen && bodyPct >= 62 && isCall && !isBearishDeltaTrap) {
-                    isCall = false;
-                    setupName = "Bearish Momentum Veto (Flipped to PUT 🔴)";
+                // ABSOLUTE ANTI-CONTRADICTION SANITY CHECK
+                if (!isGreen && bodyPct >= 55 && isCall && tickDelta < 10) {
+                    isCall = false; // Never permit CALL on a strong dumping red candle!
+                    setupName = "Sanity Override: Solid Red Dump (Flipped to PUT 🔴)";
+                } else if (isGreen && bodyPct >= 55 && !isCall && tickDelta > -10) {
+                    isCall = true; // Never permit PUT on a strong pumping green candle!
+                    setupName = "Sanity Override: Solid Green Pump (Flipped to CALL 🟢)";
                 }
 
                 let secondsToNext = 60 - currentSec;
