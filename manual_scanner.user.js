@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX SMC Quantum Engine
+// @name         Pocket Option APEX SMC Titan Shield
 // @namespace    https://github.com/
-// @version      530.0
-// @description  Full SMC Institutional Matrix (Order Blocks, FVG, BOS/CHOCH, CVD, ADX, VWAP, MACD) & 5s Deep Handshake
+// @version      540.0
+// @description  Zero-Wick Marubozu Veto, FVG Invalidation Gatekeeper, Strict Standby Enforcement & 5s Deep Telemetry
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -103,11 +103,11 @@
                 if (t.length > 3 && t !== "OTC ASSET") return t;
             }
         }
-        return "CAD/JPY OTC";
+        return "QAR/CNY OTC";
     }
 
     // =========================================================================
-    // 2. CYBER-PUNK SMC HUD TERMINAL INTERFACE
+    // 2. HUD INTERFACE
     // =========================================================================
     function mountHUD() {
         const root = document.body || document.documentElement;
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -9px -9px 7px -9px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX SMC QUANTUM v530</span>
+                <span>⚡ APEX SMC TITAN SHIELD v540</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.25); color:#fff; padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between;">
@@ -144,7 +144,6 @@
                 <span>TICK: <b id="a-price" style="color: #10b981;">--</b></span>
             </div>
             
-            <!-- SMC MULTI-TELEMETRY GRID -->
             <div style="background: #061226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b; font-size: 8px;">
                 <div style="display: flex; justify-content: space-between; color: #94a3b8;">
                     <span>RSI: <b id="a-rsi" style="color:#38bdf8;">--</b></span>
@@ -158,7 +157,6 @@
                 </div>
             </div>
 
-            <!-- LIVE CANDLE STRUCTURE -->
             <div style="background: #08152e; padding: 4px 5px; border-radius: 6px; margin: 4px 0; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8;">
                 <div style="display: flex; justify-content: space-between;">
                     <span>O: <b id="a-open" style="color:#fff;">--</b></span>
@@ -172,8 +170,8 @@
                 </div>
             </div>
 
-            <div style="font-size: 8.5px; color: #94a3b8;">SMC MATRIX: <span id="a-smc" style="color: #00f0ff; font-weight: bold;">ORDER BLOCK SYNC</span></div>
-            <div style="font-size: 8.5px; color: #94a3b8;">MARKET REGIME: <span id="a-regime" style="color: #10b981; font-weight: bold;">ANALYZING</span></div>
+            <div style="font-size: 8.5px; color: #94a3b8;">SMC MATRIX: <span id="a-smc" style="color: #00f0ff; font-weight: bold;">SYNCING</span></div>
+            <div style="font-size: 8.5px; color: #94a3b8;">SHIELD STATE: <span id="a-shield" style="color: #10b981; font-weight: bold;">ACTIVE</span></div>
             <div style="font-size: 8.5px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 10px 4px; border-radius: 8px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
@@ -187,9 +185,9 @@
             <div id="a-status-box" style="margin-top: 7px; padding: 7px 4px; background: #061124; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
                 <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Institutional Signal</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">STANDBY</div>
-                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">SMC Engine Armed</div>
+                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Hit Scan in Last 12s-5s</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Scan in last 12s to 5s of candle</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait for confirmed signal before trading</div>
         `;
 
         root.appendChild(hud);
@@ -220,7 +218,7 @@
     }
 
     // =========================================================================
-    // 3. COMPLETE INSTITUTIONAL TELEMETRY MATH
+    // 3. CANDLE ENGINE WITH MARUBOZU & FVG VETO
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
@@ -248,9 +246,7 @@
         if (candleHistory.length < 3) return 0.0008;
         let p = Math.min(period, candleHistory.length);
         let sum = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
-            sum += candleHistory[i].range;
-        }
+        for (let i = candleHistory.length - p; i < candleHistory.length; i++) sum += candleHistory[i].range;
         return sum / p;
     }
 
@@ -278,8 +274,7 @@
         let sP = Math.min(10, candleHistory.length);
         for (let i = candleHistory.length - fP; i < candleHistory.length; i++) fastSum += candleHistory[i].close;
         for (let i = candleHistory.length - sP; i < candleHistory.length; i++) slowSum += candleHistory[i].close;
-        let diff = (fastSum / fP) - (slowSum / sP);
-        return parseFloat(diff.toFixed(4));
+        return parseFloat(((fastSum / fP) - (slowSum / sP)).toFixed(4));
     }
 
     function runEngineTick() {
@@ -306,7 +301,7 @@
         }
         storedPair = currentPair;
 
-        // INSTANT MINUTE ROLLOVER (:00.000)
+        // INSTANT MINUTE ROLLOVER PURGE (:00.000)
         if (currentMin !== lastMinuteTracked) {
             if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
                 let prevClose = candleClose || price;
@@ -403,7 +398,6 @@
             if (elUwick) elUwick.innerText = `${uPct}%`;
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
-            // UPDATE SMC TELEMETRY VALUES
             let curRsi = calculateRSI(7);
             let curAdx = calculateADX(14);
             let curAtr = calculateATR(14);
@@ -424,14 +418,20 @@
             if (atrEl) atrEl.innerText = curAtr.toFixed(4);
             if (macdEl) macdEl.innerText = curMacd.toString();
 
-            // SMC STRUCTURE TRACKER (FVG / OB / BOS)
+            // SMC STATUS & VETO LOGIC
             let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
             let p2 = candleHistory.length >= 2 ? candleHistory[candleHistory.length - 2] : null;
-
-            let hasBullishFVG = (p2 && p1 && p2.high < candleLow); // Gap between Candle 1 High and Candle 3 Low
+            let hasBullishFVG = (p2 && p1 && p2.high < candleLow);
             let hasBearishFVG = (p2 && p1 && p2.low > candleHigh);
 
             let smcEl = document.getElementById('a-smc');
+            let shieldEl = document.getElementById('a-shield');
+            let isGreen = candleClose >= candleOpen;
+
+            // Zero-Wick Marubozu Trap Indicator
+            let isSolidBullMarubozu = isGreen && bPct >= 75 && uPct <= 4;
+            let isSolidBearMarubozu = !isGreen && bPct >= 75 && lPct <= 4;
+
             if (smcEl) {
                 if (hasBullishFVG) {
                     smcEl.innerText = "BULLISH FVG IMBALANCE 🟢";
@@ -439,29 +439,22 @@
                 } else if (hasBearishFVG) {
                     smcEl.innerText = "BEARISH FVG IMBALANCE 🔴";
                     smcEl.style.color = "#ef4444";
-                } else if (curAdx > 28) {
-                    smcEl.innerText = "TRENDING EXPANSION (BOS) ⚡";
-                    smcEl.style.color = "#00f0ff";
                 } else {
                     smcEl.innerText = "ORDER BLOCK EQUILIBRIUM";
                     smcEl.style.color = "#94a3b8";
                 }
             }
 
-            let regimeEl = document.getElementById('a-regime');
-            if (regimeEl) {
-                if (curAdx < 20) {
-                    regimeEl.innerText = "CHOPPY / CONSOLIDATION ⚠️";
-                    regimeEl.style.color = "#facc15";
-                } else if (curAdx >= 28 && vwap > candleOpen) {
-                    regimeEl.innerText = "INSTITUTIONAL ACCUMULATION 🟢";
-                    regimeEl.style.color = "#10b981";
-                } else if (curAdx >= 28 && vwap < candleOpen) {
-                    regimeEl.innerText = "INSTITUTIONAL DISTRIBUTION 🔴";
-                    regimeEl.style.color = "#ef4444";
+            if (shieldEl) {
+                if (isSolidBullMarubozu) {
+                    shieldEl.innerText = "PUT BANNED (MARUBOZU ROCKET 🟢)";
+                    shieldEl.style.color = "#10b981";
+                } else if (isSolidBearMarubozu) {
+                    shieldEl.innerText = "CALL BANNED (MARUBOZU DUMP 🔴)";
+                    shieldEl.style.color = "#ef4444";
                 } else {
-                    regimeEl.innerText = "BALANCED ORDER FLOW";
-                    regimeEl.style.color = "#38bdf8";
+                    shieldEl.innerText = "SHIELD ARMED";
+                    shieldEl.style.color = "#00f0ff";
                 }
             }
         }
@@ -479,12 +472,12 @@
         let desc = document.getElementById('a-desc');
         if (sigText) { sigText.innerText = "STANDBY"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "SMC Engine Armed"; }
-        if (desc) { desc.innerHTML = "Scan in last 12s to 5s of candle"; }
+        if (confText) { confText.innerText = "Hit Scan in Last 12s-5s"; }
+        if (desc) { desc.innerHTML = "Wait for confirmed signal before trading"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: 5-STAGE SMC HANDSHAKE RESOLVER
+    // 4. SCANNER: STRICT MULTI-ANGLE SMC HANDSHAKE
     // =========================================================================
     let isHandshakeScanning = false;
 
@@ -515,7 +508,7 @@
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
-            let steps = 50; // 50 * 100ms = 5 Seconds Deep Scan
+            let steps = 50; // 5.0 Seconds
             let curStep = 0;
             let startDelta = tickDelta;
 
@@ -524,10 +517,9 @@
                 let progress = Math.min(100, Math.round((curStep / steps) * 100));
                 if (pFill) pFill.style.width = `${progress}%`;
 
-                // Multi-Stage Telemetry Feedback
-                if (curStep === 10 && confText) confText.innerText = "Step 1/5: Order Block & FVG Mapping...";
-                if (curStep === 22 && confText) confText.innerText = "Step 2/5: Ingesting CVD Flow Delta...";
-                if (curStep === 34 && confText) confText.innerText = "Step 3/5: ADX & VWAP Alignment...";
+                if (curStep === 10 && confText) confText.innerText = "Step 1/5: FVG Invalidation Check...";
+                if (curStep === 22 && confText) confText.innerText = "Step 2/5: Zero-Wick Marubozu Veto...";
+                if (curStep === 34 && confText) confText.innerText = "Step 3/5: ADX & CVD Flow Alignment...";
                 if (curStep === 45 && confText) confText.innerText = "Step 4/5: Liquidity Sweep Verification...";
 
                 if (curStep >= steps) {
@@ -561,65 +553,49 @@
 
                 let curRsi = calculateRSI(7);
                 let curAdx = calculateADX(14);
-                let curMacd = calculateMACD();
-                let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
-                let deltaShift = tickDelta - initDelta;
 
-                let p1 = candleHistory.length >= 1 ? candleHistory[candleHistory.length - 1] : null;
-                let p2 = candleHistory.length >= 2 ? candleHistory[candleHistory.length - 2] : null;
-                let hasBullishFVG = (p2 && p1 && p2.high < candleLow);
-                let hasBearishFVG = (p2 && p1 && p2.low > candleHigh);
+                let isSolidBullMarubozu = isGreen && bodyPct >= 70 && upperWickPct <= 5;
+                let isSolidBearMarubozu = !isGreen && bodyPct >= 70 && lowerWickPct <= 5;
 
                 let decision = "WAIT";
                 let setupName = "";
                 let confidence = 0;
 
                 // =============================================================
-                // SMC INSTITUTIONAL CONFLUENCE LAWS
+                // STRICT SMC TITAN LAWS (ANTI-TRAP)
                 // =============================================================
 
-                // LAW 1: CHOPPY ADX FILTER (PREVENTS RANDOM BLIND LOSSES)
-                if (curAdx < 18) {
+                // LAW 1: ZERO-WICK BULLISH MARUBOZU (FIX FOR SCREENSHOT 19)
+                // When buyers push a 70%+ solid green body with almost 0% upper wick, NEVER SELL!
+                if (isSolidBullMarubozu) {
+                    decision = "CALL";
+                    setupName = "Uncontested Bullish Marubozu (PUT Banned • BUY 🟢)";
+                    confidence = 96;
+                }
+                // LAW 2: ZERO-WICK BEARISH MARUBOZU
+                else if (isSolidBearMarubozu) {
+                    decision = "PUT";
+                    setupName = "Uncontested Bearish Marubozu (CALL Banned • SELL 🔴)";
+                    confidence = 96;
+                }
+                // LAW 3: CHOPPY NOISE FILTER
+                else if (curAdx < 18) {
                     decision = "WAIT";
                     setupName = "ADX Under 18 (Market In Chop • No Edge)";
                     confidence = 0;
                 }
-                // LAW 2: FAIR VALUE GAP (FVG) EXPANSION (CONTINUATION)
-                else if (hasBullishFVG && curAdx >= 24 && tickDelta >= 8) {
-                    decision = "CALL";
-                    setupName = "Bullish FVG Imbalance Expansion 🟢";
-                    confidence = 95;
-                }
-                else if (hasBearishFVG && curAdx >= 24 && tickDelta <= -8) {
+                // LAW 4: CONFIRMED LIQUIDITY SWEEP (REVERSAL WITH WICK)
+                else if (isGreen && upperWickPct >= 40 && curRsi >= 68) {
                     decision = "PUT";
-                    setupName = "Bearish FVG Imbalance Breakdown 🔴";
-                    confidence = 95;
-                }
-                // LAW 3: LIQUIDITY SWEEP EXHAUSTION REVERSAL (PREDICT OPPOSITE CANDLE)
-                // If candle is Green, swept resistance with upper wick, and RSI > 68 -> Next is RED!
-                else if (isGreen && upperWickPct >= 38 && curRsi >= 68) {
-                    decision = "PUT";
-                    setupName = "Buy-Side Liquidity Sweep (Exhaustion Reversal -> Next RED 🔴)";
+                    setupName = "Buy-Side Liquidity Rejection (Next RED 🔴)";
                     confidence = 94;
                 }
-                // If candle is Red, swept support with lower wick, and RSI < 32 -> Next is GREEN!
-                else if (!isGreen && lowerWickPct >= 38 && curRsi <= 32) {
+                else if (!isGreen && lowerWickPct >= 40 && curRsi <= 32) {
                     decision = "CALL";
-                    setupName = "Sell-Side Liquidity Sweep (Exhaustion Reversal -> Next GREEN 🟢)";
+                    setupName = "Sell-Side Liquidity Rejection (Next GREEN 🟢)";
                     confidence = 94;
                 }
-                // LAW 4: ORDER BLOCK ACCUMULATION / DISTRIBUTION BREAKOUT
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 8 && vwap > candleOpen && tickDelta >= 12) {
-                    decision = "CALL";
-                    setupName = "Institutional Accumulation Breakout (BOS 🟢)";
-                    confidence = 93;
-                }
-                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 8 && vwap < candleOpen && tickDelta <= -12) {
-                    decision = "PUT";
-                    setupName = "Institutional Distribution Breakdown (BOS 🔴)";
-                    confidence = 93;
-                }
-                // LAW 5: CVD DIVERGENCE ABSORPTION TRAP
+                // LAW 5: CVD DELTA DIVERGENCE TRAP
                 else if (isGreen && tickDelta <= -14) {
                     decision = "PUT";
                     setupName = `Negative CVD Absorption Trap (CVD: ${tickDelta} 🔴)`;
@@ -633,7 +609,7 @@
                 // LAW 6: NO INSTITUTIONAL CONFLUENCE
                 else {
                     decision = "WAIT";
-                    setupName = "No Institutional Edge (Capital Preserved)";
+                    setupName = "No Verified Edge • Trade Blocked";
                     confidence = 0;
                 }
 
@@ -644,19 +620,19 @@
                 if (decision === "CALL") {
                     if (sigText) { sigText.innerText = "CALL (BUY) 🟢"; sigText.style.color = "#10b981"; }
                     if (sigBox) sigBox.style.borderColor = "#10b981";
-                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • SMC VERIFIED`;
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • SMC TITAN`;
                     if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • ADX: ${curAdx} • CVD: ${tickDelta}</span>`;
                     playTone(960, "sine", 0.22);
                 } else if (decision === "PUT") {
                     if (sigText) { sigText.innerText = "PUT (SELL) 🔴"; sigText.style.color = "#ef4444"; }
                     if (sigBox) sigBox.style.borderColor = "#ef4444";
-                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • SMC VERIFIED`;
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • SMC TITAN`;
                     if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • ADX: ${curAdx} • CVD: ${tickDelta}</span>`;
                     playTone(440, "sine", 0.22);
                 } else {
                     if (sigText) { sigText.innerText = "NO TRADE (WAIT ⚪)"; sigText.style.color = "#94a3b8"; }
                     if (sigBox) sigBox.style.borderColor = "#475569";
-                    if (confText) confText.innerText = "Chop / Unconfirmed Liquidity";
+                    if (confText) confText.innerText = "Unconfirmed Setup • Capital Protected";
                     if (desc) desc.innerHTML = `<span style="color:#94a3b8; font-size:7.5px;">${setupName} • ADX: ${curAdx}</span>`;
                     playTone(300, "sine", 0.10);
                 }
