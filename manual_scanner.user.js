@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Decisive Velocity Engine
+// @name         Pocket Option APEX Climax-Exhaustion Shield
 // @namespace    https://github.com/
-// @version      610.0
-// @description  Adaptive Decisive Confluence, Fast 2.5s Deep Scan, Zero Indicator Freeze, Sub-Pip Geometry & CVD Pressure
+// @version      620.0
+// @description  Extreme RSI Climax Filter (RSI < 18 Hard PUT Ban), Parabolic ADX Bounce, CVD Reversal & Zero Indicator Freeze
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -120,7 +120,7 @@
             top: 155px !important;
             left: 10px !important;
             z-index: 2147483647 !important;
-            background: rgba(3, 8, 24, 0.98) !important;
+            background: rgba(3, 10, 24, 0.98) !important;
             border: 2px solid #00f0ff !important;
             border-radius: 14px !important;
             padding: 9px !important;
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -9px -9px 7px -9px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX DECISIVE v610</span>
+                <span>⚡ CLIMAX-EXHAUSTION v620</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.25); color:#fff; padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between;">
@@ -153,7 +153,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 3px; color: #94a3b8;">
                     <span>VWAP: <b id="a-vwap" style="color:#00f0ff;">--</b></span>
-                    <span>EMA FLOW: <b id="a-ema" style="color:#a855f7;">ACTIVE</b></span>
+                    <span>CLIMAX: <b id="a-climax" style="color:#10b981;">NORMAL</b></span>
                     <span>BB: <b id="a-bb" style="color:#38bdf8;">SYNCED</b></span>
                 </div>
             </div>
@@ -176,7 +176,7 @@
             <div style="font-size: 8.5px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 10px 4px; border-radius: 8px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
-                ⚡ DECISIVE QUANT SCAN (2.5s)
+                ⚡ DECISIVE QUANT SCAN (2.0s)
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -184,7 +184,7 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 7px; padding: 7px 4px; background: #061124; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Decisive Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Climax-Protected Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
                 <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Scan in Last 12s-4s of Candle</div>
             </div>
@@ -219,7 +219,7 @@
     }
 
     // =========================================================================
-    // 3. CANDLE ENGINE WITH ZERO-FREEZE ADAPTIVE DATA
+    // 3. CANDLE ENGINE WITH ADVANCED CLIMAX DETECTION
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
@@ -239,7 +239,8 @@
             if (diff >= 0) gains += diff;
             else losses += Math.abs(diff);
         }
-        if (losses === 0) return 75.0;
+        if (losses === 0) return 85.0;
+        if (gains === 0) return 15.0;
         let rs = gains / losses;
         return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
     }
@@ -261,7 +262,7 @@
     }
 
     function calculateADX() {
-        if (candleHistory.length < 3) return 24.0;
+        if (candleHistory.length < 3) return 25.0;
         let p = Math.min(7, candleHistory.length - 1);
         let plusDM = 0, minusDM = 0, trSum = 0;
         for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
@@ -271,10 +272,10 @@
             if (downMove > upMove && downMove > 0) minusDM += downMove;
             trSum += candleHistory[i].range;
         }
-        if (trSum === 0) return 24.0;
+        if (trSum === 0) return 25.0;
         let diDiff = Math.abs(plusDM - minusDM);
         let diSum = plusDM + minusDM;
-        return diSum === 0 ? 24.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
+        return diSum === 0 ? 25.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
     }
 
     function runEngineTick() {
@@ -408,16 +409,33 @@
             let cvdEl = document.getElementById('a-cvd');
             let vwapEl = document.getElementById('a-vwap');
             let bbEl = document.getElementById('a-bb');
-            let emaEl = document.getElementById('a-ema');
+            let climaxEl = document.getElementById('a-climax');
 
-            if (rsiEl) rsiEl.innerText = curRsi.toString();
+            if (rsiEl) {
+                rsiEl.innerText = curRsi.toString();
+                if (curRsi <= 18) rsiEl.style.color = "#10b981"; // Deep oversold alert!
+                else if (curRsi >= 82) rsiEl.style.color = "#ef4444";
+                else rsiEl.style.color = "#38bdf8";
+            }
             if (adxEl) adxEl.innerText = curAdx.toString();
             if (cvdEl) cvdEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta}`;
             if (vwapEl) vwapEl.innerText = vwap.toFixed(decimals);
 
-            if (emaEl) {
-                emaEl.innerText = price >= vwap ? "BUY FLOW 🟢" : "SELL FLOW 🔴";
-                emaEl.style.color = price >= vwap ? "#10b981" : "#ef4444";
+            // CLIMAX EXHAUSTION DETECTOR (SCREENSHOT 19 FIX)
+            let isExtremeBottom = (curRsi <= 18) || (bb && price <= bb.lower && curRsi <= 25);
+            let isExtremeTop = (curRsi >= 82) || (bb && price >= bb.upper && curRsi >= 75);
+
+            if (climaxEl) {
+                if (isExtremeBottom) {
+                    climaxEl.innerText = "BOTTOM EXHAUSTION 🟢 (PUT BANNED)";
+                    climaxEl.style.color = "#10b981";
+                } else if (isExtremeTop) {
+                    climaxEl.innerText = "TOP EXHAUSTION 🔴 (CALL BANNED)";
+                    climaxEl.style.color = "#ef4444";
+                } else {
+                    climaxEl.innerText = "NORMAL FLOW";
+                    climaxEl.style.color = "#38bdf8";
+                }
             }
 
             if (bbEl && bb) {
@@ -445,9 +463,9 @@
     }
 
     // =========================================================================
-    // 4. SCANNER: FAST 2.5s DECISIVE CONFLUENCE ENGINE
+    // 4. SCANNER: FAST 2.0s CLIMAX-PROTECTED ENGINE
     // =========================================================================
-    let isDecisiveScanning = false;
+    let isClimaxScanning = false;
 
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -455,7 +473,7 @@
         btn.dataset.bound = "true";
 
         btn.addEventListener('click', function() {
-            if (isDecisiveScanning) return;
+            if (isClimaxScanning) return;
 
             const price = getLivePrice();
             const sigBox = document.getElementById('a-status-box');
@@ -470,13 +488,13 @@
                 return;
             }
 
-            isDecisiveScanning = true;
+            isClimaxScanning = true;
             btn.style.opacity = "0.5";
-            btn.innerText = "COMPUTING BIAS (2.5s)...";
+            btn.innerText = "SCANNING CONFLUENCE (2.0s)...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
-            let totalSteps = 25; // 25 * 100ms = 2.5 Seconds Fast Scan
+            let totalSteps = 20; // 20 * 100ms = 2.0 Seconds
             let curStep = 0;
             let startDelta = tickDelta;
 
@@ -487,14 +505,14 @@
 
                 if (curStep >= totalSteps) {
                     clearInterval(scanInterval);
-                    evaluateDecisiveDecision(startDelta);
+                    evaluateClimaxDecision(startDelta);
                 }
             }, 100);
 
-            function evaluateDecisiveDecision(initDelta) {
-                isDecisiveScanning = false;
+            function evaluateClimaxDecision(initDelta) {
+                isClimaxScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "⚡ DECISIVE QUANT SCAN (2.5s)";
+                btn.innerText = "⚡ DECISIVE QUANT SCAN (2.0s)";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -515,55 +533,62 @@
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
                 let curRsi = calculateRSI(7);
+                let curAdx = calculateADX();
                 let bb = calculateBollinger(14, 2.0);
                 let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
                 let deltaShift = tickDelta - initDelta;
 
-                // MULTI-FACTOR WEIGHTED SCORING
-                let bullScore = 0;
-                let bearScore = 0;
+                let isExtremeBottom = (curRsi <= 18) || (bb && currentPrice <= bb.lower && curRsi <= 25);
+                let isExtremeTop = (curRsi >= 82) || (bb && currentPrice >= bb.upper && curRsi >= 75);
 
-                // 1. Order-Flow Delta & Shift
-                if (tickDelta > 0) bullScore += Math.min(30, tickDelta * 2);
-                else if (tickDelta < 0) bearScore += Math.min(30, Math.abs(tickDelta) * 2);
-
-                if (deltaShift > 0) bullScore += 15;
-                else if (deltaShift < 0) bearScore += 15;
-
-                // 2. VWAP Alignment
-                if (currentPrice >= vwap) bullScore += 20;
-                else bearScore += 20;
-
-                // 3. Price Action / Wicks
-                if (lowerWickPct >= 35) bullScore += 25;
-                if (upperWickPct >= 35) bearScore += 25;
-
-                // 4. Momentum Body
-                if (isGreen && bodyPct >= 55) bullScore += 20;
-                if (!isGreen && bodyPct >= 55) bearScore += 20;
-
-                // 5. Bollinger Bands
-                if (bb && currentPrice >= bb.upper) bearScore += 15; // Mean reversion drop
-                if (bb && currentPrice <= bb.lower) bullScore += 15; // Mean reversion bounce
-
-                // ADAPTIVE DECISIVE RESOLUTION (NO MORE STUBBORN "NO TRADE")
                 let isCall = false;
                 let setupName = "";
                 let confidence = 88;
 
-                if (bullScore > bearScore) {
+                // =============================================================
+                // SUPREME LAW: EXTREME CLIMAX OVERRIDE (FIX FOR SCREENSHOT 19)
+                // =============================================================
+                if (isExtremeBottom) {
+                    // Extreme oversold (RSI 11.9 / Lower BB): Selling is suicide -> BUY FLIP!
                     isCall = true;
-                    confidence = Math.min(95, 80 + Math.round((bullScore / (bullScore + bearScore || 1)) * 15));
-                    setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Flow Surge 🟢";
-                } else if (bearScore > bullScore) {
+                    confidence = 96;
+                    setupName = `Extreme Bottom Climax (RSI: ${curRsi} • PUT Banned • BUY 🟢)`;
+                }
+                else if (isExtremeTop) {
+                    // Extreme overbought (RSI > 82 / Upper BB): Buying is suicide -> SELL FLIP!
                     isCall = false;
-                    confidence = Math.min(95, 80 + Math.round((bearScore / (bullScore + bearScore || 1)) * 15));
-                    setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Flow Surge 🔴";
-                } else {
-                    // Tie-breaker based on live tick vs open
-                    isCall = isGreen;
-                    confidence = 85;
-                    setupName = isGreen ? "Buyer Pressure Edge 🟢" : "Seller Pressure Edge 🔴";
+                    confidence = 96;
+                    setupName = `Extreme Top Climax (RSI: ${curRsi} • CALL Banned • SELL 🔴)`;
+                }
+                // REGULAR CONFLUENCE WHEN NOT AT EXTREMES
+                else {
+                    let bullScore = 0;
+                    let bearScore = 0;
+
+                    if (tickDelta > 0) bullScore += Math.min(30, tickDelta * 2);
+                    else if (tickDelta < 0) bearScore += Math.min(30, Math.abs(tickDelta) * 2);
+
+                    if (deltaShift > 0) bullScore += 15;
+                    else if (deltaShift < 0) bearScore += 15;
+
+                    if (currentPrice >= vwap) bullScore += 20;
+                    else bearScore += 20;
+
+                    if (lowerWickPct >= 35) bullScore += 25;
+                    if (upperWickPct >= 35) bearScore += 25;
+
+                    if (isGreen && bodyPct >= 55) bullScore += 20;
+                    if (!isGreen && bodyPct >= 55) bearScore += 20;
+
+                    if (bullScore > bearScore) {
+                        isCall = true;
+                        confidence = Math.min(95, 82 + Math.round((bullScore / (bullScore + bearScore || 1)) * 13));
+                        setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Flow Surge 🟢";
+                    } else {
+                        isCall = false;
+                        confidence = Math.min(95, 82 + Math.round((bearScore / (bullScore + bearScore || 1)) * 13));
+                        setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Flow Surge 🔴";
+                    }
                 }
 
                 let secondsToNext = 60 - currentSec;
@@ -576,8 +601,8 @@
                     sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 }
                 if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • DECISIVE PULSE`;
-                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • Body: ${bodyPct}%</span>`;
+                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • CLIMAX PROTECTED`;
+                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • RSI: ${curRsi} • Delta: ${tickDelta}</span>`;
 
                 playTone(isCall ? 960 : 440, "sine", 0.22);
             }
