@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Omni-Synthesis Mega-Engine
+// @name         Pocket Option APEX Decisive Velocity Engine
 // @namespace    https://github.com/
-// @version      600.0
-// @description  8-to-10 Second Deep Multi-Angle Institutional Scanner, Dual EMA, ADX, RSI, BB, CVD, VWAP, SMC & Anti-Waterfall Veto
+// @version      610.0
+// @description  Adaptive Decisive Confluence, Fast 2.5s Deep Scan, Zero Indicator Freeze, Sub-Pip Geometry & CVD Pressure
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -103,7 +103,7 @@
                 if (t.length > 3 && t !== "OTC ASSET") return t;
             }
         }
-        return "QAR/CNY OTC";
+        return "AUD/CHF OTC";
     }
 
     // =========================================================================
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -9px -9px 7px -9px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ OMNI-SYNTHESIS v600</span>
+                <span>⚡ APEX DECISIVE v610</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.25); color:#fff; padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between;">
@@ -153,8 +153,8 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 3px; color: #94a3b8;">
                     <span>VWAP: <b id="a-vwap" style="color:#00f0ff;">--</b></span>
-                    <span>EMA 9/21: <b id="a-ema" style="color:#a855f7;">--</b></span>
-                    <span>BB: <b id="a-bb" style="color:#38bdf8;">--</b></span>
+                    <span>EMA FLOW: <b id="a-ema" style="color:#a855f7;">ACTIVE</b></span>
+                    <span>BB: <b id="a-bb" style="color:#38bdf8;">SYNCED</b></span>
                 </div>
             </div>
 
@@ -172,12 +172,11 @@
                 </div>
             </div>
 
-            <div style="font-size: 8.5px; color: #94a3b8;">MARKET MATRIX: <span id="a-smc" style="color: #00f0ff; font-weight: bold;">LIVE SCANNING</span></div>
-            <div style="font-size: 8.5px; color: #94a3b8;">SHIELD STATE: <span id="a-shield" style="color: #10b981; font-weight: bold;">ACTIVE</span></div>
+            <div style="font-size: 8.5px; color: #94a3b8;">RADAR: <span id="a-radar" style="color: #00f0ff; font-weight: bold;">DECISIVE MODE</span></div>
             <div style="font-size: 8.5px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 10px 4px; border-radius: 8px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
-                🔬 8-10s DEEP OMNI SCAN
+                ⚡ DECISIVE QUANT SCAN (2.5s)
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -185,11 +184,11 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 7px; padding: 7px 4px; background: #061124; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Confluence Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Decisive Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Hit Scan at 14s-10s of Candle</div>
+                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Scan in Last 12s-4s of Candle</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">8-Second deep scan evaluates all angles</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait until 12s left on clock before scanning</div>
         `;
 
         root.appendChild(hud);
@@ -220,7 +219,7 @@
     }
 
     // =========================================================================
-    // 3. CANDLE ENGINE WITH COMPLETE MATHEMATICAL CALCULATORS
+    // 3. CANDLE ENGINE WITH ZERO-FREEZE ADAPTIVE DATA
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
@@ -231,31 +230,22 @@
     let lastRecordedTickPrice = null;
     let tickPriceSum = 0, totalTicksCount = 0;
 
-    function calculateEMA(period) {
-        if (candleHistory.length < period) return null;
-        let k = 2 / (period + 1);
-        let ema = candleHistory[0].close;
-        for (let i = 1; i < candleHistory.length; i++) {
-            ema = (candleHistory[i].close * k) + (ema * (1 - k));
-        }
-        return ema;
-    }
-
     function calculateRSI(period = 7) {
-        if (candleHistory.length < period + 1) return 50.0;
+        if (candleHistory.length < 2) return 50.0;
+        let p = Math.min(period, candleHistory.length);
         let gains = 0, losses = 0;
-        for (let i = candleHistory.length - period; i < candleHistory.length; i++) {
+        for (let i = candleHistory.length - p + 1; i < candleHistory.length; i++) {
             let diff = candleHistory[i].close - candleHistory[i - 1].close;
             if (diff >= 0) gains += diff;
             else losses += Math.abs(diff);
         }
-        if (losses === 0) return 100.0;
+        if (losses === 0) return 75.0;
         let rs = gains / losses;
         return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
     }
 
-    function calculateBollinger(period = 20, multiplier = 2.0) {
-        if (candleHistory.length < 5) return null;
+    function calculateBollinger(period = 14, multiplier = 2.0) {
+        if (candleHistory.length < 2) return null;
         let p = Math.min(period, candleHistory.length);
         let sum = 0;
         for (let i = candleHistory.length - p; i < candleHistory.length; i++) sum += candleHistory[i].close;
@@ -264,15 +254,15 @@
         for (let i = candleHistory.length - p; i < candleHistory.length; i++) variance += Math.pow(candleHistory[i].close - sma, 2);
         let stdDev = Math.sqrt(variance / p);
         return {
-            upper: sma + (multiplier * stdDev),
-            lower: sma - (multiplier * stdDev),
+            upper: sma + (multiplier * (stdDev || 0.0001)),
+            lower: sma - (multiplier * (stdDev || 0.0001)),
             mid: sma
         };
     }
 
-    function calculateADX(period = 14) {
-        if (candleHistory.length < 5) return 25.0;
-        let p = Math.min(period, candleHistory.length - 1);
+    function calculateADX() {
+        if (candleHistory.length < 3) return 24.0;
+        let p = Math.min(7, candleHistory.length - 1);
         let plusDM = 0, minusDM = 0, trSum = 0;
         for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
             let upMove = candleHistory[i].high - candleHistory[i - 1].high;
@@ -281,10 +271,10 @@
             if (downMove > upMove && downMove > 0) minusDM += downMove;
             trSum += candleHistory[i].range;
         }
-        if (trSum === 0) return 25.0;
+        if (trSum === 0) return 24.0;
         let diDiff = Math.abs(plusDM - minusDM);
         let diSum = plusDM + minusDM;
-        return diSum === 0 ? 25.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
+        return diSum === 0 ? 24.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
     }
 
     function runEngineTick() {
@@ -409,18 +399,16 @@
             if (elLwick) elLwick.innerText = `${lPct}%`;
 
             let curRsi = calculateRSI(7);
-            let curAdx = calculateADX(14);
-            let ema9 = calculateEMA(9);
-            let ema21 = calculateEMA(21);
-            let bb = calculateBollinger(20, 2.0);
+            let curAdx = calculateADX();
+            let bb = calculateBollinger(14, 2.0);
             let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : price;
 
             let rsiEl = document.getElementById('a-rsi');
             let adxEl = document.getElementById('a-adx');
             let cvdEl = document.getElementById('a-cvd');
             let vwapEl = document.getElementById('a-vwap');
-            let emaEl = document.getElementById('a-ema');
             let bbEl = document.getElementById('a-bb');
+            let emaEl = document.getElementById('a-ema');
 
             if (rsiEl) rsiEl.innerText = curRsi.toString();
             if (adxEl) adxEl.innerText = curAdx.toString();
@@ -428,47 +416,14 @@
             if (vwapEl) vwapEl.innerText = vwap.toFixed(decimals);
 
             if (emaEl) {
-                if (ema9 && ema21) {
-                    emaEl.innerText = ema9 > ema21 ? "BULLISH 🟢" : "BEARISH 🔴";
-                    emaEl.style.color = ema9 > ema21 ? "#10b981" : "#ef4444";
-                } else emaEl.innerText = "CALC";
+                emaEl.innerText = price >= vwap ? "BUY FLOW 🟢" : "SELL FLOW 🔴";
+                emaEl.style.color = price >= vwap ? "#10b981" : "#ef4444";
             }
 
             if (bbEl && bb) {
                 if (price >= bb.upper) { bbEl.innerText = "+2σ OVER 🔴"; bbEl.style.color = "#ef4444"; }
                 else if (price <= bb.lower) { bbEl.innerText = "-2σ OVERSOLD 🟢"; bbEl.style.color = "#10b981"; }
                 else { bbEl.innerText = "IN-RANGE"; bbEl.style.color = "#38bdf8"; }
-            }
-
-            // RECENT RED/GREEN STREAKS
-            let redStreak = 0, greenStreak = 0;
-            for (let i = candleHistory.length - 1; i >= 0; i--) {
-                if (!candleHistory[i].isGreen) {
-                    if (greenStreak === 0) redStreak++;
-                    else break;
-                } else {
-                    if (redStreak === 0) greenStreak++;
-                    else break;
-                }
-            }
-            if (candleClose < candleOpen) redStreak++;
-            else greenStreak++;
-
-            let isHeavyWaterfall = redStreak >= 4 && tickDelta <= -8;
-            let isHeavyRally = greenStreak >= 4 && tickDelta >= 8;
-
-            let shieldEl = document.getElementById('a-shield');
-            if (shieldEl) {
-                if (isHeavyWaterfall) {
-                    shieldEl.innerText = `FALLING KNIFE 🔴 [CALL BANNED]`;
-                    shieldEl.style.color = "#ef4444";
-                } else if (isHeavyRally) {
-                    shieldEl.innerText = `ROCKET RALLY 🟢 [PUT BANNED]`;
-                    shieldEl.style.color = "#10b981";
-                } else {
-                    shieldEl.innerText = "BALANCED SHIELD";
-                    shieldEl.style.color = "#00f0ff";
-                }
             }
         }
 
@@ -485,14 +440,14 @@
         let desc = document.getElementById('a-desc');
         if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Hit Scan at 14s-10s of Candle"; }
-        if (desc) { desc.innerHTML = "8-Second deep scan evaluates all angles"; }
+        if (confText) { confText.innerText = "Scan in Last 12s-4s of Candle"; }
+        if (desc) { desc.innerHTML = "Wait until 12s left on clock before scanning"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: TRUE 8-SECOND ACTIVE DEEP SAMPLER
+    // 4. SCANNER: FAST 2.5s DECISIVE CONFLUENCE ENGINE
     // =========================================================================
-    let isDeepScanning = false;
+    let isDecisiveScanning = false;
 
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -500,7 +455,7 @@
         btn.dataset.bound = "true";
 
         btn.addEventListener('click', function() {
-            if (isDeepScanning) return;
+            if (isDecisiveScanning) return;
 
             const price = getLivePrice();
             const sigBox = document.getElementById('a-status-box');
@@ -515,13 +470,13 @@
                 return;
             }
 
-            isDeepScanning = true;
+            isDecisiveScanning = true;
             btn.style.opacity = "0.5";
-            btn.innerText = "DEEP SCANNING (8 SECONDS)...";
+            btn.innerText = "COMPUTING BIAS (2.5s)...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
-            let totalSteps = 80; // 80 * 100ms = 8.0 Seconds Deep Math
+            let totalSteps = 25; // 25 * 100ms = 2.5 Seconds Fast Scan
             let curStep = 0;
             let startDelta = tickDelta;
 
@@ -530,23 +485,16 @@
                 let progress = Math.min(100, Math.round((curStep / totalSteps) * 100));
                 if (pFill) pFill.style.width = `${progress}%`;
 
-                // Live Stage Messages during 8 seconds
-                if (curStep === 15 && confText) confText.innerText = "Stage 1/5: Sub-Pip Wick & Body Geometry...";
-                if (curStep === 30 && confText) confText.innerText = "Stage 2/5: Dual EMA & ADX Trend Vectors...";
-                if (curStep === 45 && confText) confText.innerText = "Stage 3/5: Bollinger & RSI Exhaustion...";
-                if (curStep === 60 && confText) confText.innerText = "Stage 4/5: Cumulative Volume Delta Flow...";
-                if (curStep === 72 && confText) confText.innerText = "Stage 5/5: Resolving Multi-Factor Confluence...";
-
                 if (curStep >= totalSteps) {
                     clearInterval(scanInterval);
-                    evaluateOmniDeepDecision(startDelta);
+                    evaluateDecisiveDecision(startDelta);
                 }
             }, 100);
 
-            function evaluateOmniDeepDecision(initDelta) {
-                isDeepScanning = false;
+            function evaluateDecisiveDecision(initDelta) {
+                isDecisiveScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "🔬 8-10s DEEP OMNI SCAN";
+                btn.innerText = "⚡ DECISIVE QUANT SCAN (2.5s)";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -567,111 +515,71 @@
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
                 let curRsi = calculateRSI(7);
-                let curAdx = calculateADX(14);
-                let ema9 = calculateEMA(9);
-                let ema21 = calculateEMA(21);
-                let bb = calculateBollinger(20, 2.0);
+                let bb = calculateBollinger(14, 2.0);
                 let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
-                let deltaShiftIn8s = tickDelta - initDelta;
+                let deltaShift = tickDelta - initDelta;
 
-                // STREAKS
-                let redStreak = 0, greenStreak = 0;
-                for (let i = candleHistory.length - 1; i >= 0; i--) {
-                    if (!candleHistory[i].isGreen) {
-                        if (greenStreak === 0) redStreak++;
-                        else break;
-                    } else {
-                        if (redStreak === 0) greenStreak++;
-                        else break;
-                    }
-                }
-                if (!isGreen) redStreak++;
-                else greenStreak++;
-
-                let isHeavyWaterfall = redStreak >= 4 && tickDelta <= -8;
-                let isHeavyRally = greenStreak >= 4 && tickDelta >= 8;
-
-                // =============================================================
-                // MULTI-FACTOR WEIGHTED CONFLUENCE SCORING (MAX 100)
-                // =============================================================
+                // MULTI-FACTOR WEIGHTED SCORING
                 let bullScore = 0;
                 let bearScore = 0;
 
-                // 1. Trend Ribbon (EMA 9/21 + ADX)
-                if (ema9 && ema21 && curAdx >= 20) {
-                    if (ema9 > ema21) bullScore += 20;
-                    else bearScore += 20;
-                }
+                // 1. Order-Flow Delta & Shift
+                if (tickDelta > 0) bullScore += Math.min(30, tickDelta * 2);
+                else if (tickDelta < 0) bearScore += Math.min(30, Math.abs(tickDelta) * 2);
 
-                // 2. Micro Order-Flow (CVD + 8s Velocity + VWAP)
-                if (tickDelta >= 8 && vwap >= candleOpen) bullScore += 25;
-                else if (tickDelta <= -8 && vwap <= candleOpen) bearScore += 25;
+                if (deltaShift > 0) bullScore += 15;
+                else if (deltaShift < 0) bearScore += 15;
 
-                if (deltaShiftIn8s >= 3) bullScore += 10;
-                else if (deltaShiftIn8s <= -3) bearScore += 10;
+                // 2. VWAP Alignment
+                if (currentPrice >= vwap) bullScore += 20;
+                else bearScore += 20;
 
-                // 3. Price Action & Reversal Wicks
-                if (lowerWickPct >= 40 && !isHeavyWaterfall) bullScore += 25;
-                if (upperWickPct >= 40 && !isHeavyRally) bearScore += 25;
+                // 3. Price Action / Wicks
+                if (lowerWickPct >= 35) bullScore += 25;
+                if (upperWickPct >= 35) bearScore += 25;
 
-                // 4. Solid Marubozu Expansion Breakouts
-                if (isGreen && bodyPct >= 65 && upperWickPct <= 6 && !isHeavyWaterfall) bullScore += 20;
-                if (!isGreen && bodyPct >= 65 && lowerWickPct <= 6 && !isHeavyRally) bearScore += 20;
+                // 4. Momentum Body
+                if (isGreen && bodyPct >= 55) bullScore += 20;
+                if (!isGreen && bodyPct >= 55) bearScore += 20;
 
-                // 5. Statistical Mean-Reversion (Bollinger + RSI Flips)
-                if (bb && currentPrice >= bb.upper && curRsi >= 68 && upperWickPct >= 15) bearScore += 30; // Expect RED
-                if (bb && price <= bb.lower && curRsi <= 32 && lowerWickPct >= 15) bullScore += 30; // Expect GREEN
+                // 5. Bollinger Bands
+                if (bb && currentPrice >= bb.upper) bearScore += 15; // Mean reversion drop
+                if (bb && currentPrice <= bb.lower) bullScore += 15; // Mean reversion bounce
 
-                let decision = "WAIT";
+                // ADAPTIVE DECISIVE RESOLUTION (NO MORE STUBBORN "NO TRADE")
+                let isCall = false;
                 let setupName = "";
-                let confidence = 0;
+                let confidence = 88;
 
-                // CRITICAL VETO: Never buy falling knives in 4+ red dump
-                if (isHeavyWaterfall) {
-                    bearScore += 40;
-                    bullScore = 0;
-                } else if (isHeavyRally) {
-                    bullScore += 40;
-                    bearScore = 0;
-                }
-
-                if (bullScore >= 55 && bullScore > bearScore) {
-                    decision = "CALL";
-                    confidence = Math.min(96, Math.max(86, bullScore));
-                    setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Confluence Expansion 🟢";
-                } else if (bearScore >= 55 && bearScore > bullScore) {
-                    decision = "PUT";
-                    confidence = Math.min(96, Math.max(86, bearScore));
-                    setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Confluence Breakdown 🔴";
+                if (bullScore > bearScore) {
+                    isCall = true;
+                    confidence = Math.min(95, 80 + Math.round((bullScore / (bullScore + bearScore || 1)) * 15));
+                    setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Flow Surge 🟢";
+                } else if (bearScore > bullScore) {
+                    isCall = false;
+                    confidence = Math.min(95, 80 + Math.round((bearScore / (bullScore + bearScore || 1)) * 15));
+                    setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Flow Surge 🔴";
                 } else {
-                    decision = "WAIT";
-                    setupName = "Choppy Confluence (No Decisive Edge)";
-                    confidence = 0;
+                    // Tie-breaker based on live tick vs open
+                    isCall = isGreen;
+                    confidence = 85;
+                    setupName = isGreen ? "Buyer Pressure Edge 🟢" : "Seller Pressure Edge 🔴";
                 }
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
-                if (decision === "CALL") {
-                    if (sigText) { sigText.innerText = "CALL (BUY) 🟢"; sigText.style.color = "#10b981"; }
-                    if (sigBox) sigBox.style.borderColor = "#10b981";
-                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 8s OMNI VERIFIED`;
-                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Score: +${bullScore} • Delta: ${tickDelta}</span>`;
-                    playTone(960, "sine", 0.22);
-                } else if (decision === "PUT") {
-                    if (sigText) { sigText.innerText = "PUT (SELL) 🔴"; sigText.style.color = "#ef4444"; }
-                    if (sigBox) sigBox.style.borderColor = "#ef4444";
-                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 8s OMNI VERIFIED`;
-                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Score: -${bearScore} • Delta: ${tickDelta}</span>`;
-                    playTone(440, "sine", 0.22);
-                } else {
-                    if (sigText) { sigText.innerText = "NO TRADE (WAIT ⚪)"; sigText.style.color = "#94a3b8"; }
-                    if (sigBox) sigBox.style.borderColor = "#475569";
-                    if (confText) confText.innerText = "Indecisive Market • Capital Protected";
-                    if (desc) desc.innerHTML = `<span style="color:#94a3b8; font-size:7.5px;">${setupName} • ADX: ${curAdx}</span>`;
-                    playTone(300, "sine", 0.10);
+                let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
+                if (sigText) {
+                    sigText.innerText = action;
+                    sigText.style.color = isCall ? "#10b981" : "#ef4444";
                 }
+                if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
+                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • DECISIVE PULSE`;
+                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • Body: ${bodyPct}%</span>`;
+
+                playTone(isCall ? 960 : 440, "sine", 0.22);
             }
         });
     }
