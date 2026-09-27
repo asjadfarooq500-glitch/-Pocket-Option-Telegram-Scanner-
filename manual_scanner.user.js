@@ -1,278 +1,362 @@
-PROJECT: Pocket Option OTC — V3 LIVE QUANT SIGNAL ENGINE
-=========================================================
+PROJECT: POCKET OPTION OTC V3 LIVE QUANT SIGNAL ENGINE
+MASTER REPLACEMENT BUILD — INSTALLABLE USERSCRIPT
+====================================================
 
 MISSION
 =======
 
-Completely upgrade the existing Pocket Option OTC signal analyzer into a production-grade V3 Live OTC Quant Analysis Engine.
+Completely replace the old Pocket Option OTC V620 userscript with a
+production-grade V3 LIVE OTC QUANT SIGNAL ENGINE.
 
-The existing project contains previous V1/V1.2/V1.5/V1.7/V1.9/V2.1 architecture, including:
-- CandleEngine
-- indicator engine
-- provider layer
-- PocketOptionPublicFeedAdapter
-- DemoFeedConnector
-- data guards
-- diagnostics
-- signal routes
-- tests
-- existing UI
+The final deliverable MUST be a real, installable browser userscript,
+NOT a markdown explanation, NOT pseudocode, NOT a demo, NOT simulated
+market data, and NOT an HTML mockup.
 
-DO NOT blindly destroy working architecture.
+The primary output MUST be:
 
-First inspect the entire repository and understand the existing implementation.
+    pocket-option-otc-v3.user.js
 
-Then replace obsolete/demo-only logic where required and build V3 around a clean modular architecture.
+The first lines of the file MUST contain a valid userscript metadata
+header so that Userscripts/Tampermonkey/Greasemonkey can detect it.
 
-The final application must NOT generate random, fake, synthetic, fabricated, placeholder, guessed, or simulated market data.
+CRITICAL INSTALLATION REQUIREMENT
+==================================
 
-If real authorized Pocket Option OTC market data is not connected:
-- show NOT CONFIGURED / LIVE FEED REQUIRED
-- do NOT manufacture candles
-- do NOT manufacture RSI/ADX/CVD/VWAP values
-- do NOT manufacture signals
-- return NO TRADE / DATA UNAVAILABLE
+The generated file MUST be directly recognized as a userscript.
 
-The system must be honest about data availability.
+Use this exact style of metadata header:
 
-=========================================================
-1. CORE OBJECTIVE
-=========================================================
+// ==UserScript==
+// @name         Pocket Option OTC V3 Live Quant Signal Engine
+// @namespace    https://github.com/
+// @version      3.0.0
+// @description  Live OTC multi-factor quant analysis and next-candle signal engine
+// @match        *://*.pocketoption.com/*
+// @match        *://pocketoption.com/*
+// @match        *://*.po.trade/*
+// @match        *://*.po.market/*
+// @match        *://*.pocket-option.com/*
+// @match        *://*.po2.cash/*
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
 
-Build a highly selective Pocket Option OTC market-analysis system capable of:
+IMPORTANT:
 
-LIVE DATA
-→ TICK PROCESSING
-→ CANDLE GENERATION
-→ MULTI-TIMEFRAME ANALYSIS
-→ MARKET STRUCTURE
-→ CANDLE PATTERN ANALYSIS
-→ TECHNICAL INDICATORS
-→ MOMENTUM
-→ VOLATILITY
-→ SUPPORT/RESISTANCE
-→ SUPPLY/DEMAND
-→ LIQUIDITY
-→ BREAKOUT/RETEST
-→ REVERSAL/EXHAUSTION
-→ DIVERGENCE
-→ MARKET REGIME
-→ OTC PAIR BEHAVIOR
-→ STRATEGY ENGINE
-→ HISTORICAL VALIDATION
-→ PAYOUT / EXPECTED VALUE FILTER
-→ MULTI-CONFIRMATION SCORE
-→ FINAL ENTRY-TIMING ENGINE
-→ CALL / PUT / NO TRADE
+1. DO NOT put Markdown fences around the final userscript.
+2. DO NOT put explanatory text before the metadata header.
+3. The file extension MUST be .user.js.
+4. Do not use ES module imports that can prevent Userscripts from loading.
+5. Make the script self-contained.
+6. Do not require npm.
+7. Do not require a build step.
+8. Do not require a backend merely to display the analysis HUD.
+9. It must run directly after installation.
+10. It must work on iPhone/Safari Userscripts as far as the userscript
+    environment permits.
+11. Avoid APIs unavailable in Safari iOS.
+12. Do not create a Chrome-only Manifest V3 extension instead of a
+    userscript.
+13. Do not create multiple files for the core installation.
+14. The final result must be ONE self-contained .user.js file.
 
-The engine must prioritize signal quality over signal quantity.
+====================================================
+IMPORTANT SAFETY / TRADING MODE
+====================================================
 
-NO TRADE is a valid and preferred result when evidence is insufficient.
+THIS IS A SIGNAL/ANALYSIS TOOL ONLY.
 
-Never force a signal.
+NEVER:
 
-=========================================================
-2. LIVE POCKET OPTION DATA LAYER
-=========================================================
-
-Create a clean provider abstraction:
-
-LiveMarketDataProvider
-PocketOptionLiveFeedAdapter
-DemoFeedAdapter
-ReplayFeedAdapter
-BacktestFeedAdapter
-
-The production signal engine must consume normalized market data through the provider interface.
-
-Do NOT:
-- scrape private pages
-- guess undocumented endpoints
+- automatically click CALL
+- automatically click PUT
+- automatically submit orders
+- automatically place trades
+- manipulate account balance
+- access passwords
+- collect credentials
+- request Pocket Option login credentials
+- scrape private account information
 - bypass authentication
-- collect passwords
-- collect account credentials
-- use browser session cookies as a hidden authentication mechanism
-- reverse engineer private endpoints
-- place trades automatically
-- bypass Pocket Option security
+- bypass anti-bot systems
+- exploit vulnerabilities
+- guess undocumented private APIs
+- inject orders into Pocket Option
+- perform automatic trading
 
-Only use an authorized/public/legitimate market-data interface.
+The user manually decides whether to act on any displayed signal.
 
-If no authorized live OTC feed is available, the application must clearly display:
+====================================================
+DO NOT DESTROY USEFUL OLD ARCHITECTURE
+====================================================
 
-LIVE FEED:
-NOT CONFIGURED
+The old V620 contained useful components.
 
-STATUS:
-SAFE MANUAL / OFFLINE MODE
+Preserve and improve the useful concepts:
 
-and prevent fake signal generation.
+- live price reader
+- canvas price reader
+- DOM price reader
+- pair detector
+- candle engine
+- minute rollover logic
+- tick tracking
+- candle OHLC
+- body/wick geometry
+- RSI
+- Bollinger Bands
+- ADX
+- VWAP
+- tick delta/CVD proxy
+- climax/exhaustion detector
+- scan button
+- countdown timer
+- touch-drag HUD
+- audio alert
+- signal display
+- mobile-friendly UI
 
-=========================================================
-3. RAW TICK ENGINE
-=========================================================
+DO NOT blindly delete working functionality.
 
-Implement:
+Replace weak logic with robust V3 architecture.
 
-Tick {
-  symbol
-  assetType
-  timestamp
-  price
-  source
-  sequence
-  receivedAt
+====================================================
+DATA INTEGRITY — ABSOLUTE PRIORITY
+====================================================
+
+The most important rule:
+
+NEVER invent market data.
+
+NEVER generate:
+
+- fake candles
+- random ticks
+- simulated prices
+- placeholder OHLC
+- fake RSI
+- fake MACD
+- fake confidence
+- fake historical results
+- fake win rate
+- fake backtest results
+
+If valid live Pocket Option chart data cannot be obtained:
+
+DISPLAY:
+
+    DATA NOT READY
+    LIVE DATA REQUIRED
+
+and signal must be:
+
+    NO TRADE
+
+Do not substitute fake values.
+
+Every calculated indicator must contain a data-quality state:
+
+VALID
+WARMING_UP
+STALE
+INSUFFICIENT_DATA
+INVALID
+
+====================================================
+V3 DATA ACQUISITION LAYER
+====================================================
+
+Implement a layered live-data architecture.
+
+Priority:
+
+1. Observable authorized page data
+2. DOM price/chart data
+3. Canvas-rendered chart values
+4. Observable browser-side chart state where safely accessible
+5. Observable WebSocket/message data ONLY when available through the
+   page context without guessing undocumented endpoints
+6. Fallback readers
+
+Do NOT assume that an undocumented Pocket Option API exists.
+
+Do NOT invent a WebSocket URL.
+
+Do NOT scrape credentials.
+
+Do NOT bypass authentication.
+
+Create a unified:
+
+LiveMarketFeed
+
+interface internally:
+
+{
+    connected,
+    pair,
+    isOTC,
+    timestamp,
+    price,
+    bid,
+    ask,
+    ticks,
+    dataAgeMs,
+    source,
+    quality
 }
 
-Features:
-- timestamp normalization
-- duplicate tick detection
-- out-of-order tick detection
-- stale tick detection
-- missing tick detection
-- feed latency measurement
-- clock synchronization
-- reconnect handling
-- disconnect detection
-- tick sequencing
-- source validation
+Every tick must have timestamp and price.
 
-Never fabricate missing ticks.
+Reject:
 
-=========================================================
-4. CANDLE ENGINE
-=========================================================
+- duplicate timestamps
+- impossible jumps
+- stale ticks
+- invalid prices
+- wrong pair data
+- mixed asset data
 
-Build reliable candle aggregation from actual tick data.
+====================================================
+POINT 1 — LIVE TICK ENGINE
+====================================================
+
+Capture every valid observable price update.
+
+Track:
+
+- timestamp
+- price
+- delta
+- direction
+- tick velocity
+- tick acceleration
+- up ticks
+- down ticks
+- tick imbalance
+- price change
+- short-term momentum
+
+Do not confuse UI repaint events with new market ticks.
+
+Deduplicate identical ticks.
+
+====================================================
+POINT 2 — MULTI-TIMEFRAME CANDLE ENGINE
+====================================================
+
+Build candles from validated live ticks.
 
 Supported timeframes:
 
 15 seconds
 30 seconds
+45 seconds
 1 minute
 2 minutes
 3 minutes
+4 minutes
 5 minutes
-10 minutes
-15 minutes
-30 minutes
-1 hour
 
-Only expose timeframes actually supported by the underlying data.
+Also provide:
 
-Every candle must contain:
+ALL
 
-open
-high
-low
-close
-timestamp
-openTime
-closeTime
-body
-bodyPercent
-upperWick
-lowerWick
-upperWickPercent
-lowerWickPercent
-range
-trueRange
-direction
-closeLocationValue
-tickCount
-relativeRange
-isComplete
+The user can select the analysis timeframe.
 
-Never treat an incomplete candle as a completed candle.
+Maintain independent candle histories.
 
-Use strict candle-boundary finalization.
+Minimum warm-up:
 
-=========================================================
-5. HISTORICAL BUFFER
-=========================================================
+- 15s: 100+ candles where available
+- 30s: 100+
+- 45s: 100+
+- 1m: 100+
+- 2m: 100+
+- 3m: 100+
+- 4m: 100+
+- 5m: 100+
 
-Maintain sufficient historical candles.
+If insufficient:
 
-Target:
-minimum 500 candles per timeframe/pair where available.
+NO TRADE.
 
-Preferred:
-1000–2000 candles where memory/data availability permits.
+====================================================
+POINT 3 — COMPLETE OHLC / CANDLE GEOMETRY
+====================================================
 
-Use efficient ring buffers.
+For every candle calculate:
 
-Do not invent historical candles.
-
-If insufficient history:
-INSUFFICIENT_HISTORY
-→ NO TRADE
-
-=========================================================
-6. COMPLETE CANDLE INTELLIGENCE
-=========================================================
+Open
+High
+Low
+Close
+Range
+Body
+Body %
+Upper wick
+Lower wick
+Upper wick %
+Lower wick %
+Bullish/bearish
+Close position in range
+Momentum
+Expansion/compression
 
 Detect:
 
 Doji
-Long-Legged Doji
+Long-legged Doji
 Dragonfly Doji
 Gravestone Doji
 Hammer
 Inverted Hammer
 Hanging Man
 Shooting Star
-Marubozu
-Spinning Top
 Bullish Engulfing
 Bearish Engulfing
+Bullish Harami
+Bearish Harami
 Piercing Line
 Dark Cloud Cover
-Harami
-Harami Cross
-Tweezer Top
-Tweezer Bottom
 Morning Star
 Evening Star
 Three White Soldiers
 Three Black Crows
 Inside Bar
 Outside Bar
+Marubozu
 Pin Bar
-Rejection Candle
-Expansion Candle
-Compression Candle
-Exhaustion Candle
-Momentum Candle
-Failed Breakout Candle
+Tweezer Top
+Tweezer Bottom
 
-Also calculate candle anatomy continuously:
+Do NOT trade merely because a candle pattern exists.
 
-body/range ratio
-wick/body ratio
-close location
-direction
-relative size
-range expansion
-range contraction
-successive candle pressure
-candle sequence
+Require contextual confirmation.
 
-IMPORTANT:
-A candle pattern alone must NEVER generate a signal.
+====================================================
+POINT 4 — TREND ENGINE
+====================================================
 
-Every pattern must be validated against:
-- trend
-- structure
-- location
+Classify:
+
+Strong Bull Trend
+Bull Trend
+Weak Bull
+Range
+Weak Bear
+Bear Trend
+Strong Bear Trend
+
+Use:
+
+- EMA structure
+- slope
+- price location
+- ADX
+- swing highs/lows
 - momentum
 - volatility
-- support/resistance
-- timeframe alignment
-- historical performance
-
-=========================================================
-7. MARKET STRUCTURE ENGINE
-=========================================================
 
 Detect:
 
@@ -280,1783 +364,1492 @@ Higher High
 Higher Low
 Lower High
 Lower Low
+Break of Structure
+Change of Character
 
-Uptrend
-Downtrend
-Sideways
-Range
-Consolidation
-Compression
-Expansion
-Breakout
-False Breakout
-Retest
-Continuation
-Reversal
-Exhaustion
+====================================================
+POINT 5 — EMA SYSTEM
+====================================================
 
-Implement:
+Calculate:
 
-BOS = Break of Structure
-CHOCH = Change of Character
-
-Detect:
-- liquidity sweeps
-- swing failures
-- breakout failures
-- rejection zones
-- trend continuation
-- trend exhaustion
-
-Structure must be calculated from actual price data.
-
-=========================================================
-8. MULTI-TIMEFRAME ENGINE
-=========================================================
-
-Analyze multiple timeframes simultaneously.
-
-Default hierarchy:
-
-15M = macro context
-5M  = structure
-3M  = intermediate momentum
-1M  = primary signal timeframe
-30S = micro confirmation
-15S = optional entry timing
-
-Do not blindly require all timeframes to agree.
-
-Classify:
-
-STRONG ALIGNMENT
-MODERATE ALIGNMENT
-PULLBACK
-COUNTER-TREND
-CONFLICT
-UNKNOWN
-
-Example:
-
-15M bullish
-5M bullish
-3M bullish
-1M bullish
-
-→ strong bullish alignment
-
-But:
-
-15M bullish
-5M bearish
-1M bullish
-
-must be classified intelligently as possible pullback/structure conflict.
-
-If MTF conflict cannot be resolved:
-NO TRADE.
-
-=========================================================
-9. TECHNICAL INDICATOR ENGINE
-=========================================================
-
-Implement:
-
-TREND:
-EMA 5
 EMA 9
-EMA 13
 EMA 21
-EMA 34
 EMA 50
 EMA 100
 EMA 200
-SMA 20
-SMA 50
-SMA 200
-VWAP
 
-MOMENTUM:
+Analyze:
+
+- crossovers
+- separation
+- compression
+- slope
+- alignment
+- price position
+- trend direction
+
+Detect:
+
+Bullish EMA stack
+Bearish EMA stack
+Mixed EMA structure
+EMA compression
+EMA expansion
+
+====================================================
+POINT 6 — RSI ENGINE
+====================================================
+
+Calculate:
+
 RSI 7
 RSI 14
 RSI 21
-MACD
-Stochastic
-Stochastic RSI
-CCI
-ROC
-Momentum
 
-VOLATILITY:
-ATR
-Bollinger Bands
-Bollinger Band Width
-Keltner Channel
-Standard Deviation
+Detect:
 
-TREND STRENGTH:
-ADX
+- overbought
+- oversold
+- RSI slope
+- RSI acceleration
+- bullish divergence
+- bearish divergence
+- failure swing
+- centerline behavior
+
+Do NOT use:
+
+RSI < 30 = automatic CALL
+
+or
+
+RSI > 70 = automatic PUT
+
+Extreme conditions may indicate trend continuation or exhaustion.
+
+====================================================
+POINT 7 — MACD ENGINE
+====================================================
+
+Calculate:
+
+MACD 12/26/9
+
+Track:
+
+- MACD line
+- signal line
+- histogram
+- histogram slope
+- histogram acceleration
+- zero-line
+- bullish cross
+- bearish cross
+- divergence
+
+====================================================
+POINT 8 — STOCHASTIC ENGINE
+====================================================
+
+Calculate:
+
+Stochastic %K
+Stochastic %D
+
+Detect:
+
+- overbought
+- oversold
+- crossover
+- slope
+- momentum shift
+- divergence
+
+====================================================
+POINT 9 — BOLLINGER ENGINE
+====================================================
+
+Calculate:
+
+Bollinger 20,2
+Bollinger 14,2
+
+Track:
+
+Upper
+Middle
+Lower
+Bandwidth
+Bandwidth slope
+%B
+
+Detect:
+
+- squeeze
+- expansion
+- upper-band rejection
+- lower-band rejection
+- walking the band
+- mean reversion
+- volatility breakout
+
+Never assume touching a band means reversal.
+
+====================================================
+POINT 10 — ATR / VOLATILITY ENGINE
+====================================================
+
+Calculate:
+
+ATR 14
+ATR percentage
+short-term volatility
+volatility expansion
+volatility contraction
+
+Detect:
+
+- dead market
+- normal market
+- high volatility
+- extreme volatility
+
+Avoid signals during abnormal instability.
+
+====================================================
+POINT 11 — ADX / DMI ENGINE
+====================================================
+
+Calculate:
+
+ADX 14
 +DI
 -DI
 
-All indicators must be mathematically calculated from actual candles.
+Classify:
 
-No hardcoded values.
+Trend strength
+Trend direction
+Weak trend
+Strong trend
+Trend expansion
+Trend exhaustion
 
-No random values.
+====================================================
+POINT 12 — VWAP ENGINE
+====================================================
 
-If required data is unavailable:
-value = null / unavailable
-not fake.
+Calculate session/instrument VWAP from available valid ticks.
 
-=========================================================
-10. SUPPORT / RESISTANCE ENGINE
-=========================================================
+Track:
 
-Automatically identify:
+price vs VWAP
+VWAP slope
+distance from VWAP
+reclaim
+rejection
+cross
 
-swing highs
-swing lows
-local support
-local resistance
-previous highs
-previous lows
-dynamic EMA zones
-VWAP
-Bollinger boundaries
-psychological price levels
-breakout levels
-retest levels
-supply zones
-demand zones
-liquidity zones
+Do not fabricate volume.
+
+If actual volume is unavailable, label it:
+
+VWAP FROM PRICE-TICK SAMPLE
+
+not volume-based institutional VWAP.
+
+====================================================
+POINT 13 — MOMENTUM ENGINE
+====================================================
 
 Calculate:
-distance from current price
-strength
-number of touches
-recent rejection
-breakout history
-retest confirmation
 
-=========================================================
-11. PRICE ACTION ENGINE
-=========================================================
+ROC
+short momentum
+medium momentum
+tick velocity
+tick acceleration
+candle acceleration
 
 Detect:
 
-support rejection
-resistance rejection
-breakout
+momentum surge
+momentum decay
+momentum divergence
+momentum reversal
+
+====================================================
+POINT 14 — SUPPORT / RESISTANCE
+====================================================
+
+Build dynamic levels using validated historical candles.
+
+Detect:
+
+- swing highs
+- swing lows
+- repeated rejection
+- recent high
+- recent low
+- local support
+- local resistance
+- breakout
+- failed breakout
+- retest
+- rejection
+
+Cluster nearby levels instead of treating every candle high/low as a
+separate level.
+
+====================================================
+POINT 15 — SUPPLY / DEMAND + LIQUIDITY STRUCTURE
+====================================================
+
+Identify probable:
+
+Demand zones
+Supply zones
+Liquidity pools
+Equal highs
+Equal lows
+Stop-run style spikes
+False breakout
+Breakout/retest
+Rejection zones
+
+These are statistical structures, NOT guaranteed institutional orders.
+
+====================================================
+POINT 16 — BREAKOUT / RETEST ENGINE
+====================================================
+
+Detect:
+
+range breakout
+trend breakout
+volatility breakout
 false breakout
-breakout + retest
-range rejection
-trend continuation
-trend pullback
-momentum continuation
-exhaustion
-liquidity sweep
-failed continuation
+breakout continuation
+breakout retest
+failed retest
 
-Price action must be combined with structure.
+Require confirmation before signal.
 
-=========================================================
-12. DIVERGENCE ENGINE
-=========================================================
+====================================================
+POINT 17 — REVERSAL ENGINE
+====================================================
+
+Detect reversal candidates using combinations of:
+
+- exhaustion
+- wick rejection
+- RSI divergence
+- MACD divergence
+- Bollinger extremes
+- support/resistance
+- momentum loss
+- candle reversal
+- structure break
+
+Never reverse a strong trend using one indicator.
+
+====================================================
+POINT 18 — CLIMAX / EXHAUSTION ENGINE
+====================================================
+
+Preserve the V620 concept but remove hardcoded forced flips.
 
 Detect:
 
-Regular bullish divergence
-Regular bearish divergence
-Hidden bullish divergence
-Hidden bearish divergence
+Extreme buying climax
+Extreme selling climax
+Volatility climax
+Momentum climax
+Wick climax
+Band extreme
+RSI extreme
 
-Using:
+IMPORTANT:
 
+An extreme does NOT automatically mean CALL or PUT.
+
+It creates an exhaustion/reversal candidate.
+
+Require confirmation.
+
+====================================================
+POINT 19 — TICK DELTA / CVD PROXY
+====================================================
+
+Where actual trade volume/CVD is unavailable, calculate only a clearly
+labeled price-tick proxy:
+
+upTicks
+downTicks
+tickDelta
+delta acceleration
+
+Label:
+
+CVD PROXY
+
+Never falsely label it as real exchange CVD.
+
+====================================================
+POINT 20 — MARKET REGIME ENGINE
+====================================================
+
+Classify the current regime:
+
+TREND_UP
+TREND_DOWN
+RANGE
+HIGH_VOLATILITY
+LOW_VOLATILITY
+BREAKOUT
+REVERSAL_CANDIDATE
+EXHAUSTION
+UNCERTAIN
+
+Use regime-specific strategies.
+
+Example:
+
+Trend regime:
+favor continuation confirmation.
+
+Range regime:
+favor confirmed rejection/mean-reversion setups.
+
+Breakout regime:
+wait for confirmation/retest.
+
+Uncertain:
+NO TRADE.
+
+====================================================
+POINT 21 — MULTI-TIMEFRAME CONFLUENCE
+====================================================
+
+Analyze:
+
+Higher timeframe
+Selected timeframe
+Entry timeframe
+
+Example:
+
+5m = market structure
+1m = directional confirmation
+15s/30s = entry timing
+
+Do not require every timeframe to point identically.
+
+Instead calculate:
+
+HTF alignment
+MTF alignment
+LTF timing
+
+If major timeframes strongly conflict:
+
+NO TRADE.
+
+====================================================
+POINT 22 — CANDLE + INDICATOR CONFLUENCE
+====================================================
+
+Combine:
+
+Trend
+EMA
 RSI
 MACD
 Stochastic
-Momentum
-CVD if genuine data exists
-
-Example:
-
-Price lower low
-RSI higher low
-
-→ bullish divergence
-
-Price higher high
-RSI lower high
-
-→ bearish divergence
-
-Divergence alone must never create a trade.
-
-=========================================================
-13. VOLUME / TICK FLOW ENGINE
-=========================================================
-
-Only if genuine volume/tick-flow data exists.
-
-Support:
-
-tick volume
-volume spike
-volume acceleration
-volume contraction
-volume imbalance
-CVD
-delta
-VWAP deviation
-
-If genuine CVD is unavailable:
-
-CVD = N/A
-
-NEVER show fake:
-CVD +1
-CVD -1
-
-Do not create synthetic volume.
-
-=========================================================
-14. MARKET REGIME ENGINE
-=========================================================
-
-Classify current market as:
-
-TRENDING_UP
-TRENDING_DOWN
-RANGING
-CONSOLIDATING
-BREAKOUT
-HIGH_VOLATILITY
-LOW_VOLATILITY
-EXHAUSTION
-REVERSAL
-UNCERTAIN
-
-Use:
-
-ADX
+Bollinger
 ATR
-EMA structure
-price structure
-Bollinger width
-range behavior
-momentum
-candle expansion/contraction
-
-Strategy selection must depend on market regime.
-
-=========================================================
-15. STRATEGY LIBRARY
-=========================================================
-
-Implement modular strategies.
-
-TREND:
-- EMA trend
-- EMA pullback
-- EMA continuation
-- VWAP trend
-- ADX trend
-- MACD continuation
-
-REVERSAL:
-- RSI divergence
-- MACD divergence
-- support rejection
-- resistance rejection
-- exhaustion
-- wick rejection
-- double top
-- double bottom
-
-BREAKOUT:
-- range breakout
-- breakout + retest
-- momentum breakout
-- false breakout
-
-MEAN REVERSION:
-- Bollinger reversal
-- RSI extreme
-- VWAP mean reversion
-- range high rejection
-- range low rejection
-
-PRICE ACTION:
-- engulfing
-- pin bar
-- inside bar
-- outside bar
-- morning star
-- evening star
-- tweezer
-- rejection candles
-
-MICROSTRUCTURE:
-- tick acceleration
-- tick deceleration
-- candle velocity
-- wick expansion
-- body expansion
-- compression → expansion
-- momentum exhaustion
-
-=========================================================
-16. STRATEGY AUTO SELECTOR
-=========================================================
-
-Never run every strategy blindly.
-
-Based on market regime:
-
-TRENDING:
-favor trend continuation/pullback strategies.
-
-RANGING:
-favor support/resistance/rejection/mean-reversion strategies.
-
-BREAKOUT:
-favor breakout/retest strategies.
-
-EXHAUSTION:
-favor reversal confirmation.
-
-HIGH VOLATILITY:
-increase confirmation requirements.
-
-UNCERTAIN:
-NO TRADE.
-
-=========================================================
-17. OTC PAIR BEHAVIOR ENGINE
-=========================================================
-
-Each OTC pair must have its own statistics.
-
-Example:
-
-AUD/CAD OTC
-EUR/USD OTC
-GBP/JPY OTC
-USD/JPY OTC
-EUR/GBP OTC
-etc.
-
-For each pair store:
-
-historical setups
-wins
-losses
-win rate
-average payout
-strategy performance
-timeframe performance
-expiry performance
-market-regime performance
-consecutive losses
-consecutive wins
-recent performance
-sample size
-
-NEVER fabricate these statistics.
-
-Only display statistics when actual stored data supports them.
-
-=========================================================
-18. PAIR SCANNER
-=========================================================
-
-Implement:
-
-SCAN ALL OTC
-
-The scanner should inspect available OTC pairs and calculate a model score.
-
-Example UI:
-
-OTC MARKET SCANNER
-
-AUD/CAD OTC     86/100
-EUR/USD OTC     82/100
-GBP/JPY OTC     77/100
-USD/JPY OTC     63/100
-
-These are MODEL SCORES, not guaranteed probabilities.
-
-Do not label a pair as guaranteed winner.
-
-=========================================================
-19. PAYOUT ENGINE
-=========================================================
-
-Read actual payout where available.
-
-Calculate break-even win rate:
-
-requiredWinRate = 1 / (1 + payoutDecimal)
-
-Example:
-
-92% payout:
-break-even ≈ 52.08%
-
-84% payout:
-break-even ≈ 54.35%
-
-80% payout:
-break-even ≈ 55.56%
-
-Calculate expected value only when enough validated historical information exists.
-
-If payout is too low relative to validated edge:
-NO TRADE.
-
-Never fabricate payout.
-
-=========================================================
-20. QUANT SCORING ENGINE
-=========================================================
-
-Create a multi-factor score.
-
-Initial weighting:
-
-Market Structure      20%
-Trend                  15%
-Price Action           15%
-Momentum               10%
-Volatility             10%
-Support/Resistance     10%
-Multi-Timeframe        10%
-Historical Validation   5%
-Payout/EV               5%
-
-Allow these weights to be configuration-driven.
-
-Do NOT blindly optimize weights using the same dataset used for evaluation.
-
-Score range:
-
-0–59   NO TRADE
-60–69  WEAK / WATCH
-70–79  QUALIFIED WATCH
-80–89  VALID SETUP
-90–100 EXTREME CONFIRMATION
-
-Important:
-The score is NOT a guaranteed probability.
-
-Display:
-MODEL SCORE: 87/100
-
-NOT:
-87% GUARANTEED WIN
-
-=========================================================
-21. CONFIDENCE CALIBRATION
-=========================================================
-
-If the system displays probability/confidence, it must be calibrated from out-of-sample historical results.
-
-Never convert a raw score directly into fake probability.
-
-If calibration is unavailable:
-show MODEL SCORE only.
-
-=========================================================
-22. ENTRY TIMING ENGINE
-=========================================================
-
-For M1:
-
-60s → candle begins
-30–15s → structure/momentum observation
-12–4s → final confirmation window
-4–0s → entry decision
-next candle → signal direction
-
-But DO NOT force a signal simply because timer reached 12 seconds.
-
-Signal requires confirmation.
-
-If setup is not confirmed:
-NO TRADE.
-
-The entry window must be configurable by timeframe.
-
-=========================================================
-23. MICRO TICK CONFIRMATION
-=========================================================
-
-Use actual incoming ticks to calculate:
-
-micro momentum
-price velocity
-price acceleration
-direction persistence
-reversal pressure
-tick clustering
-micro trend
-micro exhaustion
-
-At final confirmation:
-
-check whether micro movement agrees with higher-timeframe structure.
-
-If microstructure contradicts setup:
-NO TRADE.
-
-=========================================================
-24. SIGNAL ENGINE
-=========================================================
-
-Final signal types:
+ADX
+VWAP
+Momentum
+Support/resistance
+Market structure
+Candle pattern
+Tick delta
+Exhaustion
+Multi-timeframe alignment
+
+No single indicator may dominate the entire decision.
+
+====================================================
+POINT 23 — QUANT SCORE ENGINE
+====================================================
+
+Create independent:
+
+BULL_SCORE
+BEAR_SCORE
+
+Use normalized weighted scoring.
+
+Example architecture:
+
+Trend            15
+Market Structure 15
+EMA              10
+RSI              8
+MACD             8
+Stochastic       5
+Bollinger        7
+ADX/DMI          7
+ATR/Volatility   5
+VWAP             5
+Momentum         5
+S/R              5
+Candle Pattern  5
+
+Normalize to 0–100.
+
+Do NOT simply add arbitrary points to produce fake confidence.
+
+Signal quality must depend on:
+
+score
+score difference
+data quality
+regime
+timeframe agreement
+recent signal performance
+
+====================================================
+POINT 24 — SIGNAL DECISION ENGINE
+====================================================
+
+Possible outputs ONLY:
 
 CALL
 PUT
 NO TRADE
 
-Never output both CALL and PUT simultaneously.
+Rules:
 
-Example:
+CALL only when bullish evidence exceeds minimum threshold.
 
-PAIR:
-AUD/CAD OTC
+PUT only when bearish evidence exceeds minimum threshold.
 
-TIMEFRAME:
-M1
+NO TRADE when:
 
-EXPIRY:
-1 MIN
+- data stale
+- insufficient history
+- conflicting indicators
+- conflicting timeframes
+- extreme volatility
+- weak edge
+- poor payout
+- late entry
+- candle timing invalid
+- feed quality invalid
+- asset detection uncertain
+- signal confidence unsupported
+- recent performance below configured threshold
 
-MODEL SCORE:
-87/100
+NEVER force CALL/PUT.
 
-TREND:
-BULLISH
+====================================================
+POINT 25 — ENTRY TIMING + EXPIRY ENGINE
+====================================================
 
-STRUCTURE:
-BULLISH
+The engine must analyze the current candle and determine whether the
+signal should be generated for the NEXT candle.
 
-MOMENTUM:
-STRONG
+Supported expiry choices:
 
-CANDLE:
-BULLISH ENGULFING
+15s
+30s
+45s
+1m
+2m
+3m
+4m
+5m
+ALL
 
-S/R:
-SUPPORT REJECTION
+The user can select:
 
-MTF:
-4/5 ALIGNED
+AUTO
+or a specific expiry.
 
-PAYOUT:
-92%
+For AUTO, select the expiry with the strongest validated historical
+edge for the current regime/setup, but ONLY if sufficient historical
+data exists.
 
-SIGNAL:
-CALL
+Never randomly choose expiry.
 
-ENTRY:
-FINAL CONFIRMATION WINDOW
+Do not use future candle information.
 
-If any critical condition fails:
+STRICT NO-LOOKAHEAD:
 
-SIGNAL:
-NO TRADE
+The engine must never use the future candle close to calculate the
+signal that supposedly predicted that candle.
 
-=========================================================
-25. NO TRADE ENGINE
-=========================================================
+Preferred scan window:
 
-NO TRADE conditions include:
+last 12 seconds to last 4 seconds of the current candle,
 
-trend conflict
-structure conflict
-weak momentum
-bad candle location
-poor support/resistance location
-low payout
-insufficient historical edge
-extreme volatility
-feed latency
-stale data
-missing data
-insufficient history
-incomplete candle
-false breakout uncertainty
-MTF conflict
-microstructure conflict
-unknown market regime
-insufficient sample size
+but only if the selected timeframe and feed timing make that valid.
 
-NO TRADE is not an error.
+Show:
 
-=========================================================
-26. DATA QUALITY / SAFETY GUARDS
-=========================================================
+CURRENT CANDLE
+TIME REMAINING
+NEXT CANDLE ENTRY
+SELECTED EXPIRY
+ENTRY TIMING QUALITY
 
-Retain and improve existing guards:
+====================================================
+POINT 26 — PERFORMANCE / BACKTEST / JOURNAL / DIAGNOSTICS
+====================================================
 
-DATA_OFFLINE
-DATA_STALE
-UNCONFIRMED_ASSET
-UNSUPPORTED_TIMEFRAME
-INSUFFICIENT_HISTORY
-CLOCK_DESYNC
-DUPLICATE_TICK
-MISSING_TICK
-INVALID_OHLC
-CANDLE_NOT_FINAL
-FEED_DISCONNECTED
-INVALID_PAYOUT
-INSUFFICIENT_SAMPLE
-MODEL_NOT_CALIBRATED
+Implement a local signal journal.
 
-Any critical data-quality failure:
-NO SIGNAL.
+For every signal store:
 
-=========================================================
-27. BACKTEST ENGINE
-=========================================================
-
-Implement real historical backtesting.
-
-For every strategy store:
-
+timestamp
 pair
+OTC/non-OTC
 timeframe
 expiry
-market regime
-entry condition
-signal
 entry price
-expiry price
-result
-payout
-timestamp
+signal
 score
-reason
+confidence band
+regime
+setup
+indicator snapshot
+data quality
+payout
+result
+outcome
+settlement price
+duration
 
-Calculate:
+Never fabricate historical results.
 
-signals
-wins
-losses
+Support:
+
+win
+loss
+draw
+expired/unknown
+
+Calculate when enough REAL observations exist:
+
 win rate
-average payout
-expected value
-profit factor where meaningful
+loss rate
+draw rate
+profit factor
 maximum losing streak
 maximum winning streak
 drawdown
+expectancy
 sample size
-performance by pair
-performance by timeframe
-performance by expiry
-performance by market regime
-performance by strategy
 
-NEVER generate fake backtest results.
+Display:
 
-=========================================================
-28. WALK-FORWARD VALIDATION
-=========================================================
+INSUFFICIENT SAMPLE
 
-Implement:
+until the sample is statistically meaningful.
 
-TRAIN
-→ VALIDATION
-→ FORWARD TEST
+====================================================
+PAYOUT / EXPECTANCY FILTER
+====================================================
 
-Do not optimize and evaluate on the exact same data.
+Read the currently displayed payout when safely observable.
 
-Detect overfitting.
+Do not hardcode 92%.
 
-If a strategy performs well only on training data:
-mark it as OVERFIT / INVALID.
+Calculate approximate break-even win rate:
 
-=========================================================
-29. PAPER / DEMO SIGNAL MODE
-=========================================================
+breakEven = 1 / (1 + payoutDecimal)
 
-Before any live use, support:
+Example:
 
-DEMO SIGNAL MODE
-PAPER SIGNAL MODE
-HISTORICAL REPLAY MODE
-BACKTEST MODE
+92% payout => approximately 52.08% break-even.
 
-Track hypothetical signals and results.
+The engine should display:
 
-No automatic real-money execution.
+PAYOUT
+BREAK-EVEN
+EXPECTED EDGE
+EV STATUS
 
-=========================================================
-30. RISK ENGINE
-=========================================================
+If payout is unavailable:
 
-Do NOT implement martingale by default.
+PAYOUT UNKNOWN
 
-No automatic doubling after losses.
+Do not invent it.
 
-Implement:
+Do not call a signal "high probability" merely because technical
+indicators agree.
 
-fixed stake mode
-maximum signals/day
-maximum consecutive losses
-cooldown after losses
-daily loss limit
-session stop
-feed anomaly stop
-manual pause
-emergency stop
+====================================================
+ANTI-OVERFITTING
+====================================================
 
-These are risk controls, not guarantees.
+The strategy must NOT be optimized to historical data and then falsely
+presented as guaranteed.
 
-=========================================================
-31. SIGNAL JOURNAL
-=========================================================
+Support:
 
-Store every signal:
+in-sample
+out-of-sample
+walk-forward
+regime-separated evaluation
 
-id
-timestamp
-pair
-assetType
-timeframe
-expiry
-price
-payout
-direction
-modelScore
-all indicator values
-market structure
-candle pattern
-support/resistance
-market regime
-strategy
-MTF status
-data quality
-reason
-entry price
-expiry price
-result
+Do not display a backtested percentage unless the underlying sample
+actually exists.
 
-Allow user to inspect WHY a signal happened.
+====================================================
+OTC-SPECIFIC ENGINE
+====================================================
 
-=========================================================
-32. SIGNAL RESULT TRACKING
-=========================================================
+Clearly identify:
 
-After expiry:
-
-WIN
-LOSS
-NO RESULT
-INVALIDATED
-DATA ERROR
-
-Automatically record result when reliable data exists.
-
-Do not infer result from fake/demo data.
-
-=========================================================
-33. PERFORMANCE DASHBOARD
-=========================================================
-
-Show:
-
-Today
-7 days
-30 days
-All time
-
-Metrics:
-
-signals
-wins
-losses
-win rate
-average payout
-average score
-best-performing pair
-strategy statistics
-timeframe statistics
-expiry statistics
-market-regime statistics
-losing streak
-winning streak
-
-Only show metrics with sufficient sample size.
-
-=========================================================
-34. LIVE DIAGNOSTICS
-=========================================================
-
-Create:
-
-Settings
-→ Live Data Diagnostics
-
-Show:
-
-Provider
-Connection
-Feed status
-Latency
-Last tick
-Last candle
-Tick rate
-Data age
-Asset
+asset
 OTC status
-Payout source
-WebSocket status if legitimately configured
-REST status if legitimately configured
-API configuration status
-Historical buffer size
+timeframe
+feed source
+data age
 
-Never expose secrets.
+Treat OTC as its own statistical environment.
 
-Never display API keys.
+Do not mix:
 
-Never log credentials.
+normal market statistics
 
-=========================================================
-35. EXISTING UI UPGRADE
-=========================================================
+with
 
-Keep the existing visual concept from the provided screenshot.
+OTC statistics
 
-Do not create a completely unrelated UI.
+without explicitly labeling the difference.
 
-Maintain the premium dark trading interface.
+Maintain separate journal statistics for OTC.
 
-Upgrade the current:
+If the current asset is not confidently identified as OTC:
 
-CLIMAX-EXHAUSTION v620
+OTC STATUS UNKNOWN
+NO TRADE
 
-into:
+====================================================
+PAIR HANDLING
+====================================================
 
-CLIMAX QUANT ENGINE V3
+Read the currently selected Pocket Option asset.
 
-Suggested main panel:
+Examples may include:
 
-⚡ CLIMAX QUANT ENGINE V3
+AUD/CAD OTC
+AUD/CHF OTC
+EUR/USD OTC
+GBP/USD OTC
+USD/JPY OTC
+etc.
 
-PAIR: AUD/CAD OTC
-PRICE: 1.05038
-PAYOUT: 92%
-TIMEFRAME: M1
-TIMER: 08s
+DO NOT hardcode AUD/CHF OTC.
 
-----------------------------
+When pair changes:
+
+flush incompatible live candle state.
+
+Never mix two different pairs into one candle history.
+
+Display:
+
+PAIR
+OTC STATUS
+DATA SOURCE
+
+====================================================
+LIVE DATA DIAGNOSTICS
+====================================================
+
+Add a diagnostics panel showing:
+
+Feed:
+CONNECTED / DISCONNECTED
+
+Source:
+DOM / CANVAS / OBSERVABLE PAGE DATA / OTHER
+
+Data:
+LIVE / STALE / INVALID
+
+Last tick:
+X ms ago
+
+Ticks:
+count
+
+Candle:
+VALID / WARMING / INVALID
+
+History:
+X candles
+
+Pair:
+detected pair
+
+OTC:
+YES / NO / UNKNOWN
+
+Indicator readiness:
+READY / WARMING
+
+Signal engine:
+READY / NO TRADE
+
+This is critical for debugging.
+
+====================================================
+NO FALSE CONFIDENCE
+====================================================
+
+Do NOT display:
+
+96%
+98%
+99%
+100%
+
+unless the number is mathematically justified by a documented
+calibration system and sufficient real data.
+
+Instead use:
+
+CONFIDENCE: LOW
+CONFIDENCE: MEDIUM
+CONFIDENCE: HIGH
+
+and optionally:
+
+MODEL SCORE: 0–100
+
+Make it clear that MODEL SCORE is NOT probability.
+
+====================================================
+SIGNAL COOL-DOWN
+====================================================
+
+Prevent duplicate signals during the same setup.
+
+Track:
+
+lastSignalTime
+lastSignalCandle
+lastSignalDirection
+lastSignalPair
+
+Prevent repeated CALL/CALL/CALL spam.
+
+Allow a new signal only when a new valid setup appears.
+
+====================================================
+RECENT SIGNAL PERFORMANCE
+====================================================
+
+Display a compact local performance section:
+
+Last 10
+Last 25
+Last 50
+
+Only display values when real journal observations exist.
+
+Separate:
+
+ALL OTC
+CURRENT PAIR
+CURRENT TIMEFRAME
+CURRENT EXPIRY
+CURRENT SETUP
+
+Do not make a small sample look statistically reliable.
+
+====================================================
+USER INTERFACE
+====================================================
+
+The HUD must preserve the visual idea of the V620 but upgrade it.
+
+Header:
+
+⚡ PO OTC V3 QUANT ENGINE
+
+Show:
+
+PAIR
+OTC
+PRICE
+DATA STATUS
+
+Telemetry:
+
+RSI
+ADX
+MACD
+STOCH
+ATR
+VWAP
+CVD PROXY
+BB
+EMA STATE
+
+Candle geometry:
+
+O
+H
+L
+C
+BODY
+U-WICK
+L-WICK
+
+Market state:
 
 TREND
-BULLISH 82/100
-
+REGIME
 STRUCTURE
-BULLISH 88/100
-
 MOMENTUM
-STRONG 79/100
-
 VOLATILITY
-NORMAL 71/100
 
-CANDLE
-BULLISH ENGULFING
+Signal section:
 
-S/R
-SUPPORT REJECTION
+QUANT SCAN
 
-MTF
-4/5 ALIGNED
+Then:
 
-HISTORICAL
-VALIDATED
+CALL / PUT / NO TRADE
 
-----------------------------
+Show:
 
-QUANT SCORE
-87/100
+MODEL SCORE
+CONFIDENCE BAND
+SETUP
+TIMEFRAME
+EXPIRY
+ENTRY TIME
+PAYOUT
+BREAK-EVEN
+DATA QUALITY
 
-----------------------------
+If NO TRADE:
 
-SIGNAL
+show the MAIN REASON.
+
+Example:
+
+NO TRADE
+Weak confluence
+HTF conflict
+Wait for confirmation
+
+====================================================
+MOBILE UI
+====================================================
+
+Must be optimized for:
+
+iPhone
+Safari
+Userscripts
+
+Requirements:
+
+- touch draggable
+- no horizontal page overflow
+- no tiny unusable controls
+- large scan button
+- readable text
+- compact HUD
+- does not cover critical trading controls unnecessarily
+- safe z-index
+- responsive width
+- safe-area support
+- prevent accidental page scrolling while dragging
+- do not block normal Pocket Option interaction outside HUD
+
+Provide:
+
+MINIMIZE
+MOVE
+DIAGNOSTICS
+SETTINGS
+
+====================================================
+AUDIO ALERTS
+====================================================
+
+Preserve optional audio alerts.
+
+Audio must be disabled by default until the user interacts with the
+page if required by browser policy.
+
+Alert for:
+
 CALL
+PUT
+NO TRADE state change only if configured
+DATA LOST
+DATA RESTORED
+
+Never use repeated aggressive sounds.
+
+====================================================
+SETTINGS
+====================================================
+
+Add settings:
+
+Timeframe:
+AUTO / 15s / 30s / 45s / 1m / 2m / 3m / 4m / 5m
+
+Expiry:
+AUTO / 15s / 30s / 45s / 1m / 2m / 3m / 4m / 5m
+
+Minimum model score:
+configurable
+
+Minimum confidence band:
+configurable
+
+Scan window:
+configurable
+
+Audio:
+ON/OFF
+
+HUD:
+ON/OFF
+
+Diagnostics:
+ON/OFF
+
+Journal:
+ON/OFF
+
+Persist settings with localStorage.
+
+Never store passwords or authentication credentials.
+
+====================================================
+SIGNAL EXPLANATION
+====================================================
+
+Every CALL/PUT signal must explain WHY.
+
+Example:
+
+CALL
+MODEL SCORE: 84
+CONFIDENCE: HIGH
+
+Reasons:
++ 5m trend bullish
++ EMA alignment bullish
++ MACD momentum rising
++ price above VWAP
++ bullish rejection at support
++ 1m structure confirmation
+
+Risks:
+- RSI elevated
 
 ENTRY:
-FINAL CONFIRMATION
+Next candle
 
 EXPIRY:
-1 MIN
+1m
 
-----------------------------
-
-If conditions fail:
+If evidence conflicts:
 
 NO TRADE
 
-REASON:
-Insufficient confirmation
+Reason:
+HTF bullish / LTF bearish conflict.
 
-=========================================================
-36. DO NOT SHOW FAKE VALUES
-=========================================================
+====================================================
+CANDLE BOUNDARY PROTECTION
+====================================================
 
-This is a HARD REQUIREMENT.
+The engine must accurately detect candle boundaries.
 
-Never hardcode:
+Never use:
+
+new Date().getSeconds() % timeframe
+
+as the only source of truth.
+
+Use a timeframe-aware epoch calculation:
+
+bucketStart =
+Math.floor(timestamp / timeframeMs) * timeframeMs
+
+Handle:
+
+- minute changes
+- multi-minute boundaries
+- page sleep
+- device clock drift
+- delayed ticks
+- duplicate ticks
+- pair changes
+
+====================================================
+STALE DATA PROTECTION
+====================================================
+
+Define a configurable maximum data age.
+
+If:
+
+Date.now() - lastTickTimestamp > threshold
+
+then:
+
+DATA STALE
+NO TRADE
+
+When data resumes:
+
+DATA RESTORED
+
+Rebuild only from valid new data.
+
+====================================================
+MEMORY / PERFORMANCE
+====================================================
+
+The script runs on a mobile browser.
+
+Do not scan the entire DOM every 100ms.
+
+Use throttled observers.
+
+Cache DOM references.
+
+Use MutationObserver only where useful.
+
+Limit history size.
+
+Avoid memory leaks.
+
+Clear intervals/listeners when necessary.
+
+Do not create hundreds of timers.
+
+Target smooth performance on iPhone.
+
+====================================================
+PRICE READER
+====================================================
+
+Implement multiple readers:
+
+A. Canvas reader
+B. DOM text reader
+C. observable page-state reader if available
+
+Do NOT blindly accept every decimal number on the page.
+
+Reject:
+
+balance
+payout
+percentage
+timer
+account numbers
+UI labels
+axis labels
+unrelated numbers
+
+Use:
+
+location
+font/color/context
+position
+update frequency
+pair context
+price continuity
+
+to identify candidate live price values.
+
+If uncertain:
+
+PRICE SOURCE UNCERTAIN
+NO TRADE
+
+====================================================
+SECURITY
+====================================================
+
+Never:
+
+- request credentials
+- read passwords
+- store credentials
+- send private data to external servers
+- upload trading data externally
+- collect account tokens
+- bypass security
+- access private APIs without authorization
+
+Keep calculations local.
+
+====================================================
+NO AUTOMATIC TRADING
+====================================================
+
+The final userscript must NEVER click:
+
+CALL
+PUT
+BUY
+SELL
+
+It only provides:
+
+CALL
+PUT
+NO TRADE
+
+The human manually decides.
+
+====================================================
+TESTING
+====================================================
+
+Before finishing, create internal self-tests for:
+
+1. indicator calculations
+2. candle construction
+3. timeframe bucketing
+4. duplicate tick rejection
+5. stale feed detection
+6. pair switching
+7. OTC detection
+8. signal scoring
+9. no-lookahead protection
+10. expiry calculation
+11. payout/break-even calculation
+12. journal recording
+13. localStorage settings
+14. HUD mounting
+15. mobile touch dragging
+16. data-quality guards
+17. signal cooldown
+18. extreme-climax protection
+
+No test may use fake market data to make the live engine appear
+connected.
+
+Synthetic data may be used ONLY inside isolated unit tests and MUST
+never reach the production signal path.
+
+====================================================
+V3 ARCHITECTURE
+====================================================
+
+Internally organize the code into modules/functions:
+
+CONFIG
+STATE
+LIVE_FEED
+PRICE_READER
+PAIR_DETECTOR
+TICK_ENGINE
+CANDLE_ENGINE
+TIMEFRAME_ENGINE
+INDICATOR_ENGINE
+PATTERN_ENGINE
+TREND_ENGINE
+STRUCTURE_ENGINE
+VOLATILITY_ENGINE
+MOMENTUM_ENGINE
+S/R_ENGINE
+LIQUIDITY_ENGINE
+REGIME_ENGINE
+MTF_ENGINE
+CONFLUENCE_ENGINE
+SCORE_ENGINE
+SIGNAL_ENGINE
+PAYOUT_ENGINE
+JOURNAL_ENGINE
+DIAGNOSTICS
+HUD
+SETTINGS
+AUDIO
+UTILITIES
+
+Even though everything is contained in ONE .user.js file, keep the
+architecture clearly separated internally.
+
+====================================================
+V3 SIGNAL PIPELINE
+====================================================
+
+The final pipeline must be:
+
+LIVE PAGE
+   ↓
+LIVE DATA ACQUISITION
+   ↓
+DATA VALIDATION
+   ↓
+TICK ENGINE
+   ↓
+CANDLE ENGINE
+   ↓
+MULTI-TIMEFRAME ENGINE
+   ↓
+INDICATORS
+   ↓
+CANDLE PATTERNS
+   ↓
+TREND / STRUCTURE
+   ↓
+SUPPORT / RESISTANCE
+   ↓
+MOMENTUM / VOLATILITY
+   ↓
+REGIME
+   ↓
+MULTI-TIMEFRAME CONFLUENCE
+   ↓
+QUANT SCORING
+   ↓
+PAYOUT / EXPECTANCY FILTER
+   ↓
+NO-TRADE FILTER
+   ↓
+NEXT-CANDLE SIGNAL
+   ↓
+JOURNAL
+   ↓
+RESULT TRACKING
+
+====================================================
+CRITICAL SIGNAL RULE
+====================================================
+
+The engine must prefer:
+
+NO TRADE
+
+over
+
+a weak CALL or weak PUT.
+
+The objective is NOT maximum number of signals.
+
+The objective is maximum quality of VALIDATED setups while avoiding
+forced predictions.
+
+====================================================
+V620 CLIMAX LOGIC UPGRADE
+====================================================
+
+The old V620 had:
+
+RSI extreme
+Bollinger extreme
+tick delta
+wick ratios
+climax detection
+
+Preserve the concept but remove the dangerous hardcoded rule:
+
+"RSI <= 18 means automatically BUY"
+
+and:
+
+"RSI >= 82 means automatically SELL"
+
+Instead:
+
+EXTREME CONDITION
+→ EXHAUSTION CANDIDATE
+→ REQUIRE STRUCTURE/CANDLE/MOMENTUM CONFIRMATION
+→ THEN CALL/PUT
+→ otherwise NO TRADE.
+
+====================================================
+EXACT OLD UI CONCEPT TO PRESERVE
+====================================================
+
+Keep a compact floating HUD similar to:
+
+⚡ PO OTC V3 QUANT ENGINE
+
+PAIR: AUD/CAD OTC
+TICK: 1.05038
 
 RSI: 50
 ADX: 25
 CVD: +1
-VWAP: fake value
+
+VWAP: 1.05031
+CLIMAX: NORMAL
 BB: SYNCED
-CLIMAX: NORMAL FLOW
-confidence: 90%
-win rate: 80%
-historical performance
 
-unless those values are genuinely calculated or retrieved.
+O:
+H:
+L:
 
-Use:
+BODY:
+U-WICK:
+L-WICK:
 
-N/A
-UNAVAILABLE
-NOT CONFIGURED
+RADAR:
+TIMER:
 
-when appropriate.
+[ ⚡ QUANT SCAN ]
 
-=========================================================
-37. AI REASONING LAYER
-=========================================================
+VERDICT:
 
-AI may explain the quantitative result.
+NO TRADE / CALL / PUT
 
-AI must NOT invent:
+But upgrade it with the complete V3 information architecture.
 
-prices
-candles
-indicators
-payouts
-historical statistics
-market data
-signals
+====================================================
+INSTALLATION COMPATIBILITY
+====================================================
 
-Architecture:
+The final code MUST be compatible with:
 
-RAW DATA
-→ QUANT CALCULATIONS
-→ MARKET STRUCTURE
-→ STRATEGIES
-→ HISTORICAL VALIDATION
-→ SCORING
-→ RISK FILTER
-→ AI EXPLANATION
+Userscripts
+Tampermonkey
+Greasemonkey where supported
 
-AI should never override critical data-quality guards.
+The metadata must remain at the very top.
 
-=========================================================
-38. SIGNAL EXPLANATION
-=========================================================
+The file MUST be:
 
-Every CALL/PUT must provide concise reasons.
+pocket-option-otc-v3.user.js
 
-Example:
+Do not rename it to:
 
-CALL
+.html
+.txt
+.js.txt
+.md
 
-Reasons:
-1. 15M/5M/1M bullish structure
-2. M1 support rejection
-3. EMA trend alignment
-4. Momentum confirmation
-5. No immediate resistance conflict
-6. Historical setup meets minimum sample requirement
-7. Payout passes EV filter
+Do not put the userscript inside another HTML file.
 
-If NO TRADE:
+====================================================
+GITHUB REQUIREMENT
+====================================================
 
+The final output must be suitable for saving directly as:
+
+pocket-option-otc-v3.user.js
+
+in a GitHub repository.
+
+Ensure the raw GitHub file begins immediately with:
+
+// ==UserScript==
+
+No text before it.
+
+No markdown code fence.
+
+No comments before the metadata header.
+
+No JSON wrapper.
+
+No HTML wrapper.
+
+====================================================
+FINAL RESPONSE TO THE CODING AGENT
+====================================================
+
+Do NOT merely describe what you would build.
+
+Actually modify/create the project.
+
+If the repository already contains the old userscript:
+
+- replace the old production userscript
+- preserve useful logic
+- upgrade it to V3
+- remove obsolete broken logic
+- ensure the final file is syntactically valid
+- ensure no missing variables
+- ensure no undefined functions
+- ensure no broken event handlers
+- ensure no duplicate listeners
+- ensure no duplicate HUDs
+- ensure no duplicate intervals
+
+Then run every available syntax/build/test check.
+
+Final validation must confirm:
+
+[PASS] Userscript metadata
+[PASS] .user.js format
+[PASS] Pocket Option @match rules
+[PASS] document-start
+[PASS] Live-data-only production path
+[PASS] No fake market data
+[PASS] No automatic trading
+[PASS] Multi-timeframe candles
+[PASS] Indicators
+[PASS] Candle patterns
+[PASS] Trend engine
+[PASS] Structure engine
+[PASS] S/R engine
+[PASS] Momentum
+[PASS] Volatility
+[PASS] Regime
+[PASS] MTF confluence
+[PASS] Quant scoring
+[PASS] Payout/EV filter
+[PASS] NO TRADE protection
+[PASS] Journal
+[PASS] Diagnostics
+[PASS] Mobile HUD
+[PASS] Touch dragging
+[PASS] Audio
+[PASS] Settings
+[PASS] Syntax check
+[PASS] No-lookahead protection
+
+MOST IMPORTANT:
+
+Do not claim that the system is "100% winning", "guaranteed",
+"exact", or "never loses".
+
+Do not fabricate live feed availability.
+
+If Pocket Option's observable page data is unavailable, the correct
+result is:
+
+LIVE DATA NOT AVAILABLE
 NO TRADE
 
-Reasons:
-1. MTF conflict
-2. Weak momentum
-3. Low historical edge
+NOT a simulated signal.
 
-=========================================================
-39. ALL-PAIR SCAN
-=========================================================
+====================================================
+FINAL DELIVERABLE
+====================================================
 
-Add:
+Create the complete production-ready:
 
-SCAN CURRENT PAIR
-SCAN ALL OTC
-STOP SCAN
+pocket-option-otc-v3.user.js
 
-During all-pair scanning:
+with all functionality above implemented in one self-contained
+installable userscript.
 
-- do not block UI
-- use async workers where appropriate
-- rate-limit provider requests
-- cancel scan safely
-- display progress
-- ignore unavailable assets
-- never fabricate unavailable data
-
-=========================================================
-40. PERFORMANCE REQUIREMENTS
-=========================================================
-
-The application must:
-
-- avoid unnecessary recalculation
-- cache indicator calculations
-- use incremental calculations where possible
-- use ring buffers
-- avoid blocking the UI
-- debounce expensive scans
-- prevent duplicate signal generation
-- prevent duplicate candle finalization
-- handle reconnects
-- recover cleanly after feed disconnect
-- preserve state where appropriate
-
-=========================================================
-41. SIGNAL DEDUPLICATION
-=========================================================
-
-Never produce multiple identical signals for the same:
-
-pair
-candle
-timeframe
-entry window
-
-unless explicitly configured.
-
-Create unique signal IDs.
-
-Example:
-
-PAIR + CANDLE_TIMESTAMP + TIMEFRAME + DIRECTION
-
-=========================================================
-42. CONFIGURATION
-=========================================================
-
-Create central configuration:
-
-timeframes
-expiry options
-indicator periods
-minimum score
-minimum sample size
-payout threshold
-entry window
-MTF requirements
-risk limits
-strategy weights
-data freshness limits
-
-No scattered magic numbers.
-
-=========================================================
-43. EXPIRY OPTIONS
-=========================================================
-
-Support where underlying data permits:
-
-15 seconds
-30 seconds
-1 minute
-2 minutes
-3 minutes
-5 minutes
-
-Also support:
-
-ALL
-
-But "ALL" must mean:
-choose the most statistically validated available expiry for the current setup.
-
-It must NOT randomly choose an expiry.
-
-=========================================================
-44. TIMEFRAME SELECTION
-=========================================================
-
-Support:
-
-15s
-30s
-1m
-2m
-3m
-5m
-10m
-15m
-30m
-1H
-
-If a timeframe cannot be reliably constructed:
-disable it.
-
-Never create fake timeframe candles.
-
-=========================================================
-45. CHART ENGINE
-=========================================================
-
-Add professional charts:
-
-candlestick chart
-volume/tick chart if available
-EMA overlays
-VWAP
-Bollinger Bands
-support/resistance zones
-supply/demand
-market structure labels
-BOS
-CHOCH
-liquidity sweeps
-entry marker
-signal marker
-
-Charts must use actual market data.
-
-=========================================================
-46. CHART ANALYSIS
-=========================================================
-
-Detect visually and mathematically:
-
-trend channels
-horizontal ranges
-breakouts
-retests
-support/resistance
-swing points
-compression
-expansion
-reversal zones
-
-Do not claim advanced chart patterns unless algorithmically detected.
-
-=========================================================
-47. PATTERN CONFIRMATION MATRIX
-=========================================================
-
-Create a confirmation matrix.
-
-Example:
-
-Trend                PASS
-Structure             PASS
-Candle                PASS
-Momentum              PASS
-Volatility            PASS
-S/R                   PASS
-MTF                   PASS
-Historical            PASS
-Payout                PASS
-Data Quality          PASS
-
-Only after minimum required confirmations:
-FINAL SIGNAL
-
-Otherwise:
-NO TRADE.
-
-=========================================================
-48. MODEL GOVERNANCE
-=========================================================
-
-Every signal must be reproducible.
-
-Store the model inputs used to create it.
-
-If user opens signal history later, system should be able to show:
-
-WHY CALL?
-WHY PUT?
-WHY NO TRADE?
-
-=========================================================
-49. SECURITY
-=========================================================
-
-Never store:
-
-passwords
-account credentials
-private tokens
-browser cookies
-sensitive authentication data
-
-If API keys are supported:
-
-- server-side only
-- encrypted where appropriate
-- never expose in frontend
-- never log secrets
-- redact logs
-
-=========================================================
-50. TESTING
-=========================================================
-
-Create comprehensive automated tests.
-
-Minimum test categories:
-
-TickEngine tests
-CandleEngine tests
-OHLC tests
-timeframe tests
-indicator tests
-pattern tests
-market structure tests
-BOS tests
-CHOCH tests
-S/R tests
-divergence tests
-market regime tests
-strategy tests
-scoring tests
-payout tests
-EV tests
-backtest tests
-walk-forward tests
-signal tests
-NO TRADE tests
-data quality tests
-stale data tests
-duplicate tick tests
-disconnect tests
-signal deduplication tests
-expiry tests
-UI state tests
-provider tests
-
-Run:
-
-unit tests
-integration tests
-type checks
-lint
-build
-
-Do not finish until tests pass.
-
-=========================================================
-51. CRITICAL ACCEPTANCE TEST
-=========================================================
-
-The system must pass this exact principle:
-
-NO REAL DATA
-→ NO REAL SIGNAL
-
-STALE DATA
-→ NO SIGNAL
-
-INCOMPLETE CANDLE
-→ NO SIGNAL
-
-INSUFFICIENT HISTORY
-→ NO SIGNAL
-
-CONFLICTING MARKET STRUCTURE
-→ NO SIGNAL
-
-INSUFFICIENT CONFIRMATION
-→ NO SIGNAL
-
-UNSUPPORTED ASSET
-→ NO SIGNAL
-
-UNSUPPORTED TIMEFRAME
-→ NO SIGNAL
-
-UNKNOWN PAYOUT
-→ NO PAYOUT-BASED EDGE CLAIM
-
-NO AUTHORIZED LIVE FEED
-→ SAFE MANUAL/OFFLINE MODE
-
-=========================================================
-52. LIVE FEED TESTER
-=========================================================
-
-Add:
-
-Settings
-→ Live Data Diagnostics
-→ Test Connection
-
-Show:
-
-Provider
-Asset
-OTC status
-Connection
-Last tick
-Last candle
-Data freshness
-Latency
-Historical candles
-Current payout if available
-
-Test:
-
-tick arrival
-timestamp validity
-OHLC validity
-candle formation
-disconnect/reconnect
-stale detection
-
-=========================================================
-53. DEVELOPMENT PHASES
-=========================================================
-
-Implement in this order:
-
-PHASE 1
-Repository audit
-Existing architecture audit
-Remove obsolete demo logic
-
-PHASE 2
-Live provider abstraction
-Tick engine
-Data guards
-
-PHASE 3
-Candle engine
-Multi-timeframe engine
-
-PHASE 4
-Indicator engine
-
-PHASE 5
-Candle pattern engine
-
-PHASE 6
-Market structure
-
-PHASE 7
-S/R and liquidity
-
-PHASE 8
-Divergence
-
-PHASE 9
-Market regime
-
-PHASE 10
-Strategy library
-
-PHASE 11
-OTC behavior statistics
-
-PHASE 12
-Backtesting
-
-PHASE 13
-Walk-forward validation
-
-PHASE 14
-Quant scoring
-
-PHASE 15
-Payout/EV engine
-
-PHASE 16
-Final signal engine
-
-PHASE 17
-Risk engine
-
-PHASE 18
-Signal journal
-
-PHASE 19
-UI upgrade
-
-PHASE 20
-Diagnostics
-
-PHASE 21
-Full testing
-
-PHASE 22
-Production build
-
-=========================================================
-54. FILE / CODE ORGANIZATION
-=========================================================
-
-Use a modular structure similar to:
-
-src/
-  components/
-  pages/
-  hooks/
-  services/
-  types/
-
-server/
-  data/
-    providers/
-      LiveMarketDataProvider
-      PocketOptionLiveFeedAdapter
-      DemoFeedAdapter
-      ReplayFeedAdapter
-
-  engine/
-    TickEngine
-    CandleEngine
-    MultiTimeframeEngine
-    IndicatorEngine
-    CandlePatternEngine
-    MarketStructureEngine
-    SupportResistanceEngine
-    LiquidityEngine
-    DivergenceEngine
-    MarketRegimeEngine
-    StrategyEngine
-    OTCBehaviorEngine
-    QuantScoringEngine
-    PayoutEngine
-    ExpectedValueEngine
-    BacktestEngine
-    WalkForwardEngine
-    SignalEngine
-    RiskEngine
-    SignalJournal
-
-  routes/
-    market
-    signal
-    diagnostics
-    backtest
-    performance
-
-  tests/
-
-Adapt this structure to the existing project rather than creating duplicate engines.
-
-=========================================================
-55. REMOVE LEGACY CONFLICTS
-=========================================================
-
-Search the entire codebase for:
-
-fake candle generators
-random market values
-synthetic signal generation
-hardcoded RSI
-hardcoded ADX
-hardcoded CVD
-hardcoded VWAP
-fake confidence
-fake payout
-fake historical statistics
-demo-only signal paths
-duplicate CandleEngine
-duplicate SignalEngine
-old V1/V2 conflicting logic
-
-Remove or disable obsolete conflicting implementations.
-
-Do not leave two competing signal engines active.
-
-There must be ONE authoritative production SignalEngine.
-
-=========================================================
-56. BACKWARD COMPATIBILITY
-=========================================================
-
-Preserve useful existing features:
-
-Manual Scan
-Automatic scanning interface if already present
-pair selector
-timeframe selector
-expiry selector
-signal history
-diagnostics
-demo mode
-offline mode
-existing test infrastructure
-
-Improve them rather than unnecessarily removing them.
-
-=========================================================
-57. MANUAL SCAN
-=========================================================
-
-Manual Scan button:
-
-SCAN NOW
-
-must:
-
-1. verify data connection
-2. verify selected asset
-3. verify timeframe
-4. verify history
-5. calculate indicators
-6. calculate structure
-7. calculate patterns
-8. calculate MTF
-9. calculate strategy scores
-10. calculate payout/EV
-11. calculate final score
-12. produce CALL / PUT / NO TRADE
-
-No fake fallback.
-
-=========================================================
-58. AUTOMATIC SCAN
-=========================================================
-
-Automatic mode:
-
-- synchronize to candle boundaries
-- monitor final confirmation window
-- prevent duplicate signals
-- wait for next valid setup
-- respect cooldown
-- stop on data errors
-- never force a trade
-
-=========================================================
-59. RESULT LABELS
-=========================================================
-
-Use:
-
-CALL
-PUT
-NO TRADE
-WAIT
-DATA UNAVAILABLE
-LIVE FEED NOT CONFIGURED
-
-Do not use:
-
-GUARANTEED WIN
-100% WIN
-SURE SHOT
-EXACT WIN
-NO LOSS
-
-=========================================================
-60. FINAL UI
-=========================================================
-
-The main UI should look premium and similar in concept to the provided screenshot.
-
-Header:
-
-⚡ CLIMAX QUANT ENGINE V3
-
-Live status indicator.
-
-Pair selector:
-
-AUD/CAD OTC ▼
-
-Controls:
-
-Timeframe
-Expiry
-Scan
-Auto Scan
-All OTC
-
-Analysis panel:
-
-PRICE
-PAYOUT
-TIMER
-
-TREND
-STRUCTURE
-MOMENTUM
-VOLATILITY
-CANDLE
-VWAP
-RSI
-MACD
-ADX
-ATR
-BOLLINGER
-S/R
-MTF
-MARKET REGIME
-
-Then:
-
-QUANT SCORE
-
-Then:
-
-FINAL VERDICT
-
-CALL / PUT / NO TRADE
-
-Then:
-
-REASONS
-
-Then:
-
-ENTRY WINDOW
-
-Then:
-
-EXPIRY
-
-Then:
-
-DATA QUALITY
-
-=========================================================
-61. IMPORTANT: DO NOT PROMISE WINNING
-=========================================================
-
-The software must be designed to seek statistically validated, high-quality setups.
-
-It must NOT claim that signals are guaranteed to win.
-
-Use historical validation, out-of-sample testing and strict NO TRADE filtering.
-
-=========================================================
-62. FINAL BUILD REQUIREMENT
-=========================================================
-
-After implementation:
-
-1. Run tests.
-2. Fix all failures.
-3. Run type check.
-4. Run lint.
-5. Run production build.
-6. Verify frontend.
-7. Verify backend.
-8. Verify provider layer.
-9. Verify no fake market data exists.
-10. Verify no random signal exists.
-11. Verify NO TRADE works.
-12. Verify manual scan.
-13. Verify timeframe selection.
-14. Verify expiry selection.
-15. Verify pair selection.
-16. Verify signal history.
-17. Verify diagnostics.
-18. Verify reconnect behavior.
-19. Verify stale-data protection.
-20. Verify signal deduplication.
-
-Do not report success merely because the UI compiles.
-
-The application must be functionally tested.
-
-=========================================================
-63. FINAL DELIVERY REPORT
-=========================================================
-
-At completion report:
-
-- files changed
-- files created
-- files removed
-- legacy code removed
-- live provider status
-- demo provider status
-- real-data status
-- synthetic-data status
-- automatic trading status
-- tests passed
-- tests failed
-- build status
-- type-check status
-- lint status
-- remaining limitations
-
-Be completely truthful.
-
-If live Pocket Option OTC data cannot be legitimately connected in the current environment, explicitly state:
-
-LIVE OTC FEED:
-NOT CONFIGURED
-
-and leave the application in SAFE MANUAL / DEMO / OFFLINE MODE.
-
-Do not fake live connectivity.
-
-=========================================================
-FINAL PRINCIPLE
-=========================================================
-
-REAL DATA
-+
-REAL CALCULATIONS
-+
-MULTI-TIMEFRAME STRUCTURE
-+
-PRICE ACTION
-+
-TECHNICAL INDICATORS
-+
-MARKET REGIME
-+
-OTC-SPECIFIC STATISTICS
-+
-HISTORICAL VALIDATION
-+
-WALK-FORWARD TESTING
-+
-PAYOUT / EXPECTED VALUE
-+
-STRICT DATA QUALITY
-+
-STRICT NO TRADE FILTER
-+
-RISK CONTROL
-=
-HIGH-SELECTIVITY QUANT SIGNAL SYSTEM
-
-Never:
-FAKE DATA
-+
-RANDOM SIGNALS
-+
-HARDCODED INDICATORS
-+
-FABRICATED STATISTICS
-+
-GUARANTEED-WIN CLAIMS
-
-START NOW.
-
-First inspect the existing repository and produce an implementation plan internally, then execute the V3 upgrade directly.
-
-Do not stop at architecture documentation.
-Do not create a mockup-only application.
-Implement the actual working code.
-Preserve working existing functionality.
-Replace obsolete/conflicting logic.
-Run the complete test/build pipeline before finishing.
+The final userscript must start directly with the userscript metadata
+header and must be usable by a userscript manager without a compilation
+step.
