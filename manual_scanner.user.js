@@ -1,613 +1,2062 @@
-// ==UserScript==
-// @name         Pocket Option APEX Climax-Exhaustion Shield
-// @namespace    https://github.com/
-// @version      620.0
-// @description  Extreme RSI Climax Filter (RSI < 18 Hard PUT Ban), Parabolic ADX Bounce, CVD Reversal & Zero Indicator Freeze
-// @match        *://*.pocketoption.com/*
-// @match        *://pocketoption.com/*
-// @match        *://*.po.trade/*
-// @match        *://*.po.market/*
-// @match        *://*.pocket-option.com/*
-// @match        *://*.po2.cash/*
-// @run-at       document-start
-// @grant        none
-// ==/UserScript==
-
-(function() {
-    'use strict';
-    if (window.top !== window.self) return;
-
-    // 1. IN-PAGE CANVAS BADGE SNIFFER
-    try {
-        if (typeof CanvasRenderingContext2D !== 'undefined') {
-            const origFill = CanvasRenderingContext2D.prototype.fillText;
-            CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
-                if (text && typeof text === 'string') {
-                    var str = text.trim();
-                    if (/^\d{1,6}\.\d{2,6}$/.test(str)) {
-                        var n = parseFloat(str);
-                        if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
-                            var fill = ("" + this.fillStyle).toLowerCase();
-                            var isWhite = (fill === '#ffffff' || fill === 'rgb(255, 255, 255)' || fill === 'white' || fill === '#fff' || fill.indexOf('255, 255, 255') !== -1 || fill.indexOf('255,255,255') !== -1);
-                            if (isWhite) {
-                                window.__po_live_tick = n;
-                                window.__po_live_tick_time = Date.now();
-                            }
-                        }
-                    }
-                }
-                return origFill.apply(this, arguments);
-            };
-        }
-    } catch(e) {}
-
-    // Audio Alert Synthesizer
-    let audioCtx = null;
-    function playTone(freq, type = "sine", duration = 0.20) {
-        try {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        } catch(e) {}
-    }
-
-    document.addEventListener('touchstart', () => {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }, { once: true });
-
-    // ZERO-LEAK LIVE PRICE GETTER
-    function getLivePrice() {
-        if (window.__po_live_tick && (Date.now() - (window.__po_live_tick_time || 0) < 1800)) {
-            return window.__po_live_tick;
-        }
-
-        const candidates = [];
-        const allElements = document.querySelectorAll('*');
-        for (let el of allElements) {
-            if (el.children.length === 0 && el.textContent) {
-                let txt = el.textContent.trim();
-                if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
-                    let rect = el.getBoundingClientRect();
-                    if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
-                        let n = parseFloat(txt);
-                        if (n > 0 && Math.abs(n - 2.62) > 0.05 && n !== 100 && Math.abs(n - 1.89) > 0.01) {
-                            candidates.push({ val: n, str: txt, top: rect.top });
-                        }
-                    }
-                }
-            }
-        }
-
-        if (candidates.length > 0) {
-            const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
-            if (nonGrid.length > 0) return nonGrid[nonGrid.length - 1].val;
-            return null;
-        }
-        return null;
-    }
-
-    function getActivePair() {
-        const selectors = ['.current-symbol', '[class*="pair-title"]', '.asset-select'];
-        for (let sel of selectors) {
-            let el = document.querySelector(sel);
-            if (el && el.innerText) {
-                let t = el.innerText.split('\n')[0].trim();
-                if (t.length > 3 && t !== "OTC ASSET") return t;
-            }
-        }
-        return "AUD/CHF OTC";
-    }
-
-    // =========================================================================
-    // 2. HUD INTERFACE
-    // =========================================================================
-    function mountHUD() {
-        const root = document.body || document.documentElement;
-        if (!root || document.getElementById('po-apex-hud')) return;
-
-        const hud = document.createElement('div');
-        hud.id = 'po-apex-hud';
-        hud.style.cssText = `
-            position: fixed !important;
-            top: 155px !important;
-            left: 10px !important;
-            z-index: 2147483647 !important;
-            background: rgba(3, 10, 24, 0.98) !important;
-            border: 2px solid #00f0ff !important;
-            border-radius: 14px !important;
-            padding: 9px !important;
-            color: #ffffff !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-            box-shadow: 0 16px 55px rgba(0,240,255,0.25) !important;
-            width: 255px !important;
-            touch-action: none !important;
-            user-select: none !important;
-            display: block !important;
-            visibility: visible !important;
-        `;
-
-        hud.innerHTML = `
-            <div id="hud-drag" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -9px -9px 7px -9px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ CLIMAX-EXHAUSTION v620</span>
-                <span style="font-size: 8px; background: rgba(0,0,0,0.25); color:#fff; padding: 2px 4px; border-radius: 4px;">MOVE</span>
-            </div>
-            <div style="font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between;">
-                <span>PAIR: <b id="a-pair" style="color: #00f0ff;">SYNCING...</b></span>
-                <span>TICK: <b id="a-price" style="color: #10b981;">--</b></span>
-            </div>
-            
-            <!-- TELEMETRY MATRIX -->
-            <div style="background: #061226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b; font-size: 8px;">
-                <div style="display: flex; justify-content: space-between; color: #94a3b8;">
-                    <span>RSI: <b id="a-rsi" style="color:#38bdf8;">--</b></span>
-                    <span>ADX: <b id="a-adx" style="color:#facc15;">--</b></span>
-                    <span>CVD: <b id="a-cvd" style="color:#10b981;">0</b></span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 3px; color: #94a3b8;">
-                    <span>VWAP: <b id="a-vwap" style="color:#00f0ff;">--</b></span>
-                    <span>CLIMAX: <b id="a-climax" style="color:#10b981;">NORMAL</b></span>
-                    <span>BB: <b id="a-bb" style="color:#38bdf8;">SYNCED</b></span>
-                </div>
-            </div>
-
-            <!-- GEOMETRY -->
-            <div style="background: #08152e; padding: 4px 5px; border-radius: 6px; margin: 4px 0; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8;">
-                <div style="display: flex; justify-content: space-between;">
-                    <span>O: <b id="a-open" style="color:#fff;">--</b></span>
-                    <span>H: <b id="a-high" style="color:#10b981;">--</b></span>
-                    <span>L: <b id="a-low" style="color:#ef4444;">--</b></span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                    <span>BODY: <b id="a-body" style="color:#00f0ff;">0%</b></span>
-                    <span>U-WICK: <b id="a-uwick" style="color:#facc15;">0%</b></span>
-                    <span>L-WICK: <b id="a-lwick" style="color:#facc15;">0%</b></span>
-                </div>
-            </div>
-
-            <div style="font-size: 8.5px; color: #94a3b8;">RADAR: <span id="a-radar" style="color: #00f0ff; font-weight: bold;">DECISIVE MODE</span></div>
-            <div style="font-size: 8.5px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
-
-            <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 10px 4px; border-radius: 8px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
-                ⚡ DECISIVE QUANT SCAN (2.0s)
-            </button>
-
-            <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-                <div id="a-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #10b981); transition: width 0.08s linear;"></div>
-            </div>
-
-            <div id="a-status-box" style="margin-top: 7px; padding: 7px 4px; background: #061124; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Climax-Protected Verdict</div>
-                <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Scan in Last 12s-4s of Candle</div>
-            </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Wait until 12s left on clock before scanning</div>
-        `;
-
-        root.appendChild(hud);
-
-        // Touch Dragging
-        let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 10, startBoxY = 155;
-        hud.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 1) {
-                isDragging = true;
-                startTouchX = e.touches[0].clientX;
-                startTouchY = e.touches[0].clientY;
-                const rect = hud.getBoundingClientRect();
-                startBoxX = rect.left;
-                startBoxY = rect.top;
-            }
-        }, { passive: false });
-
-        document.addEventListener('touchmove', function(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            hud.style.left = Math.max(5, Math.min(window.innerWidth - 260, startBoxX + (e.touches[0].clientX - startTouchX))) + 'px';
-            hud.style.top = Math.max(5, Math.min(window.innerHeight - 300, startBoxY + (e.touches[0].clientY - startTouchY))) + 'px';
-        }, { passive: false });
-
-        document.addEventListener('touchend', function() { isDragging = false; });
-
-        bindScannerEvents();
-    }
-
-    // =========================================================================
-    // 3. CANDLE ENGINE WITH ADVANCED CLIMAX DETECTION
-    // =========================================================================
-    let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
-    let lastMinuteTracked = -1;
-    let candleHistory = [];
-    let storedPair = "";
-
-    let buyTicks = 0, sellTicks = 0, tickDelta = 0;
-    let lastRecordedTickPrice = null;
-    let tickPriceSum = 0, totalTicksCount = 0;
-
-    function calculateRSI(period = 7) {
-        if (candleHistory.length < 2) return 50.0;
-        let p = Math.min(period, candleHistory.length);
-        let gains = 0, losses = 0;
-        for (let i = candleHistory.length - p + 1; i < candleHistory.length; i++) {
-            let diff = candleHistory[i].close - candleHistory[i - 1].close;
-            if (diff >= 0) gains += diff;
-            else losses += Math.abs(diff);
-        }
-        if (losses === 0) return 85.0;
-        if (gains === 0) return 15.0;
-        let rs = gains / losses;
-        return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
-    }
-
-    function calculateBollinger(period = 14, multiplier = 2.0) {
-        if (candleHistory.length < 2) return null;
-        let p = Math.min(period, candleHistory.length);
-        let sum = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) sum += candleHistory[i].close;
-        let sma = sum / p;
-        let variance = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) variance += Math.pow(candleHistory[i].close - sma, 2);
-        let stdDev = Math.sqrt(variance / p);
-        return {
-            upper: sma + (multiplier * (stdDev || 0.0001)),
-            lower: sma - (multiplier * (stdDev || 0.0001)),
-            mid: sma
-        };
-    }
-
-    function calculateADX() {
-        if (candleHistory.length < 3) return 25.0;
-        let p = Math.min(7, candleHistory.length - 1);
-        let plusDM = 0, minusDM = 0, trSum = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) {
-            let upMove = candleHistory[i].high - candleHistory[i - 1].high;
-            let downMove = candleHistory[i - 1].low - candleHistory[i].low;
-            if (upMove > downMove && upMove > 0) plusDM += upMove;
-            if (downMove > upMove && downMove > 0) minusDM += downMove;
-            trSum += candleHistory[i].range;
-        }
-        if (trSum === 0) return 25.0;
-        let diDiff = Math.abs(plusDM - minusDM);
-        let diSum = plusDM + minusDM;
-        return diSum === 0 ? 25.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
-    }
-
-    function runEngineTick() {
-        mountHUD();
-
-        const currentPair = getActivePair();
-        const price = getLivePrice();
-        const now = new Date();
-        const currentSec = now.getSeconds();
-        const currentMin = now.getMinutes();
-
-        // Pair Switch Flush
-        if (storedPair !== "" && currentPair !== storedPair && currentPair.length > 3) {
-            candleOpen = price;
-            candleHigh = price || -Infinity;
-            candleLow = price || Infinity;
-            candleClose = price;
-            candleHistory = [];
-            lastMinuteTracked = currentMin;
-            buyTicks = 0; sellTicks = 0; tickDelta = 0;
-            tickPriceSum = 0; totalTicksCount = 0;
-            lastRecordedTickPrice = price;
-            resetStatusBox();
-        }
-        storedPair = currentPair;
-
-        // INSTANT MINUTE ROLLOVER (:00.000)
-        if (currentMin !== lastMinuteTracked) {
-            if (lastMinuteTracked !== -1 && candleOpen !== null && price) {
-                let prevClose = candleClose || price;
-                let cBody = Math.abs(prevClose - candleOpen);
-                let cRange = Math.max(0.000001, candleHigh - candleLow);
-                let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, prevClose));
-                let cLower = Math.max(0, Math.min(candleOpen, prevClose) - candleLow);
-
-                candleHistory.push({
-                    open: candleOpen,
-                    close: prevClose,
-                    high: candleHigh,
-                    low: candleLow,
-                    isGreen: prevClose >= candleOpen,
-                    body: cBody,
-                    range: cRange,
-                    upperWick: cUpper,
-                    lowerWick: cLower,
-                    finalDelta: tickDelta
-                });
-                if (candleHistory.length > 40) candleHistory.shift();
-            }
-
-            lastMinuteTracked = currentMin;
-            candleOpen = price;
-            candleHigh = price || -Infinity;
-            candleLow = price || Infinity;
-            candleClose = price;
-
-            buyTicks = 0; sellTicks = 0; tickDelta = 0;
-            tickPriceSum = 0; totalTicksCount = 0;
-            lastRecordedTickPrice = price;
-
-            resetStatusBox();
-        }
-
-        if (price) {
-            if (candleOpen === null) {
-                candleOpen = price;
-                candleHigh = price;
-                candleLow = price;
-                lastRecordedTickPrice = price;
-            }
-
-            tickPriceSum += price;
-            totalTicksCount++;
-
-            if (lastRecordedTickPrice !== null) {
-                if (price > lastRecordedTickPrice) { buyTicks++; tickDelta++; }
-                else if (price < lastRecordedTickPrice) { sellTicks++; tickDelta--; }
-            }
-            lastRecordedTickPrice = price;
-
-            if (price > candleHigh) candleHigh = price;
-            if (price < candleLow) candleLow = price;
-            candleClose = price;
-
-            let decimals = price > 100 ? 3 : 5;
-            let elPrice = document.getElementById('a-price');
-            let elOpen = document.getElementById('a-open');
-            let elHigh = document.getElementById('a-high');
-            let elLow = document.getElementById('a-low');
-
-            if (elPrice) { elPrice.innerText = price.toFixed(decimals); elPrice.style.color = "#10b981"; }
-            if (elOpen) elOpen.innerText = candleOpen.toFixed(decimals);
-            if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
-            if (elLow) elLow.innerText = candleLow.toFixed(decimals);
-
-            // RELATIVE WICK & BODY RATIOS
-            let cRange = Math.max(0.000001, candleHigh - candleLow);
-            let cBody = Math.abs(candleClose - candleOpen);
-            let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
-            let cLower = Math.max(0, Math.min(candleOpen, candleClose) - candleLow);
-
-            if ((cUpper / cRange) < 0.015) cUpper = 0;
-            if ((cLower / cRange) < 0.015) cLower = 0;
-
-            let bPct = Math.round((cBody / cRange) * 100);
-            let uPct = Math.round((cUpper / cRange) * 100);
-            let lPct = Math.round((cLower / cRange) * 100);
-
-            let sum = bPct + uPct + lPct;
-            if (sum > 100) {
-                let factor = 100 / sum;
-                bPct = Math.round(bPct * factor);
-                uPct = Math.round(uPct * factor);
-                lPct = Math.max(0, 100 - bPct - uPct);
-            }
-
-            let elBody = document.getElementById('a-body');
-            let elUwick = document.getElementById('a-uwick');
-            let elLwick = document.getElementById('a-lwick');
-            if (elBody) elBody.innerText = `${bPct}%`;
-            if (elUwick) elUwick.innerText = `${uPct}%`;
-            if (elLwick) elLwick.innerText = `${lPct}%`;
-
-            let curRsi = calculateRSI(7);
-            let curAdx = calculateADX();
-            let bb = calculateBollinger(14, 2.0);
-            let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : price;
-
-            let rsiEl = document.getElementById('a-rsi');
-            let adxEl = document.getElementById('a-adx');
-            let cvdEl = document.getElementById('a-cvd');
-            let vwapEl = document.getElementById('a-vwap');
-            let bbEl = document.getElementById('a-bb');
-            let climaxEl = document.getElementById('a-climax');
-
-            if (rsiEl) {
-                rsiEl.innerText = curRsi.toString();
-                if (curRsi <= 18) rsiEl.style.color = "#10b981"; // Deep oversold alert!
-                else if (curRsi >= 82) rsiEl.style.color = "#ef4444";
-                else rsiEl.style.color = "#38bdf8";
-            }
-            if (adxEl) adxEl.innerText = curAdx.toString();
-            if (cvdEl) cvdEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta}`;
-            if (vwapEl) vwapEl.innerText = vwap.toFixed(decimals);
-
-            // CLIMAX EXHAUSTION DETECTOR (SCREENSHOT 19 FIX)
-            let isExtremeBottom = (curRsi <= 18) || (bb && price <= bb.lower && curRsi <= 25);
-            let isExtremeTop = (curRsi >= 82) || (bb && price >= bb.upper && curRsi >= 75);
-
-            if (climaxEl) {
-                if (isExtremeBottom) {
-                    climaxEl.innerText = "BOTTOM EXHAUSTION 🟢 (PUT BANNED)";
-                    climaxEl.style.color = "#10b981";
-                } else if (isExtremeTop) {
-                    climaxEl.innerText = "TOP EXHAUSTION 🔴 (CALL BANNED)";
-                    climaxEl.style.color = "#ef4444";
-                } else {
-                    climaxEl.innerText = "NORMAL FLOW";
-                    climaxEl.style.color = "#38bdf8";
-                }
-            }
-
-            if (bbEl && bb) {
-                if (price >= bb.upper) { bbEl.innerText = "+2σ OVER 🔴"; bbEl.style.color = "#ef4444"; }
-                else if (price <= bb.lower) { bbEl.innerText = "-2σ OVERSOLD 🟢"; bbEl.style.color = "#10b981"; }
-                else { bbEl.innerText = "IN-RANGE"; bbEl.style.color = "#38bdf8"; }
-            }
-        }
-
-        let elPair = document.getElementById('a-pair');
-        let elTimer = document.getElementById('a-timer');
-        if (elPair) elPair.innerText = currentPair;
-        if (elTimer) elTimer.innerText = `${60 - currentSec}s`;
-    }
-
-    function resetStatusBox() {
-        let sigText = document.getElementById('a-signal-text');
-        let sigBox = document.getElementById('a-status-box');
-        let confText = document.getElementById('a-conf-text');
-        let desc = document.getElementById('a-desc');
-        if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
-        if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Scan in Last 12s-4s of Candle"; }
-        if (desc) { desc.innerHTML = "Wait until 12s left on clock before scanning"; }
-    }
-
-    // =========================================================================
-    // 4. SCANNER: FAST 2.0s CLIMAX-PROTECTED ENGINE
-    // =========================================================================
-    let isClimaxScanning = false;
-
-    function bindScannerEvents() {
-        const btn = document.getElementById('a-scan-btn');
-        if (!btn || btn.dataset.bound) return;
-        btn.dataset.bound = "true";
-
-        btn.addEventListener('click', function() {
-            if (isClimaxScanning) return;
-
-            const price = getLivePrice();
-            const sigBox = document.getElementById('a-status-box');
-            const sigText = document.getElementById('a-signal-text');
-            const confText = document.getElementById('a-conf-text');
-            const desc = document.getElementById('a-desc');
-            const pBar = document.getElementById('a-progress-bar');
-            const pFill = document.getElementById('a-progress-fill');
-
-            if (!price || candleOpen === null) {
-                if (sigText) { sigText.innerText = "WAITING FOR TICK"; sigText.style.color = "#f43f5e"; }
-                return;
-            }
-
-            isClimaxScanning = true;
-            btn.style.opacity = "0.5";
-            btn.innerText = "SCANNING CONFLUENCE (2.0s)...";
-            if (pBar) pBar.style.display = "block";
-            if (pFill) pFill.style.width = "0%";
-
-            let totalSteps = 20; // 20 * 100ms = 2.0 Seconds
-            let curStep = 0;
-            let startDelta = tickDelta;
-
-            const scanInterval = setInterval(() => {
-                curStep++;
-                let progress = Math.min(100, Math.round((curStep / totalSteps) * 100));
-                if (pFill) pFill.style.width = `${progress}%`;
-
-                if (curStep >= totalSteps) {
-                    clearInterval(scanInterval);
-                    evaluateClimaxDecision(startDelta);
-                }
-            }, 100);
-
-            function evaluateClimaxDecision(initDelta) {
-                isClimaxScanning = false;
-                btn.style.opacity = "1";
-                btn.innerText = "⚡ DECISIVE QUANT SCAN (2.0s)";
-                if (pBar) pBar.style.display = "none";
-
-                const now = new Date();
-                const currentSec = now.getSeconds();
-                const currentPrice = candleClose || getLivePrice();
-
-                let isGreen = currentPrice >= candleOpen;
-                let bodySize = Math.abs(currentPrice - candleOpen);
-                let totalRange = Math.max(0.000001, candleHigh - candleLow);
-                let upperWick = Math.max(0, candleHigh - Math.max(candleOpen, currentPrice));
-                let lowerWick = Math.max(0, Math.min(candleOpen, currentPrice) - candleLow);
-
-                if ((upperWick / totalRange) < 0.015) upperWick = 0;
-                if ((lowerWick / totalRange) < 0.015) lowerWick = 0;
-
-                let bodyPct = Math.round((bodySize / totalRange) * 100);
-                let upperWickPct = Math.round((upperWick / totalRange) * 100);
-                let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
-
-                let curRsi = calculateRSI(7);
-                let curAdx = calculateADX();
-                let bb = calculateBollinger(14, 2.0);
-                let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
-                let deltaShift = tickDelta - initDelta;
-
-                let isExtremeBottom = (curRsi <= 18) || (bb && currentPrice <= bb.lower && curRsi <= 25);
-                let isExtremeTop = (curRsi >= 82) || (bb && currentPrice >= bb.upper && curRsi >= 75);
-
-                let isCall = false;
-                let setupName = "";
-                let confidence = 88;
-
-                // =============================================================
-                // SUPREME LAW: EXTREME CLIMAX OVERRIDE (FIX FOR SCREENSHOT 19)
-                // =============================================================
-                if (isExtremeBottom) {
-                    // Extreme oversold (RSI 11.9 / Lower BB): Selling is suicide -> BUY FLIP!
-                    isCall = true;
-                    confidence = 96;
-                    setupName = `Extreme Bottom Climax (RSI: ${curRsi} • PUT Banned • BUY 🟢)`;
-                }
-                else if (isExtremeTop) {
-                    // Extreme overbought (RSI > 82 / Upper BB): Buying is suicide -> SELL FLIP!
-                    isCall = false;
-                    confidence = 96;
-                    setupName = `Extreme Top Climax (RSI: ${curRsi} • CALL Banned • SELL 🔴)`;
-                }
-                // REGULAR CONFLUENCE WHEN NOT AT EXTREMES
-                else {
-                    let bullScore = 0;
-                    let bearScore = 0;
-
-                    if (tickDelta > 0) bullScore += Math.min(30, tickDelta * 2);
-                    else if (tickDelta < 0) bearScore += Math.min(30, Math.abs(tickDelta) * 2);
-
-                    if (deltaShift > 0) bullScore += 15;
-                    else if (deltaShift < 0) bearScore += 15;
-
-                    if (currentPrice >= vwap) bullScore += 20;
-                    else bearScore += 20;
-
-                    if (lowerWickPct >= 35) bullScore += 25;
-                    if (upperWickPct >= 35) bearScore += 25;
-
-                    if (isGreen && bodyPct >= 55) bullScore += 20;
-                    if (!isGreen && bodyPct >= 55) bearScore += 20;
-
-                    if (bullScore > bearScore) {
-                        isCall = true;
-                        confidence = Math.min(95, 82 + Math.round((bullScore / (bullScore + bearScore || 1)) * 13));
-                        setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Flow Surge 🟢";
-                    } else {
-                        isCall = false;
-                        confidence = Math.min(95, 82 + Math.round((bearScore / (bullScore + bearScore || 1)) * 13));
-                        setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Flow Surge 🔴";
-                    }
-                }
-
-                let secondsToNext = 60 - currentSec;
-                let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
-                let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
-
-                let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
-                if (sigText) {
-                    sigText.innerText = action;
-                    sigText.style.color = isCall ? "#10b981" : "#ef4444";
-                }
-                if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • CLIMAX PROTECTED`;
-                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • RSI: ${curRsi} • Delta: ${tickDelta}</span>`;
-
-                playTone(isCall ? 960 : 440, "sine", 0.22);
-            }
-        });
-    }
-
-    setInterval(runEngineTick, 100);
-})();
+PROJECT: Pocket Option OTC — V3 LIVE QUANT SIGNAL ENGINE
+=========================================================
+
+MISSION
+=======
+
+Completely upgrade the existing Pocket Option OTC signal analyzer into a production-grade V3 Live OTC Quant Analysis Engine.
+
+The existing project contains previous V1/V1.2/V1.5/V1.7/V1.9/V2.1 architecture, including:
+- CandleEngine
+- indicator engine
+- provider layer
+- PocketOptionPublicFeedAdapter
+- DemoFeedConnector
+- data guards
+- diagnostics
+- signal routes
+- tests
+- existing UI
+
+DO NOT blindly destroy working architecture.
+
+First inspect the entire repository and understand the existing implementation.
+
+Then replace obsolete/demo-only logic where required and build V3 around a clean modular architecture.
+
+The final application must NOT generate random, fake, synthetic, fabricated, placeholder, guessed, or simulated market data.
+
+If real authorized Pocket Option OTC market data is not connected:
+- show NOT CONFIGURED / LIVE FEED REQUIRED
+- do NOT manufacture candles
+- do NOT manufacture RSI/ADX/CVD/VWAP values
+- do NOT manufacture signals
+- return NO TRADE / DATA UNAVAILABLE
+
+The system must be honest about data availability.
+
+=========================================================
+1. CORE OBJECTIVE
+=========================================================
+
+Build a highly selective Pocket Option OTC market-analysis system capable of:
+
+LIVE DATA
+→ TICK PROCESSING
+→ CANDLE GENERATION
+→ MULTI-TIMEFRAME ANALYSIS
+→ MARKET STRUCTURE
+→ CANDLE PATTERN ANALYSIS
+→ TECHNICAL INDICATORS
+→ MOMENTUM
+→ VOLATILITY
+→ SUPPORT/RESISTANCE
+→ SUPPLY/DEMAND
+→ LIQUIDITY
+→ BREAKOUT/RETEST
+→ REVERSAL/EXHAUSTION
+→ DIVERGENCE
+→ MARKET REGIME
+→ OTC PAIR BEHAVIOR
+→ STRATEGY ENGINE
+→ HISTORICAL VALIDATION
+→ PAYOUT / EXPECTED VALUE FILTER
+→ MULTI-CONFIRMATION SCORE
+→ FINAL ENTRY-TIMING ENGINE
+→ CALL / PUT / NO TRADE
+
+The engine must prioritize signal quality over signal quantity.
+
+NO TRADE is a valid and preferred result when evidence is insufficient.
+
+Never force a signal.
+
+=========================================================
+2. LIVE POCKET OPTION DATA LAYER
+=========================================================
+
+Create a clean provider abstraction:
+
+LiveMarketDataProvider
+PocketOptionLiveFeedAdapter
+DemoFeedAdapter
+ReplayFeedAdapter
+BacktestFeedAdapter
+
+The production signal engine must consume normalized market data through the provider interface.
+
+Do NOT:
+- scrape private pages
+- guess undocumented endpoints
+- bypass authentication
+- collect passwords
+- collect account credentials
+- use browser session cookies as a hidden authentication mechanism
+- reverse engineer private endpoints
+- place trades automatically
+- bypass Pocket Option security
+
+Only use an authorized/public/legitimate market-data interface.
+
+If no authorized live OTC feed is available, the application must clearly display:
+
+LIVE FEED:
+NOT CONFIGURED
+
+STATUS:
+SAFE MANUAL / OFFLINE MODE
+
+and prevent fake signal generation.
+
+=========================================================
+3. RAW TICK ENGINE
+=========================================================
+
+Implement:
+
+Tick {
+  symbol
+  assetType
+  timestamp
+  price
+  source
+  sequence
+  receivedAt
+}
+
+Features:
+- timestamp normalization
+- duplicate tick detection
+- out-of-order tick detection
+- stale tick detection
+- missing tick detection
+- feed latency measurement
+- clock synchronization
+- reconnect handling
+- disconnect detection
+- tick sequencing
+- source validation
+
+Never fabricate missing ticks.
+
+=========================================================
+4. CANDLE ENGINE
+=========================================================
+
+Build reliable candle aggregation from actual tick data.
+
+Supported timeframes:
+
+15 seconds
+30 seconds
+1 minute
+2 minutes
+3 minutes
+5 minutes
+10 minutes
+15 minutes
+30 minutes
+1 hour
+
+Only expose timeframes actually supported by the underlying data.
+
+Every candle must contain:
+
+open
+high
+low
+close
+timestamp
+openTime
+closeTime
+body
+bodyPercent
+upperWick
+lowerWick
+upperWickPercent
+lowerWickPercent
+range
+trueRange
+direction
+closeLocationValue
+tickCount
+relativeRange
+isComplete
+
+Never treat an incomplete candle as a completed candle.
+
+Use strict candle-boundary finalization.
+
+=========================================================
+5. HISTORICAL BUFFER
+=========================================================
+
+Maintain sufficient historical candles.
+
+Target:
+minimum 500 candles per timeframe/pair where available.
+
+Preferred:
+1000–2000 candles where memory/data availability permits.
+
+Use efficient ring buffers.
+
+Do not invent historical candles.
+
+If insufficient history:
+INSUFFICIENT_HISTORY
+→ NO TRADE
+
+=========================================================
+6. COMPLETE CANDLE INTELLIGENCE
+=========================================================
+
+Detect:
+
+Doji
+Long-Legged Doji
+Dragonfly Doji
+Gravestone Doji
+Hammer
+Inverted Hammer
+Hanging Man
+Shooting Star
+Marubozu
+Spinning Top
+Bullish Engulfing
+Bearish Engulfing
+Piercing Line
+Dark Cloud Cover
+Harami
+Harami Cross
+Tweezer Top
+Tweezer Bottom
+Morning Star
+Evening Star
+Three White Soldiers
+Three Black Crows
+Inside Bar
+Outside Bar
+Pin Bar
+Rejection Candle
+Expansion Candle
+Compression Candle
+Exhaustion Candle
+Momentum Candle
+Failed Breakout Candle
+
+Also calculate candle anatomy continuously:
+
+body/range ratio
+wick/body ratio
+close location
+direction
+relative size
+range expansion
+range contraction
+successive candle pressure
+candle sequence
+
+IMPORTANT:
+A candle pattern alone must NEVER generate a signal.
+
+Every pattern must be validated against:
+- trend
+- structure
+- location
+- momentum
+- volatility
+- support/resistance
+- timeframe alignment
+- historical performance
+
+=========================================================
+7. MARKET STRUCTURE ENGINE
+=========================================================
+
+Detect:
+
+Higher High
+Higher Low
+Lower High
+Lower Low
+
+Uptrend
+Downtrend
+Sideways
+Range
+Consolidation
+Compression
+Expansion
+Breakout
+False Breakout
+Retest
+Continuation
+Reversal
+Exhaustion
+
+Implement:
+
+BOS = Break of Structure
+CHOCH = Change of Character
+
+Detect:
+- liquidity sweeps
+- swing failures
+- breakout failures
+- rejection zones
+- trend continuation
+- trend exhaustion
+
+Structure must be calculated from actual price data.
+
+=========================================================
+8. MULTI-TIMEFRAME ENGINE
+=========================================================
+
+Analyze multiple timeframes simultaneously.
+
+Default hierarchy:
+
+15M = macro context
+5M  = structure
+3M  = intermediate momentum
+1M  = primary signal timeframe
+30S = micro confirmation
+15S = optional entry timing
+
+Do not blindly require all timeframes to agree.
+
+Classify:
+
+STRONG ALIGNMENT
+MODERATE ALIGNMENT
+PULLBACK
+COUNTER-TREND
+CONFLICT
+UNKNOWN
+
+Example:
+
+15M bullish
+5M bullish
+3M bullish
+1M bullish
+
+→ strong bullish alignment
+
+But:
+
+15M bullish
+5M bearish
+1M bullish
+
+must be classified intelligently as possible pullback/structure conflict.
+
+If MTF conflict cannot be resolved:
+NO TRADE.
+
+=========================================================
+9. TECHNICAL INDICATOR ENGINE
+=========================================================
+
+Implement:
+
+TREND:
+EMA 5
+EMA 9
+EMA 13
+EMA 21
+EMA 34
+EMA 50
+EMA 100
+EMA 200
+SMA 20
+SMA 50
+SMA 200
+VWAP
+
+MOMENTUM:
+RSI 7
+RSI 14
+RSI 21
+MACD
+Stochastic
+Stochastic RSI
+CCI
+ROC
+Momentum
+
+VOLATILITY:
+ATR
+Bollinger Bands
+Bollinger Band Width
+Keltner Channel
+Standard Deviation
+
+TREND STRENGTH:
+ADX
++DI
+-DI
+
+All indicators must be mathematically calculated from actual candles.
+
+No hardcoded values.
+
+No random values.
+
+If required data is unavailable:
+value = null / unavailable
+not fake.
+
+=========================================================
+10. SUPPORT / RESISTANCE ENGINE
+=========================================================
+
+Automatically identify:
+
+swing highs
+swing lows
+local support
+local resistance
+previous highs
+previous lows
+dynamic EMA zones
+VWAP
+Bollinger boundaries
+psychological price levels
+breakout levels
+retest levels
+supply zones
+demand zones
+liquidity zones
+
+Calculate:
+distance from current price
+strength
+number of touches
+recent rejection
+breakout history
+retest confirmation
+
+=========================================================
+11. PRICE ACTION ENGINE
+=========================================================
+
+Detect:
+
+support rejection
+resistance rejection
+breakout
+false breakout
+breakout + retest
+range rejection
+trend continuation
+trend pullback
+momentum continuation
+exhaustion
+liquidity sweep
+failed continuation
+
+Price action must be combined with structure.
+
+=========================================================
+12. DIVERGENCE ENGINE
+=========================================================
+
+Detect:
+
+Regular bullish divergence
+Regular bearish divergence
+Hidden bullish divergence
+Hidden bearish divergence
+
+Using:
+
+RSI
+MACD
+Stochastic
+Momentum
+CVD if genuine data exists
+
+Example:
+
+Price lower low
+RSI higher low
+
+→ bullish divergence
+
+Price higher high
+RSI lower high
+
+→ bearish divergence
+
+Divergence alone must never create a trade.
+
+=========================================================
+13. VOLUME / TICK FLOW ENGINE
+=========================================================
+
+Only if genuine volume/tick-flow data exists.
+
+Support:
+
+tick volume
+volume spike
+volume acceleration
+volume contraction
+volume imbalance
+CVD
+delta
+VWAP deviation
+
+If genuine CVD is unavailable:
+
+CVD = N/A
+
+NEVER show fake:
+CVD +1
+CVD -1
+
+Do not create synthetic volume.
+
+=========================================================
+14. MARKET REGIME ENGINE
+=========================================================
+
+Classify current market as:
+
+TRENDING_UP
+TRENDING_DOWN
+RANGING
+CONSOLIDATING
+BREAKOUT
+HIGH_VOLATILITY
+LOW_VOLATILITY
+EXHAUSTION
+REVERSAL
+UNCERTAIN
+
+Use:
+
+ADX
+ATR
+EMA structure
+price structure
+Bollinger width
+range behavior
+momentum
+candle expansion/contraction
+
+Strategy selection must depend on market regime.
+
+=========================================================
+15. STRATEGY LIBRARY
+=========================================================
+
+Implement modular strategies.
+
+TREND:
+- EMA trend
+- EMA pullback
+- EMA continuation
+- VWAP trend
+- ADX trend
+- MACD continuation
+
+REVERSAL:
+- RSI divergence
+- MACD divergence
+- support rejection
+- resistance rejection
+- exhaustion
+- wick rejection
+- double top
+- double bottom
+
+BREAKOUT:
+- range breakout
+- breakout + retest
+- momentum breakout
+- false breakout
+
+MEAN REVERSION:
+- Bollinger reversal
+- RSI extreme
+- VWAP mean reversion
+- range high rejection
+- range low rejection
+
+PRICE ACTION:
+- engulfing
+- pin bar
+- inside bar
+- outside bar
+- morning star
+- evening star
+- tweezer
+- rejection candles
+
+MICROSTRUCTURE:
+- tick acceleration
+- tick deceleration
+- candle velocity
+- wick expansion
+- body expansion
+- compression → expansion
+- momentum exhaustion
+
+=========================================================
+16. STRATEGY AUTO SELECTOR
+=========================================================
+
+Never run every strategy blindly.
+
+Based on market regime:
+
+TRENDING:
+favor trend continuation/pullback strategies.
+
+RANGING:
+favor support/resistance/rejection/mean-reversion strategies.
+
+BREAKOUT:
+favor breakout/retest strategies.
+
+EXHAUSTION:
+favor reversal confirmation.
+
+HIGH VOLATILITY:
+increase confirmation requirements.
+
+UNCERTAIN:
+NO TRADE.
+
+=========================================================
+17. OTC PAIR BEHAVIOR ENGINE
+=========================================================
+
+Each OTC pair must have its own statistics.
+
+Example:
+
+AUD/CAD OTC
+EUR/USD OTC
+GBP/JPY OTC
+USD/JPY OTC
+EUR/GBP OTC
+etc.
+
+For each pair store:
+
+historical setups
+wins
+losses
+win rate
+average payout
+strategy performance
+timeframe performance
+expiry performance
+market-regime performance
+consecutive losses
+consecutive wins
+recent performance
+sample size
+
+NEVER fabricate these statistics.
+
+Only display statistics when actual stored data supports them.
+
+=========================================================
+18. PAIR SCANNER
+=========================================================
+
+Implement:
+
+SCAN ALL OTC
+
+The scanner should inspect available OTC pairs and calculate a model score.
+
+Example UI:
+
+OTC MARKET SCANNER
+
+AUD/CAD OTC     86/100
+EUR/USD OTC     82/100
+GBP/JPY OTC     77/100
+USD/JPY OTC     63/100
+
+These are MODEL SCORES, not guaranteed probabilities.
+
+Do not label a pair as guaranteed winner.
+
+=========================================================
+19. PAYOUT ENGINE
+=========================================================
+
+Read actual payout where available.
+
+Calculate break-even win rate:
+
+requiredWinRate = 1 / (1 + payoutDecimal)
+
+Example:
+
+92% payout:
+break-even ≈ 52.08%
+
+84% payout:
+break-even ≈ 54.35%
+
+80% payout:
+break-even ≈ 55.56%
+
+Calculate expected value only when enough validated historical information exists.
+
+If payout is too low relative to validated edge:
+NO TRADE.
+
+Never fabricate payout.
+
+=========================================================
+20. QUANT SCORING ENGINE
+=========================================================
+
+Create a multi-factor score.
+
+Initial weighting:
+
+Market Structure      20%
+Trend                  15%
+Price Action           15%
+Momentum               10%
+Volatility             10%
+Support/Resistance     10%
+Multi-Timeframe        10%
+Historical Validation   5%
+Payout/EV               5%
+
+Allow these weights to be configuration-driven.
+
+Do NOT blindly optimize weights using the same dataset used for evaluation.
+
+Score range:
+
+0–59   NO TRADE
+60–69  WEAK / WATCH
+70–79  QUALIFIED WATCH
+80–89  VALID SETUP
+90–100 EXTREME CONFIRMATION
+
+Important:
+The score is NOT a guaranteed probability.
+
+Display:
+MODEL SCORE: 87/100
+
+NOT:
+87% GUARANTEED WIN
+
+=========================================================
+21. CONFIDENCE CALIBRATION
+=========================================================
+
+If the system displays probability/confidence, it must be calibrated from out-of-sample historical results.
+
+Never convert a raw score directly into fake probability.
+
+If calibration is unavailable:
+show MODEL SCORE only.
+
+=========================================================
+22. ENTRY TIMING ENGINE
+=========================================================
+
+For M1:
+
+60s → candle begins
+30–15s → structure/momentum observation
+12–4s → final confirmation window
+4–0s → entry decision
+next candle → signal direction
+
+But DO NOT force a signal simply because timer reached 12 seconds.
+
+Signal requires confirmation.
+
+If setup is not confirmed:
+NO TRADE.
+
+The entry window must be configurable by timeframe.
+
+=========================================================
+23. MICRO TICK CONFIRMATION
+=========================================================
+
+Use actual incoming ticks to calculate:
+
+micro momentum
+price velocity
+price acceleration
+direction persistence
+reversal pressure
+tick clustering
+micro trend
+micro exhaustion
+
+At final confirmation:
+
+check whether micro movement agrees with higher-timeframe structure.
+
+If microstructure contradicts setup:
+NO TRADE.
+
+=========================================================
+24. SIGNAL ENGINE
+=========================================================
+
+Final signal types:
+
+CALL
+PUT
+NO TRADE
+
+Never output both CALL and PUT simultaneously.
+
+Example:
+
+PAIR:
+AUD/CAD OTC
+
+TIMEFRAME:
+M1
+
+EXPIRY:
+1 MIN
+
+MODEL SCORE:
+87/100
+
+TREND:
+BULLISH
+
+STRUCTURE:
+BULLISH
+
+MOMENTUM:
+STRONG
+
+CANDLE:
+BULLISH ENGULFING
+
+S/R:
+SUPPORT REJECTION
+
+MTF:
+4/5 ALIGNED
+
+PAYOUT:
+92%
+
+SIGNAL:
+CALL
+
+ENTRY:
+FINAL CONFIRMATION WINDOW
+
+If any critical condition fails:
+
+SIGNAL:
+NO TRADE
+
+=========================================================
+25. NO TRADE ENGINE
+=========================================================
+
+NO TRADE conditions include:
+
+trend conflict
+structure conflict
+weak momentum
+bad candle location
+poor support/resistance location
+low payout
+insufficient historical edge
+extreme volatility
+feed latency
+stale data
+missing data
+insufficient history
+incomplete candle
+false breakout uncertainty
+MTF conflict
+microstructure conflict
+unknown market regime
+insufficient sample size
+
+NO TRADE is not an error.
+
+=========================================================
+26. DATA QUALITY / SAFETY GUARDS
+=========================================================
+
+Retain and improve existing guards:
+
+DATA_OFFLINE
+DATA_STALE
+UNCONFIRMED_ASSET
+UNSUPPORTED_TIMEFRAME
+INSUFFICIENT_HISTORY
+CLOCK_DESYNC
+DUPLICATE_TICK
+MISSING_TICK
+INVALID_OHLC
+CANDLE_NOT_FINAL
+FEED_DISCONNECTED
+INVALID_PAYOUT
+INSUFFICIENT_SAMPLE
+MODEL_NOT_CALIBRATED
+
+Any critical data-quality failure:
+NO SIGNAL.
+
+=========================================================
+27. BACKTEST ENGINE
+=========================================================
+
+Implement real historical backtesting.
+
+For every strategy store:
+
+pair
+timeframe
+expiry
+market regime
+entry condition
+signal
+entry price
+expiry price
+result
+payout
+timestamp
+score
+reason
+
+Calculate:
+
+signals
+wins
+losses
+win rate
+average payout
+expected value
+profit factor where meaningful
+maximum losing streak
+maximum winning streak
+drawdown
+sample size
+performance by pair
+performance by timeframe
+performance by expiry
+performance by market regime
+performance by strategy
+
+NEVER generate fake backtest results.
+
+=========================================================
+28. WALK-FORWARD VALIDATION
+=========================================================
+
+Implement:
+
+TRAIN
+→ VALIDATION
+→ FORWARD TEST
+
+Do not optimize and evaluate on the exact same data.
+
+Detect overfitting.
+
+If a strategy performs well only on training data:
+mark it as OVERFIT / INVALID.
+
+=========================================================
+29. PAPER / DEMO SIGNAL MODE
+=========================================================
+
+Before any live use, support:
+
+DEMO SIGNAL MODE
+PAPER SIGNAL MODE
+HISTORICAL REPLAY MODE
+BACKTEST MODE
+
+Track hypothetical signals and results.
+
+No automatic real-money execution.
+
+=========================================================
+30. RISK ENGINE
+=========================================================
+
+Do NOT implement martingale by default.
+
+No automatic doubling after losses.
+
+Implement:
+
+fixed stake mode
+maximum signals/day
+maximum consecutive losses
+cooldown after losses
+daily loss limit
+session stop
+feed anomaly stop
+manual pause
+emergency stop
+
+These are risk controls, not guarantees.
+
+=========================================================
+31. SIGNAL JOURNAL
+=========================================================
+
+Store every signal:
+
+id
+timestamp
+pair
+assetType
+timeframe
+expiry
+price
+payout
+direction
+modelScore
+all indicator values
+market structure
+candle pattern
+support/resistance
+market regime
+strategy
+MTF status
+data quality
+reason
+entry price
+expiry price
+result
+
+Allow user to inspect WHY a signal happened.
+
+=========================================================
+32. SIGNAL RESULT TRACKING
+=========================================================
+
+After expiry:
+
+WIN
+LOSS
+NO RESULT
+INVALIDATED
+DATA ERROR
+
+Automatically record result when reliable data exists.
+
+Do not infer result from fake/demo data.
+
+=========================================================
+33. PERFORMANCE DASHBOARD
+=========================================================
+
+Show:
+
+Today
+7 days
+30 days
+All time
+
+Metrics:
+
+signals
+wins
+losses
+win rate
+average payout
+average score
+best-performing pair
+strategy statistics
+timeframe statistics
+expiry statistics
+market-regime statistics
+losing streak
+winning streak
+
+Only show metrics with sufficient sample size.
+
+=========================================================
+34. LIVE DIAGNOSTICS
+=========================================================
+
+Create:
+
+Settings
+→ Live Data Diagnostics
+
+Show:
+
+Provider
+Connection
+Feed status
+Latency
+Last tick
+Last candle
+Tick rate
+Data age
+Asset
+OTC status
+Payout source
+WebSocket status if legitimately configured
+REST status if legitimately configured
+API configuration status
+Historical buffer size
+
+Never expose secrets.
+
+Never display API keys.
+
+Never log credentials.
+
+=========================================================
+35. EXISTING UI UPGRADE
+=========================================================
+
+Keep the existing visual concept from the provided screenshot.
+
+Do not create a completely unrelated UI.
+
+Maintain the premium dark trading interface.
+
+Upgrade the current:
+
+CLIMAX-EXHAUSTION v620
+
+into:
+
+CLIMAX QUANT ENGINE V3
+
+Suggested main panel:
+
+⚡ CLIMAX QUANT ENGINE V3
+
+PAIR: AUD/CAD OTC
+PRICE: 1.05038
+PAYOUT: 92%
+TIMEFRAME: M1
+TIMER: 08s
+
+----------------------------
+
+TREND
+BULLISH 82/100
+
+STRUCTURE
+BULLISH 88/100
+
+MOMENTUM
+STRONG 79/100
+
+VOLATILITY
+NORMAL 71/100
+
+CANDLE
+BULLISH ENGULFING
+
+S/R
+SUPPORT REJECTION
+
+MTF
+4/5 ALIGNED
+
+HISTORICAL
+VALIDATED
+
+----------------------------
+
+QUANT SCORE
+87/100
+
+----------------------------
+
+SIGNAL
+CALL
+
+ENTRY:
+FINAL CONFIRMATION
+
+EXPIRY:
+1 MIN
+
+----------------------------
+
+If conditions fail:
+
+NO TRADE
+
+REASON:
+Insufficient confirmation
+
+=========================================================
+36. DO NOT SHOW FAKE VALUES
+=========================================================
+
+This is a HARD REQUIREMENT.
+
+Never hardcode:
+
+RSI: 50
+ADX: 25
+CVD: +1
+VWAP: fake value
+BB: SYNCED
+CLIMAX: NORMAL FLOW
+confidence: 90%
+win rate: 80%
+historical performance
+
+unless those values are genuinely calculated or retrieved.
+
+Use:
+
+N/A
+UNAVAILABLE
+NOT CONFIGURED
+
+when appropriate.
+
+=========================================================
+37. AI REASONING LAYER
+=========================================================
+
+AI may explain the quantitative result.
+
+AI must NOT invent:
+
+prices
+candles
+indicators
+payouts
+historical statistics
+market data
+signals
+
+Architecture:
+
+RAW DATA
+→ QUANT CALCULATIONS
+→ MARKET STRUCTURE
+→ STRATEGIES
+→ HISTORICAL VALIDATION
+→ SCORING
+→ RISK FILTER
+→ AI EXPLANATION
+
+AI should never override critical data-quality guards.
+
+=========================================================
+38. SIGNAL EXPLANATION
+=========================================================
+
+Every CALL/PUT must provide concise reasons.
+
+Example:
+
+CALL
+
+Reasons:
+1. 15M/5M/1M bullish structure
+2. M1 support rejection
+3. EMA trend alignment
+4. Momentum confirmation
+5. No immediate resistance conflict
+6. Historical setup meets minimum sample requirement
+7. Payout passes EV filter
+
+If NO TRADE:
+
+NO TRADE
+
+Reasons:
+1. MTF conflict
+2. Weak momentum
+3. Low historical edge
+
+=========================================================
+39. ALL-PAIR SCAN
+=========================================================
+
+Add:
+
+SCAN CURRENT PAIR
+SCAN ALL OTC
+STOP SCAN
+
+During all-pair scanning:
+
+- do not block UI
+- use async workers where appropriate
+- rate-limit provider requests
+- cancel scan safely
+- display progress
+- ignore unavailable assets
+- never fabricate unavailable data
+
+=========================================================
+40. PERFORMANCE REQUIREMENTS
+=========================================================
+
+The application must:
+
+- avoid unnecessary recalculation
+- cache indicator calculations
+- use incremental calculations where possible
+- use ring buffers
+- avoid blocking the UI
+- debounce expensive scans
+- prevent duplicate signal generation
+- prevent duplicate candle finalization
+- handle reconnects
+- recover cleanly after feed disconnect
+- preserve state where appropriate
+
+=========================================================
+41. SIGNAL DEDUPLICATION
+=========================================================
+
+Never produce multiple identical signals for the same:
+
+pair
+candle
+timeframe
+entry window
+
+unless explicitly configured.
+
+Create unique signal IDs.
+
+Example:
+
+PAIR + CANDLE_TIMESTAMP + TIMEFRAME + DIRECTION
+
+=========================================================
+42. CONFIGURATION
+=========================================================
+
+Create central configuration:
+
+timeframes
+expiry options
+indicator periods
+minimum score
+minimum sample size
+payout threshold
+entry window
+MTF requirements
+risk limits
+strategy weights
+data freshness limits
+
+No scattered magic numbers.
+
+=========================================================
+43. EXPIRY OPTIONS
+=========================================================
+
+Support where underlying data permits:
+
+15 seconds
+30 seconds
+1 minute
+2 minutes
+3 minutes
+5 minutes
+
+Also support:
+
+ALL
+
+But "ALL" must mean:
+choose the most statistically validated available expiry for the current setup.
+
+It must NOT randomly choose an expiry.
+
+=========================================================
+44. TIMEFRAME SELECTION
+=========================================================
+
+Support:
+
+15s
+30s
+1m
+2m
+3m
+5m
+10m
+15m
+30m
+1H
+
+If a timeframe cannot be reliably constructed:
+disable it.
+
+Never create fake timeframe candles.
+
+=========================================================
+45. CHART ENGINE
+=========================================================
+
+Add professional charts:
+
+candlestick chart
+volume/tick chart if available
+EMA overlays
+VWAP
+Bollinger Bands
+support/resistance zones
+supply/demand
+market structure labels
+BOS
+CHOCH
+liquidity sweeps
+entry marker
+signal marker
+
+Charts must use actual market data.
+
+=========================================================
+46. CHART ANALYSIS
+=========================================================
+
+Detect visually and mathematically:
+
+trend channels
+horizontal ranges
+breakouts
+retests
+support/resistance
+swing points
+compression
+expansion
+reversal zones
+
+Do not claim advanced chart patterns unless algorithmically detected.
+
+=========================================================
+47. PATTERN CONFIRMATION MATRIX
+=========================================================
+
+Create a confirmation matrix.
+
+Example:
+
+Trend                PASS
+Structure             PASS
+Candle                PASS
+Momentum              PASS
+Volatility            PASS
+S/R                   PASS
+MTF                   PASS
+Historical            PASS
+Payout                PASS
+Data Quality          PASS
+
+Only after minimum required confirmations:
+FINAL SIGNAL
+
+Otherwise:
+NO TRADE.
+
+=========================================================
+48. MODEL GOVERNANCE
+=========================================================
+
+Every signal must be reproducible.
+
+Store the model inputs used to create it.
+
+If user opens signal history later, system should be able to show:
+
+WHY CALL?
+WHY PUT?
+WHY NO TRADE?
+
+=========================================================
+49. SECURITY
+=========================================================
+
+Never store:
+
+passwords
+account credentials
+private tokens
+browser cookies
+sensitive authentication data
+
+If API keys are supported:
+
+- server-side only
+- encrypted where appropriate
+- never expose in frontend
+- never log secrets
+- redact logs
+
+=========================================================
+50. TESTING
+=========================================================
+
+Create comprehensive automated tests.
+
+Minimum test categories:
+
+TickEngine tests
+CandleEngine tests
+OHLC tests
+timeframe tests
+indicator tests
+pattern tests
+market structure tests
+BOS tests
+CHOCH tests
+S/R tests
+divergence tests
+market regime tests
+strategy tests
+scoring tests
+payout tests
+EV tests
+backtest tests
+walk-forward tests
+signal tests
+NO TRADE tests
+data quality tests
+stale data tests
+duplicate tick tests
+disconnect tests
+signal deduplication tests
+expiry tests
+UI state tests
+provider tests
+
+Run:
+
+unit tests
+integration tests
+type checks
+lint
+build
+
+Do not finish until tests pass.
+
+=========================================================
+51. CRITICAL ACCEPTANCE TEST
+=========================================================
+
+The system must pass this exact principle:
+
+NO REAL DATA
+→ NO REAL SIGNAL
+
+STALE DATA
+→ NO SIGNAL
+
+INCOMPLETE CANDLE
+→ NO SIGNAL
+
+INSUFFICIENT HISTORY
+→ NO SIGNAL
+
+CONFLICTING MARKET STRUCTURE
+→ NO SIGNAL
+
+INSUFFICIENT CONFIRMATION
+→ NO SIGNAL
+
+UNSUPPORTED ASSET
+→ NO SIGNAL
+
+UNSUPPORTED TIMEFRAME
+→ NO SIGNAL
+
+UNKNOWN PAYOUT
+→ NO PAYOUT-BASED EDGE CLAIM
+
+NO AUTHORIZED LIVE FEED
+→ SAFE MANUAL/OFFLINE MODE
+
+=========================================================
+52. LIVE FEED TESTER
+=========================================================
+
+Add:
+
+Settings
+→ Live Data Diagnostics
+→ Test Connection
+
+Show:
+
+Provider
+Asset
+OTC status
+Connection
+Last tick
+Last candle
+Data freshness
+Latency
+Historical candles
+Current payout if available
+
+Test:
+
+tick arrival
+timestamp validity
+OHLC validity
+candle formation
+disconnect/reconnect
+stale detection
+
+=========================================================
+53. DEVELOPMENT PHASES
+=========================================================
+
+Implement in this order:
+
+PHASE 1
+Repository audit
+Existing architecture audit
+Remove obsolete demo logic
+
+PHASE 2
+Live provider abstraction
+Tick engine
+Data guards
+
+PHASE 3
+Candle engine
+Multi-timeframe engine
+
+PHASE 4
+Indicator engine
+
+PHASE 5
+Candle pattern engine
+
+PHASE 6
+Market structure
+
+PHASE 7
+S/R and liquidity
+
+PHASE 8
+Divergence
+
+PHASE 9
+Market regime
+
+PHASE 10
+Strategy library
+
+PHASE 11
+OTC behavior statistics
+
+PHASE 12
+Backtesting
+
+PHASE 13
+Walk-forward validation
+
+PHASE 14
+Quant scoring
+
+PHASE 15
+Payout/EV engine
+
+PHASE 16
+Final signal engine
+
+PHASE 17
+Risk engine
+
+PHASE 18
+Signal journal
+
+PHASE 19
+UI upgrade
+
+PHASE 20
+Diagnostics
+
+PHASE 21
+Full testing
+
+PHASE 22
+Production build
+
+=========================================================
+54. FILE / CODE ORGANIZATION
+=========================================================
+
+Use a modular structure similar to:
+
+src/
+  components/
+  pages/
+  hooks/
+  services/
+  types/
+
+server/
+  data/
+    providers/
+      LiveMarketDataProvider
+      PocketOptionLiveFeedAdapter
+      DemoFeedAdapter
+      ReplayFeedAdapter
+
+  engine/
+    TickEngine
+    CandleEngine
+    MultiTimeframeEngine
+    IndicatorEngine
+    CandlePatternEngine
+    MarketStructureEngine
+    SupportResistanceEngine
+    LiquidityEngine
+    DivergenceEngine
+    MarketRegimeEngine
+    StrategyEngine
+    OTCBehaviorEngine
+    QuantScoringEngine
+    PayoutEngine
+    ExpectedValueEngine
+    BacktestEngine
+    WalkForwardEngine
+    SignalEngine
+    RiskEngine
+    SignalJournal
+
+  routes/
+    market
+    signal
+    diagnostics
+    backtest
+    performance
+
+  tests/
+
+Adapt this structure to the existing project rather than creating duplicate engines.
+
+=========================================================
+55. REMOVE LEGACY CONFLICTS
+=========================================================
+
+Search the entire codebase for:
+
+fake candle generators
+random market values
+synthetic signal generation
+hardcoded RSI
+hardcoded ADX
+hardcoded CVD
+hardcoded VWAP
+fake confidence
+fake payout
+fake historical statistics
+demo-only signal paths
+duplicate CandleEngine
+duplicate SignalEngine
+old V1/V2 conflicting logic
+
+Remove or disable obsolete conflicting implementations.
+
+Do not leave two competing signal engines active.
+
+There must be ONE authoritative production SignalEngine.
+
+=========================================================
+56. BACKWARD COMPATIBILITY
+=========================================================
+
+Preserve useful existing features:
+
+Manual Scan
+Automatic scanning interface if already present
+pair selector
+timeframe selector
+expiry selector
+signal history
+diagnostics
+demo mode
+offline mode
+existing test infrastructure
+
+Improve them rather than unnecessarily removing them.
+
+=========================================================
+57. MANUAL SCAN
+=========================================================
+
+Manual Scan button:
+
+SCAN NOW
+
+must:
+
+1. verify data connection
+2. verify selected asset
+3. verify timeframe
+4. verify history
+5. calculate indicators
+6. calculate structure
+7. calculate patterns
+8. calculate MTF
+9. calculate strategy scores
+10. calculate payout/EV
+11. calculate final score
+12. produce CALL / PUT / NO TRADE
+
+No fake fallback.
+
+=========================================================
+58. AUTOMATIC SCAN
+=========================================================
+
+Automatic mode:
+
+- synchronize to candle boundaries
+- monitor final confirmation window
+- prevent duplicate signals
+- wait for next valid setup
+- respect cooldown
+- stop on data errors
+- never force a trade
+
+=========================================================
+59. RESULT LABELS
+=========================================================
+
+Use:
+
+CALL
+PUT
+NO TRADE
+WAIT
+DATA UNAVAILABLE
+LIVE FEED NOT CONFIGURED
+
+Do not use:
+
+GUARANTEED WIN
+100% WIN
+SURE SHOT
+EXACT WIN
+NO LOSS
+
+=========================================================
+60. FINAL UI
+=========================================================
+
+The main UI should look premium and similar in concept to the provided screenshot.
+
+Header:
+
+⚡ CLIMAX QUANT ENGINE V3
+
+Live status indicator.
+
+Pair selector:
+
+AUD/CAD OTC ▼
+
+Controls:
+
+Timeframe
+Expiry
+Scan
+Auto Scan
+All OTC
+
+Analysis panel:
+
+PRICE
+PAYOUT
+TIMER
+
+TREND
+STRUCTURE
+MOMENTUM
+VOLATILITY
+CANDLE
+VWAP
+RSI
+MACD
+ADX
+ATR
+BOLLINGER
+S/R
+MTF
+MARKET REGIME
+
+Then:
+
+QUANT SCORE
+
+Then:
+
+FINAL VERDICT
+
+CALL / PUT / NO TRADE
+
+Then:
+
+REASONS
+
+Then:
+
+ENTRY WINDOW
+
+Then:
+
+EXPIRY
+
+Then:
+
+DATA QUALITY
+
+=========================================================
+61. IMPORTANT: DO NOT PROMISE WINNING
+=========================================================
+
+The software must be designed to seek statistically validated, high-quality setups.
+
+It must NOT claim that signals are guaranteed to win.
+
+Use historical validation, out-of-sample testing and strict NO TRADE filtering.
+
+=========================================================
+62. FINAL BUILD REQUIREMENT
+=========================================================
+
+After implementation:
+
+1. Run tests.
+2. Fix all failures.
+3. Run type check.
+4. Run lint.
+5. Run production build.
+6. Verify frontend.
+7. Verify backend.
+8. Verify provider layer.
+9. Verify no fake market data exists.
+10. Verify no random signal exists.
+11. Verify NO TRADE works.
+12. Verify manual scan.
+13. Verify timeframe selection.
+14. Verify expiry selection.
+15. Verify pair selection.
+16. Verify signal history.
+17. Verify diagnostics.
+18. Verify reconnect behavior.
+19. Verify stale-data protection.
+20. Verify signal deduplication.
+
+Do not report success merely because the UI compiles.
+
+The application must be functionally tested.
+
+=========================================================
+63. FINAL DELIVERY REPORT
+=========================================================
+
+At completion report:
+
+- files changed
+- files created
+- files removed
+- legacy code removed
+- live provider status
+- demo provider status
+- real-data status
+- synthetic-data status
+- automatic trading status
+- tests passed
+- tests failed
+- build status
+- type-check status
+- lint status
+- remaining limitations
+
+Be completely truthful.
+
+If live Pocket Option OTC data cannot be legitimately connected in the current environment, explicitly state:
+
+LIVE OTC FEED:
+NOT CONFIGURED
+
+and leave the application in SAFE MANUAL / DEMO / OFFLINE MODE.
+
+Do not fake live connectivity.
+
+=========================================================
+FINAL PRINCIPLE
+=========================================================
+
+REAL DATA
++
+REAL CALCULATIONS
++
+MULTI-TIMEFRAME STRUCTURE
++
+PRICE ACTION
++
+TECHNICAL INDICATORS
++
+MARKET REGIME
++
+OTC-SPECIFIC STATISTICS
++
+HISTORICAL VALIDATION
++
+WALK-FORWARD TESTING
++
+PAYOUT / EXPECTED VALUE
++
+STRICT DATA QUALITY
++
+STRICT NO TRADE FILTER
++
+RISK CONTROL
+=
+HIGH-SELECTIVITY QUANT SIGNAL SYSTEM
+
+Never:
+FAKE DATA
++
+RANDOM SIGNALS
++
+HARDCODED INDICATORS
++
+FABRICATED STATISTICS
++
+GUARANTEED-WIN CLAIMS
+
+START NOW.
+
+First inspect the existing repository and produce an implementation plan internally, then execute the V3 upgrade directly.
+
+Do not stop at architecture documentation.
+Do not create a mockup-only application.
+Implement the actual working code.
+Preserve working existing functionality.
+Replace obsolete/conflicting logic.
+Run the complete test/build pipeline before finishing.
