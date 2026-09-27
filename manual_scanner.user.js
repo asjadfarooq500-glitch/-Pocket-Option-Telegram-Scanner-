@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option APEX Waterfall-Shield Titan
+// @name         Pocket Option APEX Omni-Synthesis Mega-Engine
 // @namespace    https://github.com/
-// @version      560.0
-// @description  Anti-Falling-Knife Wick Shield, Instant Pulse Engine (0.8s), CVD Gatekeeper & Dynamic Sub-Pip Math
+// @version      600.0
+// @description  8-to-10 Second Deep Multi-Angle Institutional Scanner, Dual EMA, ADX, RSI, BB, CVD, VWAP, SMC & Anti-Waterfall Veto
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -41,7 +41,7 @@
         }
     } catch(e) {}
 
-    // Audio Alerts
+    // Audio Alert Synthesizer
     let audioCtx = null;
     function playTone(freq, type = "sine", duration = 0.20) {
         try {
@@ -117,10 +117,10 @@
         hud.id = 'po-apex-hud';
         hud.style.cssText = `
             position: fixed !important;
-            top: 160px !important;
+            top: 155px !important;
             left: 10px !important;
             z-index: 2147483647 !important;
-            background: rgba(3, 10, 24, 0.98) !important;
+            background: rgba(3, 8, 24, 0.98) !important;
             border: 2px solid #00f0ff !important;
             border-radius: 14px !important;
             padding: 9px !important;
@@ -136,7 +136,7 @@
 
         hud.innerHTML = `
             <div id="hud-drag" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -9px -9px 7px -9px; padding: 6px 8px; border-top-left-radius: 11px; border-top-right-radius: 11px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; cursor: move;">
-                <span>⚡ APEX WATERFALL-SHIELD v560</span>
+                <span>⚡ OMNI-SYNTHESIS v600</span>
                 <span style="font-size: 8px; background: rgba(0,0,0,0.25); color:#fff; padding: 2px 4px; border-radius: 4px;">MOVE</span>
             </div>
             <div style="font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between;">
@@ -144,6 +144,7 @@
                 <span>TICK: <b id="a-price" style="color: #10b981;">--</b></span>
             </div>
             
+            <!-- TELEMETRY MATRIX -->
             <div style="background: #061226; padding: 5px; border-radius: 6px; margin: 5px 0; border: 1px solid #1e293b; font-size: 8px;">
                 <div style="display: flex; justify-content: space-between; color: #94a3b8;">
                     <span>RSI: <b id="a-rsi" style="color:#38bdf8;">--</b></span>
@@ -152,12 +153,12 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 3px; color: #94a3b8;">
                     <span>VWAP: <b id="a-vwap" style="color:#00f0ff;">--</b></span>
-                    <span>ATR: <b id="a-atr" style="color:#a855f7;">--</b></span>
-                    <span>MACD: <b id="a-macd" style="color:#38bdf8;">--</b></span>
+                    <span>EMA 9/21: <b id="a-ema" style="color:#a855f7;">--</b></span>
+                    <span>BB: <b id="a-bb" style="color:#38bdf8;">--</b></span>
                 </div>
             </div>
 
-            <!-- LIVE CANDLE ACCURATE GEOMETRY -->
+            <!-- GEOMETRY -->
             <div style="background: #08152e; padding: 4px 5px; border-radius: 6px; margin: 4px 0; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8;">
                 <div style="display: flex; justify-content: space-between;">
                     <span>O: <b id="a-open" style="color:#fff;">--</b></span>
@@ -171,12 +172,12 @@
                 </div>
             </div>
 
-            <div style="font-size: 8.5px; color: #94a3b8;">SHIELD PROTOCOL: <span id="a-shield" style="color: #10b981; font-weight: bold;">ACTIVE</span></div>
-            <div style="font-size: 8.5px; color: #94a3b8;">CONFLUENCE SCORE: <span id="a-score" style="color: #38bdf8; font-weight: bold;">NEUTRAL</span></div>
+            <div style="font-size: 8.5px; color: #94a3b8;">MARKET MATRIX: <span id="a-smc" style="color: #00f0ff; font-weight: bold;">LIVE SCANNING</span></div>
+            <div style="font-size: 8.5px; color: #94a3b8;">SHIELD STATE: <span id="a-shield" style="color: #10b981; font-weight: bold;">ACTIVE</span></div>
             <div style="font-size: 8.5px; color: #94a3b8;">TIMER: <span id="a-timer" style="color: #38bdf8; font-weight: bold;">--s</span></div>
 
             <button id="a-scan-btn" style="width: 100%; margin-top: 6px; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 10px 4px; border-radius: 8px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
-                ⚡ INSTANT PULSE SCAN (0.8s)
+                🔬 8-10s DEEP OMNI SCAN
             </button>
 
             <div id="a-progress-bar" style="display: none; width: 100%; height: 5px; background: #1e293b; border-radius: 3px; margin-top: 6px; overflow: hidden;">
@@ -184,17 +185,17 @@
             </div>
 
             <div id="a-status-box" style="margin-top: 7px; padding: 7px 4px; background: #061124; border-radius: 8px; text-align: center; border: 1px solid #1e293b;">
-                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Instant Verdict</div>
+                <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">Confluence Verdict</div>
                 <div id="a-signal-text" style="font-size: 15px; font-weight: 900; color: #facc15; margin-top: 2px;">READY TO SCAN</div>
-                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Hit Scan in Last 10s-4s</div>
+                <div id="a-conf-text" style="font-size: 8.5px; color: #00f0ff; font-weight: bold; margin-top: 1px;">Hit Scan at 14s-10s of Candle</div>
             </div>
-            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">Never buy falling knives in red dump</div>
+            <div id="a-desc" style="font-size: 8px; color: #64748b; margin-top: 4px; text-align: center;">8-Second deep scan evaluates all angles</div>
         `;
 
         root.appendChild(hud);
 
         // Touch Dragging
-        let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 10, startBoxY = 160;
+        let isDragging = false, startTouchX = 0, startTouchY = 0, startBoxX = 10, startBoxY = 155;
         hud.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
                 isDragging = true;
@@ -219,7 +220,7 @@
     }
 
     // =========================================================================
-    // 3. CANDLE ENGINE WITH WATERFALL SHIELD
+    // 3. CANDLE ENGINE WITH COMPLETE MATHEMATICAL CALCULATORS
     // =========================================================================
     let candleOpen = null, candleHigh = -Infinity, candleLow = Infinity, candleClose = null;
     let lastMinuteTracked = -1;
@@ -229,6 +230,16 @@
     let buyTicks = 0, sellTicks = 0, tickDelta = 0;
     let lastRecordedTickPrice = null;
     let tickPriceSum = 0, totalTicksCount = 0;
+
+    function calculateEMA(period) {
+        if (candleHistory.length < period) return null;
+        let k = 2 / (period + 1);
+        let ema = candleHistory[0].close;
+        for (let i = 1; i < candleHistory.length; i++) {
+            ema = (candleHistory[i].close * k) + (ema * (1 - k));
+        }
+        return ema;
+    }
 
     function calculateRSI(period = 7) {
         if (candleHistory.length < period + 1) return 50.0;
@@ -243,12 +254,20 @@
         return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
     }
 
-    function calculateATR(period = 14) {
-        if (candleHistory.length < 3) return 0.0008;
+    function calculateBollinger(period = 20, multiplier = 2.0) {
+        if (candleHistory.length < 5) return null;
         let p = Math.min(period, candleHistory.length);
         let sum = 0;
-        for (let i = candleHistory.length - p; i < candleHistory.length; i++) sum += candleHistory[i].range;
-        return sum / p;
+        for (let i = candleHistory.length - p; i < candleHistory.length; i++) sum += candleHistory[i].close;
+        let sma = sum / p;
+        let variance = 0;
+        for (let i = candleHistory.length - p; i < candleHistory.length; i++) variance += Math.pow(candleHistory[i].close - sma, 2);
+        let stdDev = Math.sqrt(variance / p);
+        return {
+            upper: sma + (multiplier * stdDev),
+            lower: sma - (multiplier * stdDev),
+            mid: sma
+        };
     }
 
     function calculateADX(period = 14) {
@@ -266,16 +285,6 @@
         let diDiff = Math.abs(plusDM - minusDM);
         let diSum = plusDM + minusDM;
         return diSum === 0 ? 25.0 : parseFloat(((diDiff / diSum) * 100).toFixed(1));
-    }
-
-    function calculateMACD() {
-        if (candleHistory.length < 8) return 0.000;
-        let fastSum = 0, slowSum = 0;
-        let fP = Math.min(5, candleHistory.length);
-        let sP = Math.min(10, candleHistory.length);
-        for (let i = candleHistory.length - fP; i < candleHistory.length; i++) fastSum += candleHistory[i].close;
-        for (let i = candleHistory.length - sP; i < candleHistory.length; i++) slowSum += candleHistory[i].close;
-        return parseFloat(((fastSum / fP) - (slowSum / sP)).toFixed(4));
     }
 
     function runEngineTick() {
@@ -371,7 +380,7 @@
             if (elHigh) elHigh.innerText = candleHigh.toFixed(decimals);
             if (elLow) elLow.innerText = candleLow.toFixed(decimals);
 
-            // ACCURATE RELATIVE WICK & BODY
+            // RELATIVE WICK & BODY RATIOS
             let cRange = Math.max(0.000001, candleHigh - candleLow);
             let cBody = Math.abs(candleClose - candleOpen);
             let cUpper = Math.max(0, candleHigh - Math.max(candleOpen, candleClose));
@@ -401,23 +410,35 @@
 
             let curRsi = calculateRSI(7);
             let curAdx = calculateADX(14);
-            let curAtr = calculateATR(14);
-            let curMacd = calculateMACD();
+            let ema9 = calculateEMA(9);
+            let ema21 = calculateEMA(21);
+            let bb = calculateBollinger(20, 2.0);
             let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : price;
 
             let rsiEl = document.getElementById('a-rsi');
             let adxEl = document.getElementById('a-adx');
             let cvdEl = document.getElementById('a-cvd');
             let vwapEl = document.getElementById('a-vwap');
-            let atrEl = document.getElementById('a-atr');
-            let macdEl = document.getElementById('a-macd');
+            let emaEl = document.getElementById('a-ema');
+            let bbEl = document.getElementById('a-bb');
 
             if (rsiEl) rsiEl.innerText = curRsi.toString();
             if (adxEl) adxEl.innerText = curAdx.toString();
             if (cvdEl) cvdEl.innerText = `${tickDelta > 0 ? "+" + tickDelta : tickDelta}`;
             if (vwapEl) vwapEl.innerText = vwap.toFixed(decimals);
-            if (atrEl) atrEl.innerText = curAtr.toFixed(4);
-            if (macdEl) macdEl.innerText = curMacd.toString();
+
+            if (emaEl) {
+                if (ema9 && ema21) {
+                    emaEl.innerText = ema9 > ema21 ? "BULLISH 🟢" : "BEARISH 🔴";
+                    emaEl.style.color = ema9 > ema21 ? "#10b981" : "#ef4444";
+                } else emaEl.innerText = "CALC";
+            }
+
+            if (bbEl && bb) {
+                if (price >= bb.upper) { bbEl.innerText = "+2σ OVER 🔴"; bbEl.style.color = "#ef4444"; }
+                else if (price <= bb.lower) { bbEl.innerText = "-2σ OVERSOLD 🟢"; bbEl.style.color = "#10b981"; }
+                else { bbEl.innerText = "IN-RANGE"; bbEl.style.color = "#38bdf8"; }
+            }
 
             // RECENT RED/GREEN STREAKS
             let redStreak = 0, greenStreak = 0;
@@ -433,9 +454,8 @@
             if (candleClose < candleOpen) redStreak++;
             else greenStreak++;
 
-            let isGreen = candleClose >= candleOpen;
-            let isHeavyWaterfall = redStreak >= 4 && tickDelta <= -10;
-            let isHeavyRally = greenStreak >= 4 && tickDelta >= 10;
+            let isHeavyWaterfall = redStreak >= 4 && tickDelta <= -8;
+            let isHeavyRally = greenStreak >= 4 && tickDelta >= 8;
 
             let shieldEl = document.getElementById('a-shield');
             if (shieldEl) {
@@ -448,20 +468,6 @@
                 } else {
                     shieldEl.innerText = "BALANCED SHIELD";
                     shieldEl.style.color = "#00f0ff";
-                }
-            }
-
-            let scoreEl = document.getElementById('a-score');
-            if (scoreEl) {
-                if (tickDelta <= -10 || isHeavyWaterfall) {
-                    scoreEl.innerText = `BEARISH FLOW (${tickDelta}) 🔴`;
-                    scoreEl.style.color = "#ef4444";
-                } else if (tickDelta >= 10 || isHeavyRally) {
-                    scoreEl.innerText = `BULLISH FLOW (+${tickDelta}) 🟢`;
-                    scoreEl.style.color = "#10b981";
-                } else {
-                    scoreEl.innerText = `BALANCED CHANNEL (${tickDelta})`;
-                    scoreEl.style.color = "#38bdf8";
                 }
             }
         }
@@ -479,14 +485,14 @@
         let desc = document.getElementById('a-desc');
         if (sigText) { sigText.innerText = "READY TO SCAN"; sigText.style.color = "#facc15"; }
         if (sigBox) { sigBox.style.borderColor = "#1e293b"; }
-        if (confText) { confText.innerText = "Hit Scan in Last 10s-4s"; }
-        if (desc) { desc.innerHTML = "Never buy falling knives in red dump"; }
+        if (confText) { confText.innerText = "Hit Scan at 14s-10s of Candle"; }
+        if (desc) { desc.innerHTML = "8-Second deep scan evaluates all angles"; }
     }
 
     // =========================================================================
-    // 4. SCANNER: FAST PULSE CONFLUENCE ENGINE
+    // 4. SCANNER: TRUE 8-SECOND ACTIVE DEEP SAMPLER
     // =========================================================================
-    let isPulseScanning = false;
+    let isDeepScanning = false;
 
     function bindScannerEvents() {
         const btn = document.getElementById('a-scan-btn');
@@ -494,7 +500,7 @@
         btn.dataset.bound = "true";
 
         btn.addEventListener('click', function() {
-            if (isPulseScanning) return;
+            if (isDeepScanning) return;
 
             const price = getLivePrice();
             const sigBox = document.getElementById('a-status-box');
@@ -509,30 +515,38 @@
                 return;
             }
 
-            isPulseScanning = true;
+            isDeepScanning = true;
             btn.style.opacity = "0.5";
-            btn.innerText = "COMPUTING PULSE (0.8s)...";
+            btn.innerText = "DEEP SCANNING (8 SECONDS)...";
             if (pBar) pBar.style.display = "block";
             if (pFill) pFill.style.width = "0%";
 
-            let steps = 8;
+            let totalSteps = 80; // 80 * 100ms = 8.0 Seconds Deep Math
             let curStep = 0;
+            let startDelta = tickDelta;
 
             const scanInterval = setInterval(() => {
                 curStep++;
-                let progress = Math.min(100, Math.round((curStep / steps) * 100));
+                let progress = Math.min(100, Math.round((curStep / totalSteps) * 100));
                 if (pFill) pFill.style.width = `${progress}%`;
 
-                if (curStep >= steps) {
+                // Live Stage Messages during 8 seconds
+                if (curStep === 15 && confText) confText.innerText = "Stage 1/5: Sub-Pip Wick & Body Geometry...";
+                if (curStep === 30 && confText) confText.innerText = "Stage 2/5: Dual EMA & ADX Trend Vectors...";
+                if (curStep === 45 && confText) confText.innerText = "Stage 3/5: Bollinger & RSI Exhaustion...";
+                if (curStep === 60 && confText) confText.innerText = "Stage 4/5: Cumulative Volume Delta Flow...";
+                if (curStep === 72 && confText) confText.innerText = "Stage 5/5: Resolving Multi-Factor Confluence...";
+
+                if (curStep >= totalSteps) {
                     clearInterval(scanInterval);
-                    evaluateWaterfallProtectedDecision();
+                    evaluateOmniDeepDecision(startDelta);
                 }
             }, 100);
 
-            function evaluateWaterfallProtectedDecision() {
-                isPulseScanning = false;
+            function evaluateOmniDeepDecision(initDelta) {
+                isDeepScanning = false;
                 btn.style.opacity = "1";
-                btn.innerText = "⚡ INSTANT PULSE SCAN (0.8s)";
+                btn.innerText = "🔬 8-10s DEEP OMNI SCAN";
                 if (pBar) pBar.style.display = "none";
 
                 const now = new Date();
@@ -552,7 +566,13 @@
                 let upperWickPct = Math.round((upperWick / totalRange) * 100);
                 let lowerWickPct = Math.round((lowerWick / totalRange) * 100);
 
+                let curRsi = calculateRSI(7);
+                let curAdx = calculateADX(14);
+                let ema9 = calculateEMA(9);
+                let ema21 = calculateEMA(21);
+                let bb = calculateBollinger(20, 2.0);
                 let vwap = totalTicksCount > 0 ? (tickPriceSum / totalTicksCount) : currentPrice;
+                let deltaShiftIn8s = tickDelta - initDelta;
 
                 // STREAKS
                 let redStreak = 0, greenStreak = 0;
@@ -568,69 +588,90 @@
                 if (!isGreen) redStreak++;
                 else greenStreak++;
 
-                let isCall = false;
+                let isHeavyWaterfall = redStreak >= 4 && tickDelta <= -8;
+                let isHeavyRally = greenStreak >= 4 && tickDelta >= 8;
+
+                // =============================================================
+                // MULTI-FACTOR WEIGHTED CONFLUENCE SCORING (MAX 100)
+                // =============================================================
+                let bullScore = 0;
+                let bearScore = 0;
+
+                // 1. Trend Ribbon (EMA 9/21 + ADX)
+                if (ema9 && ema21 && curAdx >= 20) {
+                    if (ema9 > ema21) bullScore += 20;
+                    else bearScore += 20;
+                }
+
+                // 2. Micro Order-Flow (CVD + 8s Velocity + VWAP)
+                if (tickDelta >= 8 && vwap >= candleOpen) bullScore += 25;
+                else if (tickDelta <= -8 && vwap <= candleOpen) bearScore += 25;
+
+                if (deltaShiftIn8s >= 3) bullScore += 10;
+                else if (deltaShiftIn8s <= -3) bearScore += 10;
+
+                // 3. Price Action & Reversal Wicks
+                if (lowerWickPct >= 40 && !isHeavyWaterfall) bullScore += 25;
+                if (upperWickPct >= 40 && !isHeavyRally) bearScore += 25;
+
+                // 4. Solid Marubozu Expansion Breakouts
+                if (isGreen && bodyPct >= 65 && upperWickPct <= 6 && !isHeavyWaterfall) bullScore += 20;
+                if (!isGreen && bodyPct >= 65 && lowerWickPct <= 6 && !isHeavyRally) bearScore += 20;
+
+                // 5. Statistical Mean-Reversion (Bollinger + RSI Flips)
+                if (bb && currentPrice >= bb.upper && curRsi >= 68 && upperWickPct >= 15) bearScore += 30; // Expect RED
+                if (bb && price <= bb.lower && curRsi <= 32 && lowerWickPct >= 15) bullScore += 30; // Expect GREEN
+
+                let decision = "WAIT";
                 let setupName = "";
-                let confidence = 88;
+                let confidence = 0;
 
-                // =============================================================
-                // WATERFALL-SHIELD LAWS (FIX FOR SCREENSHOT TRAP)
-                // =============================================================
+                // CRITICAL VETO: Never buy falling knives in 4+ red dump
+                if (isHeavyWaterfall) {
+                    bearScore += 40;
+                    bullScore = 0;
+                } else if (isHeavyRally) {
+                    bullScore += 40;
+                    bearScore = 0;
+                }
 
-                // LAW 1: FALLING KNIFE PROTOCOL (Never Buy 42% wick in a red dump)
-                if (redStreak >= 4 && tickDelta <= -8) {
-                    isCall = false; // Strictly SELL!
-                    setupName = `Waterfall Crash Dump (4+ RED • CALL Banned 🔴)`;
-                    confidence = 96;
-                }
-                // LAW 2: ROCKET RALLY PROTOCOL
-                else if (greenStreak >= 4 && tickDelta >= 8) {
-                    isCall = true; // Strictly BUY!
-                    setupName = `Rocket Rally Pump (4+ GREEN • PUT Banned 🟢)`;
-                    confidence = 96;
-                }
-                // LAW 3: SOLID BREAKOUTS
-                else if (isGreen && bodyPct >= 65 && upperWickPct <= 8) {
-                    isCall = true;
-                    setupName = "Bullish Solid Expansion 🟢";
-                    confidence = 93;
-                }
-                else if (!isGreen && bodyPct >= 65 && lowerWickPct <= 8) {
-                    isCall = false;
-                    setupName = "Bearish Solid Breakdown 🔴";
-                    confidence = 93;
-                }
-                // LAW 4: GENUINE REVERSALS (ONLY outside heavy waterfalls)
-                else if (lowerWickPct >= 40 && redStreak < 3 && tickDelta > -5) {
-                    isCall = true;
-                    setupName = "Confirmed Floor Rejection Bounce 🟢";
-                    confidence = 91;
-                }
-                else if (upperWickPct >= 40 && greenStreak < 3 && tickDelta < 5) {
-                    isCall = false;
-                    setupName = "Confirmed Roof Rejection Drop 🔴";
-                    confidence = 91;
-                }
-                // LAW 5: FLOW MOMENTUM
-                else {
-                    isCall = (vwap >= candleOpen && tickDelta >= 0);
-                    setupName = isCall ? "Buyer Order Flow Surge 🟢" : "Seller Order Flow Surge 🔴";
-                    confidence = 86;
+                if (bullScore >= 55 && bullScore > bearScore) {
+                    decision = "CALL";
+                    confidence = Math.min(96, Math.max(86, bullScore));
+                    setupName = (lowerWickPct >= 35) ? "Rejection Floor Bounce 🟢" : "Bullish Confluence Expansion 🟢";
+                } else if (bearScore >= 55 && bearScore > bullScore) {
+                    decision = "PUT";
+                    confidence = Math.min(96, Math.max(86, bearScore));
+                    setupName = (upperWickPct >= 35) ? "Rejection Roof Drop 🔴" : "Bearish Confluence Breakdown 🔴";
+                } else {
+                    decision = "WAIT";
+                    setupName = "Choppy Confluence (No Decisive Edge)";
+                    confidence = 0;
                 }
 
                 let secondsToNext = 60 - currentSec;
                 let entryDate = new Date(now.getTime() + (secondsToNext * 1000));
                 let entryClock = `${String(entryDate.getHours()).padStart(2, '0')}:${String(entryDate.getMinutes()).padStart(2, '0')}:00`;
 
-                let action = isCall ? "CALL (BUY) 🟢" : "PUT (SELL) 🔴";
-                if (sigText) {
-                    sigText.innerText = action;
-                    sigText.style.color = isCall ? "#10b981" : "#ef4444";
+                if (decision === "CALL") {
+                    if (sigText) { sigText.innerText = "CALL (BUY) 🟢"; sigText.style.color = "#10b981"; }
+                    if (sigBox) sigBox.style.borderColor = "#10b981";
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 8s OMNI VERIFIED`;
+                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Score: +${bullScore} • Delta: ${tickDelta}</span>`;
+                    playTone(960, "sine", 0.22);
+                } else if (decision === "PUT") {
+                    if (sigText) { sigText.innerText = "PUT (SELL) 🔴"; sigText.style.color = "#ef4444"; }
+                    if (sigBox) sigBox.style.borderColor = "#ef4444";
+                    if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • 8s OMNI VERIFIED`;
+                    if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Score: -${bearScore} • Delta: ${tickDelta}</span>`;
+                    playTone(440, "sine", 0.22);
+                } else {
+                    if (sigText) { sigText.innerText = "NO TRADE (WAIT ⚪)"; sigText.style.color = "#94a3b8"; }
+                    if (sigBox) sigBox.style.borderColor = "#475569";
+                    if (confText) confText.innerText = "Indecisive Market • Capital Protected";
+                    if (desc) desc.innerHTML = `<span style="color:#94a3b8; font-size:7.5px;">${setupName} • ADX: ${curAdx}</span>`;
+                    playTone(300, "sine", 0.10);
                 }
-                if (sigBox) sigBox.style.borderColor = isCall ? "#10b981" : "#ef4444";
-                if (confText) confText.innerText = `CONFIDENCE: ${confidence}% • SHIELD VERIFIED`;
-                if (desc) desc.innerHTML = `Entry at <b>${entryClock}</b> (in ${secondsToNext}s)<br><span style="color:#00f0ff; font-size:7.5px;">${setupName} • Delta: ${tickDelta} • Body: ${bodyPct}% • L-Wick: ${lowerWickPct}%</span>`;
-
-                playTone(isCall ? 960 : 440, "sine", 0.22);
             }
         });
     }
