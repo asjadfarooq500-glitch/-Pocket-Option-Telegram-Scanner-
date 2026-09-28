@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option OTC APEX QUANT V4
+// @name         Pocket Option OTC APEX QUANT V5
 // @namespace    https://github.com/
-// @version      4.0.0
-// @description  Live OTC multi-factor signal analyzer
+// @version      5.0.0
+// @description  Deep Multi-Angle OTC Quantitative Signal Engine & Reversal/Continuation Analyzer
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -23,9 +23,9 @@
     // =========================================================================
     const CONFIG = {
         STORAGE_KEYS: {
-            SETTINGS: 'po_v4_settings',
-            JOURNAL: 'po_v4_journal',
-            HUD_POS: 'po_v4_hud_pos'
+            SETTINGS: 'po_v5_settings',
+            JOURNAL: 'po_v5_journal',
+            HUD_POS: 'po_v5_hud_pos'
         },
         TIMEFRAMES: {
             '15s': 15000,
@@ -86,7 +86,6 @@
             domPings: 0,
             errorsCount: 0
         },
-        activeTab: 'MAIN',
         hudMinimized: false
     };
 
@@ -386,24 +385,6 @@
             return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
         },
 
-        calcMACD(candles) {
-            if (!candles || candles.length < 12) return { hist: 0, slope: 0 };
-            const ema12 = this.calcEMA(candles, 6) || candles[candles.length - 1].close;
-            const ema26 = this.calcEMA(candles, 12) || candles[candles.length - 1].close;
-            const macd = ema12 - ema26;
-            return { hist: macd, slope: macd >= 0 ? 1 : -1 };
-        },
-
-        calcStochastic(candles, period = 14) {
-            if (!candles || candles.length < 2) return 50.0;
-            const p = Math.min(period, candles.length);
-            const slice = candles.slice(-p);
-            let low = Infinity, high = -Infinity;
-            slice.forEach(c => { if (c.low < low) low = c.low; if (c.high > high) high = c.high; });
-            const cur = candles[candles.length - 1].close;
-            return parseFloat((UTILS.safeDiv(cur - low, high - low, 0.5) * 100).toFixed(1));
-        },
-
         calcBollinger(candles, period = 20, mult = 2.0) {
             if (!candles || candles.length < 2) return null;
             const p = Math.min(period, candles.length);
@@ -412,18 +393,6 @@
             const mean = UTILS.mean(closes);
             const std = UTILS.stdDev(closes, mean);
             return { upper: mean + (mult * std), middle: mean, lower: mean - (mult * std) };
-        },
-
-        calcATR(candles, period = 14) {
-            if (!candles || candles.length < 2) return 0.0005;
-            const p = Math.min(period, candles.length);
-            let trSum = 0;
-            for (let i = candles.length - p; i < candles.length; i++) {
-                const prev = i > 0 ? candles[i - 1].close : candles[i].open;
-                const tr = Math.max(candles[i].high - candles[i].low, Math.abs(candles[i].high - prev), Math.abs(candles[i].low - prev));
-                trSum += tr;
-            }
-            return parseFloat((trSum / p).toFixed(6));
         },
 
         calcADX(candles, period = 14) {
@@ -468,13 +437,10 @@
 
             const cur = candles[candles.length - 1];
             const rsi7 = INDICATORS.calcRSI(candles, 7);
-            const rsi14 = INDICATORS.calcRSI(candles, 14);
             const bb = INDICATORS.calcBollinger(candles, 14, 2.0);
             const vwap = INDICATORS.calcVWAP(candles) || cur.close;
             const ema9 = INDICATORS.calcEMA(candles, 9);
             const ema21 = INDICATORS.calcEMA(candles, 21);
-            const adx = INDICATORS.calcADX(candles, 14);
-            const macd = INDICATORS.calcMACD(candles);
 
             let bullScore = 0;
             let bearScore = 0;
@@ -538,12 +504,10 @@
                 tier = 'FORCED';
             }
 
-            // Quality Tiers
             if (edge >= 30 && confluence >= 80) tier = 'A+ SETUP';
             else if (edge >= 20 && confluence >= 70) tier = 'A SETUP';
             else if (edge >= 12) tier = 'B SETUP';
 
-            // Filter enforcement based on user mode
             if (STATE.settings.mode === 'SELECTIVE' && tier !== 'A+' && tier !== 'A') {
                 direction = 'NO TRADE';
             } else if (STATE.settings.mode === 'BALANCED' && edge < 10) {
@@ -575,13 +539,13 @@
 
     function run8SecondDeepScan() {
         if (isDeepScanning) return;
-        const btn = document.getElementById('v4-scan-btn');
-        const pBar = document.getElementById('v4-progress');
-        const pFill = document.getElementById('v4-progress-fill');
-        const vBox = document.getElementById('v4-verdict-box');
-        const vTxt = document.getElementById('v4-verdict-txt');
-        const infoTxt = document.getElementById('v4-info-txt');
-        const reasonTxt = document.getElementById('v4-reasons-txt');
+        const btn = document.getElementById('v5-scan-btn');
+        const pBar = document.getElementById('v5-progress');
+        const pFill = document.getElementById('v5-progress-fill');
+        const vBox = document.getElementById('v5-verdict-box');
+        const vTxt = document.getElementById('v5-verdict-txt');
+        const infoTxt = document.getElementById('v5-info-txt');
+        const reasonTxt = document.getElementById('v5-reasons-txt');
 
         if (!STATE.feed.price) {
             vTxt.innerText = 'DATA NOT READY';
@@ -603,7 +567,6 @@
             step++;
             if (pFill) pFill.style.width = `${Math.min(100, Math.round((step / totalSteps) * 100))}%`;
 
-            // Snapshots at T+0, T+2, T+4, T+6, T+8
             if (step % 10 === 0 || step === 1) {
                 snapshots.push(QUANT_ENGINE.evaluate(STATE.settings.timeframe));
             }
@@ -657,9 +620,9 @@
         element: null,
 
         mount() {
-            if (this.mounted && document.getElementById('po-v4-hud')) return;
+            if (this.mounted && document.getElementById('po-v5-hud')) return;
             const root = document.createElement('div');
-            root.id = 'po-v4-hud';
+            root.id = 'po-v5-hud';
             root.style.cssText = `
                 position: fixed !important; top: 140px !important; left: 10px !important;
                 z-index: 2147483647 !important; width: 260px !important; max-width: 92vw !important;
@@ -679,55 +642,55 @@
             } catch (e) {}
 
             root.innerHTML = `
-                <div id="v4-drag-bar" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -8px -8px 6px -8px; padding: 5px 8px; border-top-left-radius: 10px; border-top-right-radius: 10px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; align-items: center; cursor: move;">
-                    <span>⚡ APEX QUANT V4</span>
-                    <button id="v4-min-btn" style="background:rgba(0,0,0,0.3); border:none; color:#fff; border-radius:3px; font-size:8px; padding:2px 5px; cursor:pointer;">_</button>
+                <div id="v5-drag-bar" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -8px -8px 6px -8px; padding: 5px 8px; border-top-left-radius: 10px; border-top-right-radius: 10px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; align-items: center; cursor: move;">
+                    <span>⚡ APEX QUANT V5</span>
+                    <button id="v5-min-btn" style="background:rgba(0,0,0,0.3); border:none; color:#fff; border-radius:3px; font-size:8px; padding:2px 5px; cursor:pointer;">_</button>
                 </div>
-                <div id="v4-body">
+                <div id="v5-body">
                     <div style="font-size: 8.5px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>PAIR: <b id="v4-pair-txt" style="color:#00f0ff;">SYNCING...</b></span>
-                        <span>PRICE: <b id="v4-price-txt" style="color:#10b981;">--</b></span>
+                        <span>PAIR: <b id="v5-pair-txt" style="color:#00f0ff;">SYNCING...</b></span>
+                        <span>PRICE: <b id="v5-price-txt" style="color:#10b981;">--</b></span>
                     </div>
                     <div style="background: #061124; padding: 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; margin-bottom: 4px;">
                         <div style="display:flex; justify-content:space-between; color:#94a3b8;">
-                            <span>RSI: <b id="v4-rsi-val" style="color:#38bdf8;">--</b></span>
-                            <span>ADX: <b id="v4-adx-val" style="color:#facc15;">--</b></span>
-                            <span>CVD: <b id="v4-cvd-val" style="color:#10b981;">0</b></span>
+                            <span>RSI: <b id="v5-rsi-val" style="color:#38bdf8;">--</b></span>
+                            <span>ADX: <b id="v5-adx-val" style="color:#facc15;">--</b></span>
+                            <span>CVD: <b id="v5-cvd-val" style="color:#10b981;">0</b></span>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-top:2px; color:#94a3b8;">
-                            <span>VWAP: <b id="v4-vwap-val" style="color:#00f0ff;">--</b></span>
-                            <span>BB: <b id="v4-bb-val" style="color:#38bdf8;">SYNCED</b></span>
-                            <span>MODE: <b id="v4-mode-val" style="color:#a855f7;">BALANCED</b></span>
+                            <span>VWAP: <b id="v5-vwap-val" style="color:#00f0ff;">--</b></span>
+                            <span>BB: <b id="v5-bb-val" style="color:#38bdf8;">SYNCED</b></span>
+                            <span>MODE: <b id="v5-mode-val" style="color:#a855f7;">BALANCED</b></span>
                         </div>
                     </div>
                     <div style="background: #08152e; padding: 4px 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8; margin-bottom: 4px;">
                         <div style="display:flex; justify-content:space-between;">
-                            <span>O: <b id="v4-c-open" style="color:#fff;">--</b></span>
-                            <span>H: <b id="v4-c-high" style="color:#10b981;">--</b></span>
-                            <span>L: <b id="v4-c-low" style="color:#ef4444;">--</b></span>
+                            <span>O: <b id="v5-c-open" style="color:#fff;">--</b></span>
+                            <span>H: <b id="v5-c-high" style="color:#10b981;">--</b></span>
+                            <span>L: <b id="v5-c-low" style="color:#ef4444;">--</b></span>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                            <span>BODY: <b id="v4-c-body" style="color:#00f0ff;">0%</b></span>
-                            <span>U-WICK: <b id="v4-c-uwick" style="color:#facc15;">0%</b></span>
-                            <span>L-WICK: <b id="v4-c-lwick" style="color:#facc15;">0%</b></span>
+                            <span>BODY: <b id="v5-c-body" style="color:#00f0ff;">0%</b></span>
+                            <span>U-WICK: <b id="v5-c-uwick" style="color:#facc15;">0%</b></span>
+                            <span>L-WICK: <b id="v5-c-lwick" style="color:#facc15;">0%</b></span>
                         </div>
                     </div>
                     <div style="font-size: 8.5px; color: #94a3b8; display:flex; justify-content:space-between; margin-bottom: 4px;">
-                        <span>RADAR: <b id="v4-radar-txt" style="color:#00f0ff;">ACTIVE MATRIX</b></span>
-                        <span>TIMER: <b id="v4-timer-txt" style="color:#38bdf8;">--s</b></span>
+                        <span>RADAR: <b id="v5-radar-txt" style="color:#00f0ff;">ACTIVE MATRIX</b></span>
+                        <span>TIMER: <b id="v5-timer-txt" style="color:#38bdf8;">--s</b></span>
                     </div>
-                    <button id="v4-scan-btn" style="width: 100%; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 9px 4px; border-radius: 7px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
+                    <button id="v5-scan-btn" style="width: 100%; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 9px 4px; border-radius: 7px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
                         ⚡ DEEP SCAN (8.0s)
                     </button>
-                    <div id="v4-progress" style="display:none; width: 100%; height: 4px; background: #1e293b; border-radius: 2px; margin-top: 5px; overflow: hidden;">
-                        <div id="v4-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #10b981); transition: width 0.08s linear;"></div>
+                    <div id="v5-progress" style="display:none; width: 100%; height: 4px; background: #1e293b; border-radius: 2px; margin-top: 5px; overflow: hidden;">
+                        <div id="v5-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #10b981); transition: width 0.08s linear;"></div>
                     </div>
-                    <div id="v4-verdict-box" style="margin-top: 6px; padding: 6px 4px; background: #061124; border-radius: 7px; text-align: center; border: 1px solid #1e293b;">
+                    <div id="v5-verdict-box" style="margin-top: 6px; padding: 6px 4px; background: #061124; border-radius: 7px; text-align: center; border: 1px solid #1e293b;">
                         <div style="font-size: 7.5px; color: #94a3b8; text-transform: uppercase;">Apex Next-Candle Verdict</div>
-                        <div id="v4-verdict-txt" style="font-size: 15px; font-weight: 900; color: #facc15; margin: 1px 0;">READY TO SCAN</div>
-                        <div id="v4-info-txt" style="font-size: 8px; color: #00f0ff; font-weight: bold;">Tap Scan in last 12s-4s</div>
+                        <div id="v5-verdict-txt" style="font-size: 15px; font-weight: 900; color: #facc15; margin: 1px 0;">READY TO SCAN</div>
+                        <div id="v5-info-txt" style="font-size: 8px; color: #00f0ff; font-weight: bold;">Tap Scan in last 12s-4s</div>
                     </div>
-                    <div id="v4-reasons-txt" style="font-size: 7.5px; color: #64748b; margin-top: 3px; text-align: center; line-height: 1.2;">
+                    <div id="v5-reasons-txt" style="font-size: 7.5px; color: #64748b; margin-top: 3px; text-align: center; line-height: 1.2;">
                         Continuous 8-second multi-angle analysis
                     </div>
                 </div>
@@ -740,7 +703,7 @@
         },
 
         bindEvents() {
-            const handle = document.getElementById('v4-drag-bar');
+            const handle = document.getElementById('v5-drag-bar');
             let isDragging = false, startX, startY, initLeft, initTop;
 
             const onStart = (e) => {
@@ -778,31 +741,31 @@
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onEnd);
 
-            document.getElementById('v4-min-btn').addEventListener('click', () => {
+            document.getElementById('v5-min-btn').addEventListener('click', () => {
                 STATE.hudMinimized = !STATE.hudMinimized;
-                document.getElementById('v4-body').style.display = STATE.hudMinimized ? 'none' : 'block';
-                document.getElementById('v4-min-btn').innerText = STATE.hudMinimized ? '+' : '_';
+                document.getElementById('v5-body').style.display = STATE.hudMinimized ? 'none' : 'block';
+                document.getElementById('v5-min-btn').innerText = STATE.hudMinimized ? '+' : '_';
             });
 
-            document.getElementById('v4-scan-btn').addEventListener('click', run8SecondDeepScan);
+            document.getElementById('v5-scan-btn').addEventListener('click', run8SecondDeepScan);
         },
 
         updateDisplay() {
             if (!this.mounted) return;
-            const pEl = document.getElementById('v4-price-txt');
-            const pairEl = document.getElementById('v4-pair-txt');
-            const tEl = document.getElementById('v4-timer-txt');
-            const rsiEl = document.getElementById('v4-rsi-val');
-            const adxEl = document.getElementById('v4-adx-val');
-            const cvdEl = document.getElementById('v4-cvd-val');
-            const vwapEl = document.getElementById('v4-vwap-val');
+            const pEl = document.getElementById('v5-price-txt');
+            const pairEl = document.getElementById('v5-pair-txt');
+            const tEl = document.getElementById('v5-timer-txt');
+            const rsiEl = document.getElementById('v5-rsi-val');
+            const adxEl = document.getElementById('v5-adx-val');
+            const cvdEl = document.getElementById('v5-cvd-val');
+            const vwapEl = document.getElementById('v5-vwap-val');
 
-            const cOpen = document.getElementById('v4-c-open');
-            const cHigh = document.getElementById('v4-c-high');
-            const cLow = document.getElementById('v4-c-low');
-            const cBody = document.getElementById('v4-c-body');
-            const cU = document.getElementById('v4-c-uwick');
-            const cL = document.getElementById('v4-c-lwick');
+            const cOpen = document.getElementById('v5-c-open');
+            const cHigh = document.getElementById('v5-c-high');
+            const cLow = document.getElementById('v5-c-low');
+            const cBody = document.getElementById('v5-c-body');
+            const cU = document.getElementById('v5-c-uwick');
+            const cL = document.getElementById('v5-c-lwick');
 
             const dec = (STATE.feed.price && STATE.feed.price > 100) ? 3 : 5;
             if (pEl && STATE.feed.price) pEl.innerText = Number(STATE.feed.price).toFixed(dec);
