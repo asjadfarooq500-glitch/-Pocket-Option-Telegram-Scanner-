@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Pocket Option OTC APEX QUANT V5
+// @name         Pocket Option OTC APEX TITAN OMNI-QUANT V7
 // @namespace    https://github.com/
-// @version      5.0.0
-// @description  Deep Multi-Angle OTC Quantitative Signal Engine & Reversal/Continuation Analyzer
+// @version      7.0.0
+// @description  Master Institutional Live OTC Quantitative Analysis & Next-Candle Predictive Engine
 // @match        *://*.pocketoption.com/*
 // @match        *://pocketoption.com/*
 // @match        *://*.po.trade/*
@@ -23,9 +23,9 @@
     // =========================================================================
     const CONFIG = {
         STORAGE_KEYS: {
-            SETTINGS: 'po_v5_settings',
-            JOURNAL: 'po_v5_journal',
-            HUD_POS: 'po_v5_hud_pos'
+            SETTINGS: 'po_v7_settings',
+            JOURNAL: 'po_v7_journal',
+            HUD_POS: 'po_v7_hud_pos'
         },
         TIMEFRAMES: {
             '15s': 15000,
@@ -89,7 +89,7 @@
         hudMinimized: false
     };
 
-    Object.keys(CONFIG.TIMEFRAMES).forEach(tf => {
+    Object.keys(CONFIG.TIMEFRAMES).forEach(function (tf) {
         STATE.candlesByTF[tf] = [];
     });
 
@@ -102,23 +102,31 @@
     // 2. MATHEMATICAL CORE UTILITIES
     // =========================================================================
     const UTILS = {
-        saveSettings() {
+        saveSettings: function () {
             try { localStorage.setItem(CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(STATE.settings)); } catch (e) {}
         },
-        safeDiv(n, d, f = 0) {
+        safeDiv: function (n, d, f) {
+            if (f === undefined) f = 0;
             return d === 0 || isNaN(d) ? f : n / d;
         },
-        round(v, dec = 5) {
+        round: function (v, dec) {
+            if (dec === undefined) dec = 5;
             return (v === null || v === undefined || isNaN(v)) ? '--' : Number(v).toFixed(dec);
         },
-        mean(arr) {
-            return arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
+        mean: function (arr) {
+            if (!arr || arr.length === 0) return 0;
+            let sum = 0;
+            for (let i = 0; i < arr.length; i++) sum += arr[i];
+            return sum / arr.length;
         },
-        stdDev(arr, m) {
-            if (arr.length < 2) return 0.00001;
+        stdDev: function (arr, m) {
+            if (!arr || arr.length < 2) return 0.00001;
             const avg = m !== undefined ? m : UTILS.mean(arr);
-            const variance = arr.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / arr.length;
-            return Math.sqrt(variance);
+            let variance = 0;
+            for (let i = 0; i < arr.length; i++) {
+                variance += Math.pow(arr[i] - avg, 2);
+            }
+            return Math.sqrt(variance / arr.length);
         }
     };
 
@@ -127,13 +135,13 @@
     // =========================================================================
     const AUDIO = {
         ctx: null,
-        init() {
+        init: function () {
             if (!this.ctx && typeof AudioContext !== 'undefined') {
                 this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(function () {});
         },
-        play(type) {
+        play: function (type) {
             if (!STATE.settings.audioEnabled) return;
             try {
                 this.init();
@@ -166,8 +174,8 @@
         }
     };
 
-    window.addEventListener('touchstart', () => AUDIO.init(), { once: true, passive: true });
-    window.addEventListener('mousedown', () => AUDIO.init(), { once: true, passive: true });
+    window.addEventListener('touchstart', function () { AUDIO.init(); }, { once: true, passive: true });
+    window.addEventListener('mousedown', function () { AUDIO.init(); }, { once: true, passive: true });
 
     // =========================================================================
     // 4. LIVE PRICE & ASSET DETECTOR
@@ -178,7 +186,7 @@
     try {
         if (typeof CanvasRenderingContext2D !== 'undefined') {
             const origFill = CanvasRenderingContext2D.prototype.fillText;
-            CanvasRenderingContext2D.prototype.fillText = function(text, x, y) {
+            CanvasRenderingContext2D.prototype.fillText = function (text, x, y) {
                 if (text && typeof text === 'string') {
                     const str = text.trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(str)) {
@@ -199,12 +207,12 @@
     } catch (e) {}
 
     const DATA_FEED = {
-        readDOMPrice() {
+        readDOMPrice: function () {
             const selectors = ['.current-price', '.chart-rate-quote', '.price-value', '[class*="current-value"]'];
-            for (let s of selectors) {
-                const els = document.querySelectorAll(s);
-                for (let el of els) {
-                    const txt = (el.textContent || '').trim();
+            for (let i = 0; i < selectors.length; i++) {
+                const els = document.querySelectorAll(selectors[i]);
+                for (let j = 0; j < els.length; j++) {
+                    const txt = (els[j].textContent || '').trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(txt)) {
                         const num = parseFloat(txt);
                         if (num > 0) return { val: num, src: 'DOM_QUERY' };
@@ -213,20 +221,21 @@
             }
             const all = document.querySelectorAll('span, div, b');
             const candidates = [];
-            for (let el of all) {
+            for (let k = 0; k < all.length; k++) {
+                const el = all[k];
                 if (el.children.length === 0 && el.textContent) {
                     const str = el.textContent.trim();
                     if (/^\d{1,6}\.\d{2,6}$/.test(str)) {
                         const rect = el.getBoundingClientRect();
                         if (rect.top > 60 && rect.left > (window.innerWidth * 0.50)) {
                             const n = parseFloat(str);
-                            if (n > 0 && Math.abs(n - 100) > 0.01) candidates.push({ val: n, str });
+                            if (n > 0 && Math.abs(n - 100) > 0.01) candidates.push({ val: n, str: str });
                         }
                     }
                 }
             }
             if (candidates.length > 0) {
-                const nonGrid = candidates.filter(c => !c.str.endsWith('00') && !c.str.endsWith('50'));
+                const nonGrid = candidates.filter(function (c) { return !c.str.endsWith('00') && !c.str.endsWith('50'); });
                 const chosen = nonGrid.length > 0 ? nonGrid[nonGrid.length - 1] : candidates[candidates.length - 1];
                 STATE.diagnostics.domPings++;
                 return { val: chosen.val, src: 'DOM_COORDINATE' };
@@ -234,7 +243,7 @@
             return null;
         },
 
-        getLivePrice() {
+        getLivePrice: function () {
             const now = Date.now();
             if (canvasInterceptPrice !== null && (now - canvasInterceptTime < 1800)) {
                 return { price: canvasInterceptPrice, source: 'CANVAS_BADGE', age: now - canvasInterceptTime };
@@ -244,11 +253,11 @@
             return null;
         },
 
-        detectPair() {
+        detectPair: function () {
             let foundPair = '';
             const selectors = ['.current-symbol', '[class*="pair-title"]', '.asset-select'];
-            for (let s of selectors) {
-                const el = document.querySelector(s);
+            for (let i = 0; i < selectors.length; i++) {
+                const el = document.querySelector(selectors[i]);
                 if (el && el.innerText) {
                     const t = el.innerText.split('\n')[0].trim();
                     if (t.length >= 3 && !t.includes('ASSET')) { foundPair = t.toUpperCase(); break; }
@@ -256,12 +265,13 @@
             }
             if (!foundPair) foundPair = STATE.feed.pair;
             const isOTC = foundPair.includes('OTC');
-            return { pair: foundPair, isOTC };
+            return { pair: foundPair, isOTC: isOTC };
         },
 
-        detectPayout() {
+        detectPayout: function () {
             const all = document.querySelectorAll('*');
-            for (let el of all) {
+            for (let i = 0; i < all.length; i++) {
+                const el = all[i];
                 if (el.children.length === 0 && el.textContent) {
                     const t = el.textContent.trim();
                     if (/^(\+)?(100|[1-9][0-9]?)%$/.test(t)) {
@@ -269,7 +279,7 @@
                         if (num >= 20 && num <= 100) {
                             const dec = num / 100;
                             const be = UTILS.safeDiv(1, (1 + dec), 0.5208);
-                            return { percentage: num, breakEvenRate: parseFloat((be * 100).toFixed(2)), status: `${num}% PAYOUT (BE: ${(be * 100).toFixed(1)}%)` };
+                            return { percentage: num, breakEvenRate: parseFloat((be * 100).toFixed(2)), status: num + '% PAYOUT (BE: ' + (be * 100).toFixed(1) + '%)' };
                         }
                     }
                 }
@@ -282,7 +292,7 @@
     // 5. CANDLE & ORDER-FLOW ENGINE
     // =========================================================================
     const CANDLE_ENGINE = {
-        ingestTick(price, timestamp) {
+        ingestTick: function (price, timestamp) {
             if (!price || isNaN(price)) return;
             const prev = STATE.lastTickPrice !== null ? STATE.lastTickPrice : price;
             const delta = price - prev;
@@ -294,12 +304,13 @@
             STATE.feed.timestamp = timestamp;
             STATE.feed.ticks++;
 
-            Object.keys(CONFIG.TIMEFRAMES).forEach(tf => {
-                this.updateTF(tf, CONFIG.TIMEFRAMES[tf], price, timestamp);
+            const self = this;
+            Object.keys(CONFIG.TIMEFRAMES).forEach(function (tf) {
+                self.updateTF(tf, CONFIG.TIMEFRAMES[tf], price, timestamp);
             });
         },
 
-        updateTF(tfKey, tfMs, price, timestamp) {
+        updateTF: function (tfKey, tfMs, price, timestamp) {
             const bucketStart = Math.floor(timestamp / tfMs) * tfMs;
             const history = STATE.candlesByTF[tfKey];
             if (!history) return;
@@ -313,7 +324,7 @@
                 const newBar = {
                     time: bucketStart,
                     open: price, high: price, low: price, close: price,
-                    ticksCount: 1, isComplete: false, tfKey
+                    ticksCount: 1, isComplete: false, tfKey: tfKey
                 };
                 this.finalizeGeometry(newBar);
                 history.push(newBar);
@@ -327,7 +338,7 @@
             }
         },
 
-        finalizeGeometry(bar) {
+        finalizeGeometry: function (bar) {
             const range = Math.max(0.000001, bar.high - bar.low);
             const body = Math.abs(bar.close - bar.open);
             const uWick = Math.max(0, bar.high - Math.max(bar.open, bar.close));
@@ -352,8 +363,9 @@
             }
         },
 
-        reset(pair) {
-            Object.keys(CONFIG.TIMEFRAMES).forEach(tf => { STATE.candlesByTF[tf] = []; });
+        reset: function (pair) {
+            const self = this;
+            Object.keys(CONFIG.TIMEFRAMES).forEach(function (tf) { STATE.candlesByTF[tf] = []; });
             STATE.cvdProxy = 0; STATE.upTicks = 0; STATE.downTicks = 0;
             STATE.lastTickPrice = null; STATE.feed.ticks = 0; STATE.feed.pair = pair;
         }
@@ -363,7 +375,7 @@
     // 6. TECHNICAL INDICATORS SUITE (STANDARD QUANT FORMULAS)
     // =========================================================================
     const INDICATORS = {
-        calcEMA(candles, period) {
+        calcEMA: function (candles, period) {
             if (!candles || candles.length < period) return null;
             const k = 2 / (period + 1);
             let ema = candles[0].close;
@@ -371,7 +383,8 @@
             return ema;
         },
 
-        calcRSI(candles, period = 14) {
+        calcRSI: function (candles, period) {
+            if (period === undefined) period = 14;
             if (!candles || candles.length < 2) return 50.0;
             const p = Math.min(period, candles.length - 1);
             let gains = 0, losses = 0;
@@ -385,17 +398,20 @@
             return parseFloat((100 - (100 / (1 + rs))).toFixed(1));
         },
 
-        calcBollinger(candles, period = 20, mult = 2.0) {
+        calcBollinger: function (candles, period, mult) {
+            if (period === undefined) period = 20;
+            if (mult === undefined) mult = 2.0;
             if (!candles || candles.length < 2) return null;
             const p = Math.min(period, candles.length);
             const slice = candles.slice(-p);
-            const closes = slice.map(c => c.close);
+            const closes = slice.map(function (c) { return c.close; });
             const mean = UTILS.mean(closes);
             const std = UTILS.stdDev(closes, mean);
             return { upper: mean + (mult * std), middle: mean, lower: mean - (mult * std) };
         },
 
-        calcADX(candles, period = 14) {
+        calcADX: function (candles, period) {
+            if (period === undefined) period = 14;
             if (!candles || candles.length < 3) return { adx: 25.0, plusDI: 25.0, minusDI: 25.0 };
             const p = Math.min(period, candles.length - 1);
             let plusDM = 0, minusDM = 0, trSum = 0;
@@ -413,14 +429,15 @@
             return { adx: parseFloat(dx.toFixed(1)), plusDI: parseFloat(plusDI.toFixed(1)), minusDI: parseFloat(minusDI.toFixed(1)) };
         },
 
-        calcVWAP(candles) {
+        calcVWAP: function (candles) {
             if (!candles || candles.length === 0) return null;
             let tpv = 0, ticks = 0;
-            candles.forEach(c => {
+            for (let i = 0; i < candles.length; i++) {
+                const c = candles[i];
                 const tp = (c.high + c.low + c.close) / 3;
                 const w = Math.max(1, c.ticksCount || 1);
                 tpv += tp * w; ticks += w;
-            });
+            }
             return ticks > 0 ? (tpv / ticks) : candles[candles.length - 1].close;
         }
     };
@@ -429,7 +446,7 @@
     // 7. MULTI-FACTOR ENSEMBLE QUANT ENGINE
     // =========================================================================
     const QUANT_ENGINE = {
-        evaluate(tfKey) {
+        evaluate: function (tfKey) {
             const candles = STATE.candlesByTF[tfKey];
             if (!candles || candles.length === 0) {
                 return { direction: 'NO TRADE', score: 0, confidence: 0, quality: 0, confluence: 0, edge: 0, setup: 'FEED REQUIRED', tier: 'FORCED', reasons: [], risks: ['No ticks recorded'] };
@@ -449,32 +466,32 @@
 
             // 1. Candlestick Anatomy & Reversal Math (Opposite Candle Predictor)
             if (cur.isGreen && cur.upperWickPct >= 35) {
-                bearScore += 30; pros.push('Upper Wick Rejection (Shooting Star -> Next RED 🔴)');
+                bearScore += 32; pros.push('Upper Rejection Wick (Shooting Star -> Next RED 🔴)');
             } else if (!cur.isGreen && cur.lowerWickPct >= 35) {
-                bullScore += 30; pros.push('Lower Wick Defense (Hammer -> Next GREEN 🟢)');
+                bullScore += 32; pros.push('Lower Wick Defense (Hammer -> Next GREEN 🟢)');
             }
 
             // 2. Climax Mean-Reversion Flips
             if (rsi7 <= 18 || (bb && cur.close <= bb.lower)) {
-                bullScore += 25; pros.push(`Oversold Climax (RSI ${rsi7} -> Bounce Due 🟢)`);
+                bullScore += 26; pros.push('Oversold Climax (RSI ' + rsi7 + ' -> Bounce Due 🟢)');
             } else if (rsi7 >= 82 || (bb && cur.close >= bb.upper)) {
-                bearScore += 25; pros.push(`Overbought Climax (RSI ${rsi7} -> Drop Due 🔴)`);
+                bearScore += 26; pros.push('Overbought Climax (RSI ' + rsi7 + ' -> Drop Due 🔴)');
             }
 
             // 3. CVD Delta & Micro-Order Flow
             if (STATE.cvdProxy >= 8) {
-                if (!cur.isGreen) { bullScore += 22; pros.push('Positive CVD Absorption Trap (+ ' + STATE.cvdProxy + ')'); }
-                else { bullScore += 15; pros.push('CVD Buyer Delta Surge'); }
+                if (!cur.isGreen) { bullScore += 24; pros.push('Positive CVD Absorption Trap (+ ' + STATE.cvdProxy + ')'); }
+                else { bullScore += 16; pros.push('CVD Buyer Delta Surge'); }
             } else if (STATE.cvdProxy <= -8) {
-                if (cur.isGreen) { bearScore += 22; pros.push('Negative CVD Absorption Trap (' + STATE.cvdProxy + ')'); }
-                else { bearScore += 15; pros.push('CVD Seller Delta Dump'); }
+                if (cur.isGreen) { bearScore += 24; pros.push('Negative CVD Absorption Trap (' + STATE.cvdProxy + ')'); }
+                else { bearScore += 16; pros.push('CVD Seller Delta Dump'); }
             }
 
             // 4. Momentum & Uncontested Marubozu
             if (cur.isGreen && cur.bodyPct >= 65 && cur.upperWickPct <= 8) {
-                bullScore += 20; pros.push('Bullish Solid Momentum Expansion');
+                bullScore += 22; pros.push('Bullish Solid Momentum Expansion');
             } else if (!cur.isGreen && cur.bodyPct >= 65 && cur.lowerWickPct <= 8) {
-                bearScore += 20; pros.push('Bearish Solid Momentum Breakdown');
+                bearScore += 22; pros.push('Bearish Solid Momentum Breakdown');
             }
 
             // 5. VWAP & Trend Structure
@@ -504,13 +521,13 @@
                 tier = 'FORCED';
             }
 
-            if (edge >= 30 && confluence >= 80) tier = 'A+ SETUP';
-            else if (edge >= 20 && confluence >= 70) tier = 'A SETUP';
-            else if (edge >= 12) tier = 'B SETUP';
+            if (edge >= 28 && confluence >= 78) tier = 'A+ SETUP';
+            else if (edge >= 18 && confluence >= 68) tier = 'A SETUP';
+            else if (edge >= 10) tier = 'B SETUP';
 
             if (STATE.settings.mode === 'SELECTIVE' && tier !== 'A+' && tier !== 'A') {
                 direction = 'NO TRADE';
-            } else if (STATE.settings.mode === 'BALANCED' && edge < 10) {
+            } else if (STATE.settings.mode === 'BALANCED' && edge < 8) {
                 direction = 'NO TRADE';
             }
 
@@ -518,14 +535,14 @@
             let dataQuality = (STATE.feed.ticks > 25 && STATE.feed.quality === 'VALID') ? 98 : 82;
 
             return {
-                direction,
+                direction: direction,
                 score: Math.max(bullScore, bearScore),
-                confidence,
+                confidence: confidence,
                 quality: dataQuality,
-                confluence,
-                edge,
-                setup,
-                tier,
+                confluence: confluence,
+                edge: edge,
+                setup: setup,
+                tier: tier,
                 reasons: pros.slice(0, 3),
                 risks: risks.slice(0, 1)
             };
@@ -539,13 +556,13 @@
 
     function run8SecondDeepScan() {
         if (isDeepScanning) return;
-        const btn = document.getElementById('v5-scan-btn');
-        const pBar = document.getElementById('v5-progress');
-        const pFill = document.getElementById('v5-progress-fill');
-        const vBox = document.getElementById('v5-verdict-box');
-        const vTxt = document.getElementById('v5-verdict-txt');
-        const infoTxt = document.getElementById('v5-info-txt');
-        const reasonTxt = document.getElementById('v5-reasons-txt');
+        const btn = document.getElementById('v7-scan-btn');
+        const pBar = document.getElementById('v7-progress');
+        const pFill = document.getElementById('v7-progress-fill');
+        const vBox = document.getElementById('v7-verdict-box');
+        const vTxt = document.getElementById('v7-verdict-txt');
+        const infoTxt = document.getElementById('v7-info-txt');
+        const reasonTxt = document.getElementById('v7-reasons-txt');
 
         if (!STATE.feed.price) {
             vTxt.innerText = 'DATA NOT READY';
@@ -563,9 +580,9 @@
         const totalSteps = 40; // 40 * 200ms = 8.0 Seconds Deep Matrix
         const snapshots = [];
 
-        const interval = setInterval(() => {
+        const interval = setInterval(function () {
             step++;
-            if (pFill) pFill.style.width = `${Math.min(100, Math.round((step / totalSteps) * 100))}%`;
+            if (pFill) pFill.style.width = Math.min(100, Math.round((step / totalSteps) * 100)) + '%';
 
             if (step % 10 === 0 || step === 1) {
                 snapshots.push(QUANT_ENGINE.evaluate(STATE.settings.timeframe));
@@ -585,7 +602,11 @@
                 const tfMs = CONFIG.TIMEFRAMES[STATE.settings.timeframe] || 60000;
                 const secLeft = Math.max(1, (tfMs / 1000) - Math.floor((now.getTime() % tfMs) / 1000));
                 const entryTime = new Date(now.getTime() + (secLeft * 1000));
-                const clock = `${String(entryTime.getHours()).padStart(2, '0')}:${String(entryTime.getMinutes()).padStart(2, '0')}:${String(entryTime.getSeconds()).padStart(2, '0')}`;
+                const clock = [
+                    String(entryTime.getHours()).padStart(2, '0'),
+                    String(entryTime.getMinutes()).padStart(2, '0'),
+                    String(entryTime.getSeconds()).padStart(2, '0')
+                ].join(':');
 
                 if (finalResult.direction === 'CALL') {
                     vTxt.innerText = 'CALL (BUY) 🟢';
@@ -603,9 +624,9 @@
                     vBox.style.borderColor = '#475569';
                 }
 
-                infoTxt.innerText = `CONF: ${finalResult.confidence}% | TIER: ${finalResult.tier} | EDGE: +${finalResult.edge}`;
-                reasonTxt.innerHTML = `Entry at <b>${clock}</b> (${secLeft}s left)<br><b style="color:#00f0ff;">${finalResult.setup}</b> [${trajectory}]<br>` +
-                    (finalResult.reasons.length > 0 ? `<span style="color:#10b981;">+ ${finalResult.reasons.join('<br>+ ')}</span>` : '');
+                infoTxt.innerText = 'CONF: ' + finalResult.confidence + '% | TIER: ' + finalResult.tier + ' | EDGE: +' + finalResult.edge;
+                reasonTxt.innerHTML = 'Entry at <b>' + clock + '</b> (' + secLeft + 's left)<br><b style="color:#00f0ff;">' + finalResult.setup + '</b> [' + trajectory + ']<br>' +
+                    (finalResult.reasons.length > 0 ? '<span style="color:#10b981;">+ ' + finalResult.reasons.join('<br>+ ') + '</span>' : '');
 
                 STATE.lastSignal = finalResult;
             }
@@ -619,82 +640,82 @@
         mounted: false,
         element: null,
 
-        mount() {
-            if (this.mounted && document.getElementById('po-v5-hud')) return;
+        mount: function () {
+            if (this.mounted && document.getElementById('po-v7-hud')) return;
             const root = document.createElement('div');
-            root.id = 'po-v5-hud';
-            root.style.cssText = `
-                position: fixed !important; top: 140px !important; left: 10px !important;
-                z-index: 2147483647 !important; width: 260px !important; max-width: 92vw !important;
-                background: rgba(3, 9, 24, 0.97) !important; border: 1.5px solid #00f0ff !important;
-                border-radius: 12px !important; padding: 8px !important; color: #fff !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-                box-shadow: 0 16px 50px rgba(0, 240, 255, 0.22) !important; user-select: none !important;
-                touch-action: none !important;
-            `;
+            root.id = 'po-v7-hud';
+            root.style.cssText = [
+                'position: fixed !important', 'top: 140px !important', 'left: 10px !important',
+                'z-index: 2147483647 !important', 'width: 260px !important', 'max-width: 92vw !important',
+                'background: rgba(3, 9, 24, 0.97) !important', 'border: 1.5px solid #00f0ff !important',
+                'border-radius: 12px !important', 'padding: 8px !important', 'color: #fff !important',
+                'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important',
+                'box-shadow: 0 16px 50px rgba(0, 240, 255, 0.22) !important', 'user-select: none !important',
+                'touch-action: none !important'
+            ].join(';');
 
             try {
                 const pos = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.HUD_POS));
                 if (pos && pos.top && pos.left) {
-                    root.style.top = `${Math.max(10, Math.min(window.innerHeight - 300, pos.top))}px`;
-                    root.style.left = `${Math.max(5, Math.min(window.innerWidth - 265, pos.left))}px`;
+                    root.style.top = Math.max(10, Math.min(window.innerHeight - 300, pos.top)) + 'px';
+                    root.style.left = Math.max(5, Math.min(window.innerWidth - 265, pos.left)) + 'px';
                 }
             } catch (e) {}
 
-            root.innerHTML = `
-                <div id="v5-drag-bar" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -8px -8px 6px -8px; padding: 5px 8px; border-top-left-radius: 10px; border-top-right-radius: 10px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; align-items: center; cursor: move;">
-                    <span>⚡ APEX QUANT V5</span>
-                    <button id="v5-min-btn" style="background:rgba(0,0,0,0.3); border:none; color:#fff; border-radius:3px; font-size:8px; padding:2px 5px; cursor:pointer;">_</button>
-                </div>
-                <div id="v5-body">
-                    <div style="font-size: 8.5px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>PAIR: <b id="v5-pair-txt" style="color:#00f0ff;">SYNCING...</b></span>
-                        <span>PRICE: <b id="v5-price-txt" style="color:#10b981;">--</b></span>
-                    </div>
-                    <div style="background: #061124; padding: 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; margin-bottom: 4px;">
-                        <div style="display:flex; justify-content:space-between; color:#94a3b8;">
-                            <span>RSI: <b id="v5-rsi-val" style="color:#38bdf8;">--</b></span>
-                            <span>ADX: <b id="v5-adx-val" style="color:#facc15;">--</b></span>
-                            <span>CVD: <b id="v5-cvd-val" style="color:#10b981;">0</b></span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-top:2px; color:#94a3b8;">
-                            <span>VWAP: <b id="v5-vwap-val" style="color:#00f0ff;">--</b></span>
-                            <span>BB: <b id="v5-bb-val" style="color:#38bdf8;">SYNCED</b></span>
-                            <span>MODE: <b id="v5-mode-val" style="color:#a855f7;">BALANCED</b></span>
-                        </div>
-                    </div>
-                    <div style="background: #08152e; padding: 4px 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8; margin-bottom: 4px;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>O: <b id="v5-c-open" style="color:#fff;">--</b></span>
-                            <span>H: <b id="v5-c-high" style="color:#10b981;">--</b></span>
-                            <span>L: <b id="v5-c-low" style="color:#ef4444;">--</b></span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                            <span>BODY: <b id="v5-c-body" style="color:#00f0ff;">0%</b></span>
-                            <span>U-WICK: <b id="v5-c-uwick" style="color:#facc15;">0%</b></span>
-                            <span>L-WICK: <b id="v5-c-lwick" style="color:#facc15;">0%</b></span>
-                        </div>
-                    </div>
-                    <div style="font-size: 8.5px; color: #94a3b8; display:flex; justify-content:space-between; margin-bottom: 4px;">
-                        <span>RADAR: <b id="v5-radar-txt" style="color:#00f0ff;">ACTIVE MATRIX</b></span>
-                        <span>TIMER: <b id="v5-timer-txt" style="color:#38bdf8;">--s</b></span>
-                    </div>
-                    <button id="v5-scan-btn" style="width: 100%; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 9px 4px; border-radius: 7px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
-                        ⚡ DEEP SCAN (8.0s)
-                    </button>
-                    <div id="v5-progress" style="display:none; width: 100%; height: 4px; background: #1e293b; border-radius: 2px; margin-top: 5px; overflow: hidden;">
-                        <div id="v5-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #10b981); transition: width 0.08s linear;"></div>
-                    </div>
-                    <div id="v5-verdict-box" style="margin-top: 6px; padding: 6px 4px; background: #061124; border-radius: 7px; text-align: center; border: 1px solid #1e293b;">
-                        <div style="font-size: 7.5px; color: #94a3b8; text-transform: uppercase;">Apex Next-Candle Verdict</div>
-                        <div id="v5-verdict-txt" style="font-size: 15px; font-weight: 900; color: #facc15; margin: 1px 0;">READY TO SCAN</div>
-                        <div id="v5-info-txt" style="font-size: 8px; color: #00f0ff; font-weight: bold;">Tap Scan in last 12s-4s</div>
-                    </div>
-                    <div id="v5-reasons-txt" style="font-size: 7.5px; color: #64748b; margin-top: 3px; text-align: center; line-height: 1.2;">
-                        Continuous 8-second multi-angle analysis
-                    </div>
-                </div>
-            `;
+            root.innerHTML = [
+                '<div id="v7-drag-bar" style="background: linear-gradient(90deg, #00f0ff, #0284c7); margin: -8px -8px 6px -8px; padding: 5px 8px; border-top-left-radius: 10px; border-top-right-radius: 10px; font-size: 10px; font-weight: 900; color: #000; display: flex; justify-content: space-between; align-items: center; cursor: move;">',
+                '<span>⚡ APEX TITAN QUANT V7</span>',
+                '<button id="v7-min-btn" style="background:rgba(0,0,0,0.3); border:none; color:#fff; border-radius:3px; font-size:8px; padding:2px 5px; cursor:pointer;">_</button>',
+                '</div>',
+                '<div id="v7-body">',
+                '<div style="font-size: 8.5px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 4px;">',
+                '<span>PAIR: <b id="v7-pair-txt" style="color:#00f0ff;">AUD/CHF OTC</b></span>',
+                '<span>PRICE: <b id="v7-price-txt" style="color:#10b981;">--</b></span>',
+                '</div>',
+                '<div style="background: #061124; padding: 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; margin-bottom: 4px;">',
+                '<div style="display:flex; justify-content:space-between; color:#94a3b8;">',
+                '<span>RSI: <b id="v7-rsi-val" style="color:#38bdf8;">--</b></span>',
+                '<span>ADX: <b id="v7-adx-val" style="color:#facc15;">--</b></span>',
+                '<span>CVD: <b id="v7-cvd-val" style="color:#10b981;">0</b></span>',
+                '</div>',
+                '<div style="display:flex; justify-content:space-between; margin-top:2px; color:#94a3b8;">',
+                '<span>VWAP: <b id="v7-vwap-val" style="color:#00f0ff;">--</b></span>',
+                '<span>BB: <b id="v7-bb-val" style="color:#38bdf8;">SYNCED</b></span>',
+                '<span>MODE: <b id="v7-mode-val" style="color:#a855f7;">BALANCED</b></span>',
+                '</div>',
+                '</div>',
+                '<div style="background: #08152e; padding: 4px 5px; border-radius: 6px; border: 1px solid #1e293b; font-size: 8px; color: #94a3b8; margin-bottom: 4px;">',
+                '<div style="display:flex; justify-content:space-between;">',
+                '<span>O: <b id="v7-c-open" style="color:#fff;">--</b></span>',
+                '<span>H: <b id="v7-c-high" style="color:#10b981;">--</b></span>',
+                '<span>L: <b id="v7-c-low" style="color:#ef4444;">--</b></span>',
+                '</div>',
+                '<div style="display:flex; justify-content:space-between; margin-top:2px;">',
+                '<span>BODY: <b id="v7-c-body" style="color:#00f0ff;">0%</b></span>',
+                '<span>U-WICK: <b id="v7-c-uwick" style="color:#facc15;">0%</b></span>',
+                '<span>L-WICK: <b id="v7-c-lwick" style="color:#facc15;">0%</b></span>',
+                '</div>',
+                '</div>',
+                '<div style="font-size: 8.5px; color: #94a3b8; display:flex; justify-content:space-between; margin-bottom: 4px;">',
+                '<span>RADAR: <b id="v7-radar-txt" style="color:#00f0ff;">ACTIVE MATRIX</b></span>',
+                '<span>TIMER: <b id="v7-timer-txt" style="color:#38bdf8;">--s</b></span>',
+                '</div>',
+                '<button id="v7-scan-btn" style="width: 100%; background: linear-gradient(135deg, #00f0ff, #0284c7); border: none; padding: 9px 4px; border-radius: 7px; color: #000; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">',
+                '⚡ DEEP SCAN (8.0s)',
+                '</button>',
+                '<div id="v7-progress" style="display:none; width: 100%; height: 4px; background: #1e293b; border-radius: 2px; margin-top: 5px; overflow: hidden;">',
+                '<div id="v7-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #10b981); transition: width 0.08s linear;"></div>',
+                '</div>',
+                '<div id="v7-verdict-box" style="margin-top: 6px; padding: 6px 4px; background: #061124; border-radius: 7px; text-align: center; border: 1px solid #1e293b;">',
+                '<div style="font-size: 7.5px; color: #94a3b8; text-transform: uppercase;">Titan Next-Candle Verdict</div>',
+                '<div id="v7-verdict-txt" style="font-size: 15px; font-weight: 900; color: #facc15; margin: 1px 0;">READY TO SCAN</div>',
+                '<div id="v7-info-txt" style="font-size: 8px; color: #00f0ff; font-weight: bold;">Tap Scan in last 12s-4s</div>',
+                '</div>',
+                '<div id="v7-reasons-txt" style="font-size: 7.5px; color: #64748b; margin-top: 3px; text-align: center; line-height: 1.2;">',
+                'Continuous 8-second multi-angle analysis',
+                '</div>',
+                '</div>'
+            ].join('');
 
             document.body.appendChild(root);
             this.element = root;
@@ -702,33 +723,34 @@
             this.bindEvents();
         },
 
-        bindEvents() {
-            const handle = document.getElementById('v5-drag-bar');
+        bindEvents: function () {
+            const self = this;
+            const handle = document.getElementById('v7-drag-bar');
             let isDragging = false, startX, startY, initLeft, initTop;
 
-            const onStart = (e) => {
+            const onStart = function (e) {
                 isDragging = true;
                 const cX = e.touches ? e.touches[0].clientX : e.clientX;
                 const cY = e.touches ? e.touches[0].clientY : e.clientY;
                 startX = cX; startY = cY;
-                const rect = this.element.getBoundingClientRect();
+                const rect = self.element.getBoundingClientRect();
                 initLeft = rect.left; initTop = rect.top;
             };
 
-            const onMove = (e) => {
+            const onMove = function (e) {
                 if (!isDragging) return;
                 if (e.cancelable) e.preventDefault();
                 const cX = e.touches ? e.touches[0].clientX : e.clientX;
                 const cY = e.touches ? e.touches[0].clientY : e.clientY;
-                this.element.style.left = `${Math.max(5, Math.min(window.innerWidth - 265, initLeft + (cX - startX)))}px`;
-                this.element.style.top = `${Math.max(10, Math.min(window.innerHeight - 300, initTop + (cY - startY)))}px`;
+                self.element.style.left = Math.max(5, Math.min(window.innerWidth - 265, initLeft + (cX - startX))) + 'px';
+                self.element.style.top = Math.max(10, Math.min(window.innerHeight - 300, initTop + (cY - startY))) + 'px';
             };
 
-            const onEnd = () => {
+            const onEnd = function () {
                 if (isDragging) {
                     isDragging = false;
                     try {
-                        const rect = this.element.getBoundingClientRect();
+                        const rect = self.element.getBoundingClientRect();
                         localStorage.setItem(CONFIG.STORAGE_KEYS.HUD_POS, JSON.stringify({ top: rect.top, left: rect.left }));
                     } catch (e) {}
                 }
@@ -741,31 +763,31 @@
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onEnd);
 
-            document.getElementById('v5-min-btn').addEventListener('click', () => {
+            document.getElementById('v7-min-btn').addEventListener('click', function () {
                 STATE.hudMinimized = !STATE.hudMinimized;
-                document.getElementById('v5-body').style.display = STATE.hudMinimized ? 'none' : 'block';
-                document.getElementById('v5-min-btn').innerText = STATE.hudMinimized ? '+' : '_';
+                document.getElementById('v7-body').style.display = STATE.hudMinimized ? 'none' : 'block';
+                document.getElementById('v7-min-btn').innerText = STATE.hudMinimized ? '+' : '_';
             });
 
-            document.getElementById('v5-scan-btn').addEventListener('click', run8SecondDeepScan);
+            document.getElementById('v7-scan-btn').addEventListener('click', run8SecondDeepScan);
         },
 
-        updateDisplay() {
+        updateDisplay: function () {
             if (!this.mounted) return;
-            const pEl = document.getElementById('v5-price-txt');
-            const pairEl = document.getElementById('v5-pair-txt');
-            const tEl = document.getElementById('v5-timer-txt');
-            const rsiEl = document.getElementById('v5-rsi-val');
-            const adxEl = document.getElementById('v5-adx-val');
-            const cvdEl = document.getElementById('v5-cvd-val');
-            const vwapEl = document.getElementById('v5-vwap-val');
+            const pEl = document.getElementById('v7-price-txt');
+            const pairEl = document.getElementById('v7-pair-txt');
+            const tEl = document.getElementById('v7-timer-txt');
+            const rsiEl = document.getElementById('v7-rsi-val');
+            const adxEl = document.getElementById('v7-adx-val');
+            const cvdEl = document.getElementById('v7-cvd-val');
+            const vwapEl = document.getElementById('v7-vwap-val');
 
-            const cOpen = document.getElementById('v5-c-open');
-            const cHigh = document.getElementById('v5-c-high');
-            const cLow = document.getElementById('v5-c-low');
-            const cBody = document.getElementById('v5-c-body');
-            const cU = document.getElementById('v5-c-uwick');
-            const cL = document.getElementById('v5-c-lwick');
+            const cOpen = document.getElementById('v7-c-open');
+            const cHigh = document.getElementById('v7-c-high');
+            const cLow = document.getElementById('v7-c-low');
+            const cBody = document.getElementById('v7-c-body');
+            const cU = document.getElementById('v7-c-uwick');
+            const cL = document.getElementById('v7-c-lwick');
 
             const dec = (STATE.feed.price && STATE.feed.price > 100) ? 3 : 5;
             if (pEl && STATE.feed.price) pEl.innerText = Number(STATE.feed.price).toFixed(dec);
@@ -773,7 +795,7 @@
 
             const tfMs = CONFIG.TIMEFRAMES[STATE.settings.timeframe] || 60000;
             const secRem = (tfMs / 1000) - (Math.floor(Date.now() / 1000) % (tfMs / 1000));
-            if (tEl) tEl.innerText = `${secRem}s`;
+            if (tEl) tEl.innerText = secRem + 's';
 
             const history = STATE.candlesByTF[STATE.settings.timeframe];
             if (history && history.length > 0) {
@@ -781,9 +803,9 @@
                 if (cOpen) cOpen.innerText = Number(cur.open).toFixed(dec);
                 if (cHigh) cHigh.innerText = Number(cur.high).toFixed(dec);
                 if (cLow) cLow.innerText = Number(cur.low).toFixed(dec);
-                if (cBody) cBody.innerText = `${cur.bodyPct}%`;
-                if (cU) cU.innerText = `${cur.upperWickPct}%`;
-                if (cL) cL.innerText = `${cur.lowerWickPct}%`;
+                if (cBody) cBody.innerText = cur.bodyPct + '%';
+                if (cU) cU.innerText = cur.upperWickPct + '%';
+                if (cL) cL.innerText = cur.lowerWickPct + '%';
 
                 const rsi = INDICATORS.calcRSI(history, 7);
                 const adx = INDICATORS.calcADX(history, 14);
@@ -791,7 +813,7 @@
 
                 if (rsiEl) rsiEl.innerText = rsi;
                 if (adxEl) adxEl.innerText = adx.adx;
-                if (cvdEl) cvdEl.innerText = STATE.cvdProxy > 0 ? `+${STATE.cvdProxy}` : STATE.cvdProxy;
+                if (cvdEl) cvdEl.innerText = STATE.cvdProxy > 0 ? '+' + STATE.cvdProxy : STATE.cvdProxy;
                 if (vwapEl && vwap) vwapEl.innerText = Number(vwap).toFixed(dec);
             }
         }
