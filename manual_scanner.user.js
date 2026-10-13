@@ -1,709 +1,335 @@
 // ==UserScript==
 // @name         Pocket Option OTC AI Scanner Mobile
 // @namespace    po-otc-mobile-scanner
-// @version      2.0.0
-// @description  Draggable mobile candle analysis panel with manual OHLC import
-// @match        https://pocketoption.com/*
-// @match        https://*.pocketoption.com/*
-// @match        https://po.trade/*
-// @match        https://*.po.trade/*
+// @version      2.1.0
+// @description  Draggable mobile scanner panel with diagnostics and manual candle analysis
+// @match        *://pocketoption.com/*
+// @match        *://*.pocketoption.com/*
+// @match        *://po.trade/*
+// @match        *://*.po.trade/*
 // @run-at       document-idle
 // @grant        none
 // ==/UserScript==
 
-(() => {
+(function () {
   'use strict';
 
-  if (window.__PO_OTC_SCANNER_V2__) return;
-  window.__PO_OTC_SCANNER_V2__ = true;
+  const ID = 'po-otc-scanner-v21';
 
-  const ID = 'po-otc-v2';
-  const $ = (selector, root = document) =>
-    root.querySelector(selector);
-
-  let candles = [];
-  let journal = [];
-  let minimized = false;
-
-  // ---------------------------
-  // MOBILE STYLES
-  // ---------------------------
-
-  const style = document.createElement('style');
-
-  style.textContent = `
-    #${ID} {
-      position: fixed;
-      top: 95px;
-      left: auto;
-      right: 8px;
-      width: 265px;
-      max-width: calc(100vw - 16px);
-      max-height: 43vh;
-      overflow-y: auto;
-      overflow-x: hidden;
-      z-index: 2147483647;
-      color: #e5edf7;
-      background: #0b1220;
-      border: 1px solid #10b981;
-      border-radius: 13px;
-      box-shadow: 0 5px 25px #0009;
-      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-      font-size: 12px;
-      -webkit-text-size-adjust: 100%;
-      overscroll-behavior: contain;
+  // Reuse an existing panel instead of silently exiting.
+  function showExisting() {
+    const old = document.getElementById(ID);
+    if (old) {
+      old.style.display = 'block';
+      old.style.zIndex = '2147483647';
+      return true;
     }
-
-    #${ID} * {
-      box-sizing: border-box;
-    }
-
-    #${ID} .head {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 5px;
-      padding: 9px;
-      background: #111c2c;
-      border-bottom: 1px solid #334155;
-      cursor: grab;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    #${ID} .head:active {
-      cursor: grabbing;
-    }
-
-    #${ID} .brand {
-      font-weight: 900;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    #${ID} .green {
-      color: #34d399;
-    }
-
-    #${ID} .head-buttons {
-      display: flex;
-      gap: 4px;
-    }
-
-    #${ID} button {
-      min-height: 29px;
-      padding: 6px 8px;
-      color: #fff;
-      background: #172235;
-      border: 1px solid #334155;
-      border-radius: 7px;
-      font-size: 11px;
-      touch-action: manipulation;
-    }
-
-    #${ID} button:active {
-      opacity: 0.75;
-    }
-
-    #${ID} .body {
-      display: grid;
-      gap: 7px;
-      padding: 8px;
-    }
-
-    #${ID} .box {
-      padding: 8px;
-      background: #111c2c;
-      border: 1px solid #29384c;
-      border-radius: 8px;
-      overflow-wrap: anywhere;
-    }
-
-    #${ID} .muted {
-      color: #9aabc0;
-      font-size: 10px;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    #${ID} .status-title {
-      font-weight: 800;
-      margin-bottom: 3px;
-    }
-
-    #${ID} .row {
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-    }
-
-    #${ID} .row > * {
-      flex: 1;
-      min-width: 0;
-    }
-
-    #${ID} label {
-      display: block;
-      margin-bottom: 3px;
-      color: #9aabc0;
-      font-size: 10px;
-    }
-
-    #${ID} input,
-    #${ID} select,
-    #${ID} textarea {
-      display: block;
-      width: 100%;
-      min-width: 0;
-      padding: 8px;
-      color: #fff;
-      background: #111c2c;
-      border: 1px solid #334155;
-      border-radius: 7px;
-      font-family: inherit;
-      font-size: 12px;
-    }
-
-    #${ID} textarea {
-      min-height: 68px;
-      resize: vertical;
-      font-size: 10px;
-    }
-
-    #${ID} .primary {
-      background: #047857;
-      border-color: #10b981;
-    }
-
-    #${ID} .signal {
-      margin: 3px 0;
-      font-size: 23px;
-      font-weight: 900;
-    }
-
-    #${ID} .CALL {
-      color: #34d399;
-    }
-
-    #${ID} .PUT {
-      color: #fb7185;
-    }
-
-    #${ID} .WAIT {
-      color: #fbbf24;
-    }
-
-    #${ID} .metrics {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 5px;
-    }
-
-    #${ID} .metric {
-      min-width: 0;
-      padding: 7px 4px;
-      background: #111c2c;
-      border: 1px solid #29384c;
-      border-radius: 7px;
-      text-align: center;
-    }
-
-    #${ID} .metric b {
-      display: block;
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    #${ID} .metric small {
-      display: block;
-      margin-top: 3px;
-      color: #9aabc0;
-      font-size: 9px;
-    }
-
-    #${ID} .hidden {
-      display: none !important;
-    }
-
-    #${ID} .footer {
-      text-align: center;
-      color: #8192a8;
-      font-size: 9px;
-      line-height: 1.4;
-    }
-
-    #po-otc-reopen {
-      position: fixed;
-      right: 8px;
-      bottom: 95px;
-      z-index: 2147483647;
-      padding: 11px 13px;
-      color: #fff;
-      background: #047857;
-      border: 1px solid #34d399;
-      border-radius: 12px;
-      font: bold 12px -apple-system, Arial, sans-serif;
-      box-shadow: 0 4px 15px #0008;
-      touch-action: manipulation;
-    }
-  `;
-
-  (document.head || document.documentElement).appendChild(style);
-
-  // ---------------------------
-  // CREATE PANEL
-  // ---------------------------
-
-  const panel = document.createElement('section');
-  panel.id = ID;
-
-  panel.innerHTML = `
-    <div class="head" id="po-head">
-      <div>
-        <div class="brand">
-          OTC <span class="green">AI SCANNER</span>
-        </div>
-        <div class="muted">Drag here to move</div>
-      </div>
-
-      <div class="head-buttons">
-        <button type="button" id="po-min">−</button>
-        <button type="button" id="po-close">×</button>
-      </div>
-    </div>
-
-    <div class="body" id="po-body">
-
-      <div class="box" id="po-status">
-        <div class="status-title">DATA OFFLINE</div>
-        <div class="muted">
-          Automatic live candle connection has not been verified.
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label for="po-pair">Pair name</label>
-          <input id="po-pair" value="OTC pair"
-                 placeholder="Pair name">
-        </div>
-
-        <div>
-          <label for="po-tf">Timeframe</label>
-          <select id="po-tf">
-            <option>3s</option>
-            <option>5s</option>
-            <option>15s</option>
-            <option>30s</option>
-            <option selected>1m</option>
-            <option>2m</option>
-            <option>3m</option>
-            <option>4m</option>
-            <option>5m</option>
-            <option>10m</option>
-            <option>15m</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="muted">LATEST ANALYSIS</div>
-        <div class="signal WAIT" id="po-signal">WAIT</div>
-        <div class="muted" id="po-reason">
-          Import genuine candle data to start analysis.
-        </div>
-      </div>
-
-      <div class="metrics">
-        <div class="metric">
-          <b id="po-trend">—</b>
-          <small>EMA Trend</small>
-        </div>
-        <div class="metric">
-          <b id="po-rsi">—</b>
-          <small>RSI 14</small>
-        </div>
-        <div class="metric">
-          <b id="po-atr">—</b>
-          <small>ATR 14</small>
-        </div>
-      </div>
-
-      <div>
-        <label for="po-data">Import CSV or JSON candles</label>
-        <textarea id="po-data"
-          placeholder="CSV:
-time,open,high,low,close
-2026-10-13T12:00:00Z,1.1000,1.1010,1.0990,1.1005"></textarea>
-        <div class="muted">
-          Paste genuine OHLC data. Never paste passwords,
-          account details, cookies or session tokens.
-        </div>
-      </div>
-
-      <div class="row">
-        <button class="primary" id="po-import" type="button">
-          Import & Analyze
-        </button>
-        <button id="po-clear" type="button">
-          Clear
-        </button>
-      </div>
-
-      <div class="row">
-        <button id="po-check" type="button">
-          Check Page
-        </button>
-        <button id="po-journal" type="button">
-          Journal
-        </button>
-      </div>
-
-      <div class="box hidden" id="po-journal-box">
-        <b>Recent signals</b>
-        <div class="muted" id="po-journal-text"></div>
-      </div>
-
-      <div class="muted" id="po-detail">
-        Live market data is not connected.
-      </div>
-
-      <div class="footer">
-        Manual analysis only. No automatic trading.
-        No guaranteed accuracy or profits.
-      </div>
-    </div>
-  `;
-
-  document.documentElement.appendChild(panel);
-
-  // Reopen button for a closed panel.
-
-  const reopen = document.createElement('button');
-  reopen.id = 'po-otc-reopen';
-  reopen.type = 'button';
-  reopen.textContent = 'OTC SCANNER';
-  reopen.classList.add('hidden');
-  document.documentElement.appendChild(reopen);
-
-  reopen.addEventListener('click', () => {
-    panel.classList.remove('hidden');
-    reopen.classList.add('hidden');
-  });
-
-  // ---------------------------
-  // DRAG PANEL WITH TOUCH
-  // ---------------------------
-
-  const head = $('#po-head', panel);
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let initialLeft = 0;
-  let initialTop = 0;
-
-  head.addEventListener('pointerdown', event => {
-    if (event.target.closest('button')) return;
-
-    dragging = true;
-
-    const rect = panel.getBoundingClientRect();
-
-    startX = event.clientX;
-    startY = event.clientY;
-    initialLeft = rect.left;
-    initialTop = rect.top;
-
-    panel.style.left = initialLeft + 'px';
-    panel.style.top = initialTop + 'px';
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-
-    try {
-      head.setPointerCapture(event.pointerId);
-    } catch (_) {}
-
-    event.preventDefault();
-  });
-
-  head.addEventListener('pointermove', event => {
-    if (!dragging) return;
-
-    const maxLeft = Math.max(0, innerWidth - panel.offsetWidth);
-    const maxTop = Math.max(0, innerHeight - 45);
-
-    const nextLeft = Math.max(
-      0,
-      Math.min(maxLeft, initialLeft + event.clientX - startX)
-    );
-
-    const nextTop = Math.max(
-      0,
-      Math.min(maxTop, initialTop + event.clientY - startY)
-    );
-
-    panel.style.left = nextLeft + 'px';
-    panel.style.top = nextTop + 'px';
-  });
-
-  function stopDragging() {
-    dragging = false;
+    return false;
   }
 
-  head.addEventListener('pointerup', stopDragging);
-  head.addEventListener('pointercancel', stopDragging);
-  head.addEventListener('lostpointercapture', stopDragging);
-
-  // ---------------------------
-  // MINIMIZE AND CLOSE
-  // ---------------------------
-
-  $('#po-min', panel).addEventListener('click', () => {
-    minimized = !minimized;
-
-    $('#po-body', panel).classList.toggle('hidden', minimized);
-
-    $('#po-min', panel).textContent = minimized ? '+' : '−';
-
-    panel.style.maxHeight = minimized ? 'none' : '43vh';
-    panel.style.overflow = minimized ? 'visible' : 'auto';
-  });
-
-  $('#po-close', panel).addEventListener('click', () => {
-    panel.classList.add('hidden');
-    reopen.classList.remove('hidden');
-  });
-
-  // ---------------------------
-  // STATUS DISPLAY
-  // ---------------------------
-
-  function setStatus(title, message) {
-    const box = $('#po-status', panel);
-
-    box.replaceChildren();
-
-    const heading = document.createElement('div');
-    heading.className = 'status-title';
-    heading.textContent = title;
-
-    const description = document.createElement('div');
-    description.className = 'muted';
-    description.textContent = message;
-
-    box.append(heading, description);
-  }
-
-  function resetSignal(message) {
-    $('#po-signal', panel).textContent = 'WAIT';
-    $('#po-signal', panel).className = 'signal WAIT';
-    $('#po-reason', panel).textContent = message;
-  }
-
-  // ---------------------------
-  // CANDLE DATA PARSER
-  // ---------------------------
-
-  function parseCandles(raw) {
-    raw = raw.trim();
-
-    if (!raw) {
-      throw new Error('Pehle genuine candle data paste karein.');
+  function start() {
+    if (!document.body) {
+      setTimeout(start, 300);
+      return;
     }
 
-    let rows = null;
+    if (showExisting()) return;
 
-    try {
-      const json = JSON.parse(raw);
-
-      if (Array.isArray(json)) {
-        rows = json;
-      } else if (Array.isArray(json.candles)) {
-        rows = json.candles;
-      } else if (Array.isArray(json.data)) {
-        rows = json.data;
+    const style = document.createElement('style');
+    style.textContent = `
+      #${ID} {
+        position: fixed !important;
+        top: 95px !important;
+        left: 12px !important;
+        width: min(320px, calc(100vw - 24px)) !important;
+        max-height: 70vh !important;
+        overflow: auto !important;
+        z-index: 2147483647 !important;
+        background: #101923 !important;
+        color: #f3f7fb !important;
+        border: 1px solid #2cba88 !important;
+        border-radius: 13px !important;
+        box-shadow: 0 8px 30px #0009 !important;
+        font: 14px/1.4 -apple-system, BlinkMacSystemFont, sans-serif !important;
+        display: block !important;
+        pointer-events: auto !important;
+        -webkit-text-size-adjust: 100%;
       }
-    } catch (_) {}
+      #${ID} * { box-sizing: border-box; }
+      #${ID} .po-head {
+        padding: 12px;
+        background: #173b32;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: move;
+        touch-action: none;
+        user-select: none;
+      }
+      #${ID} .po-title { font-weight: 800; font-size: 14px; }
+      #${ID} button {
+        border: 0;
+        border-radius: 7px;
+        padding: 7px 10px;
+        color: white;
+        background: #287b60;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #${ID} .po-body { padding: 12px; }
+      #${ID} .po-status {
+        padding: 9px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        background: #24313e;
+        overflow-wrap: anywhere;
+      }
+      #${ID} textarea {
+        display: block;
+        width: 100%;
+        min-height: 82px;
+        padding: 9px;
+        border-radius: 8px;
+        border: 1px solid #536575;
+        background: #0a1119;
+        color: white;
+        font: 12px/1.4 monospace;
+        margin: 8px 0;
+      }
+      #${ID} .po-row { display: flex; gap: 7px; flex-wrap: wrap; }
+      #${ID} .po-row button { flex: 1; }
+      #${ID} .po-result {
+        margin-top: 10px;
+        padding: 10px;
+        background: #1d2a35;
+        border-radius: 8px;
+        overflow-wrap: anywhere;
+      }
+      #${ID} .po-muted { color: #b7c5d1; font-size: 12px; }
+      #po-reopen-v21 {
+        position: fixed !important;
+        bottom: 95px !important;
+        right: 12px !important;
+        z-index: 2147483647 !important;
+        background: #087f5b !important;
+        color: white !important;
+        padding: 12px 14px !important;
+        border: 0 !important;
+        border-radius: 25px !important;
+        font-weight: 800 !important;
+        display: none;
+      }
+    `;
+    document.documentElement.appendChild(style);
 
-    if (!rows) {
-      const lines = raw.split(/\r?\n/).filter(Boolean);
+    const panel = document.createElement('section');
+    panel.id = ID;
+    panel.innerHTML = `
+      <div class="po-head" id="po-drag-v21">
+        <div class="po-title">⚡ OTC AI SCANNER</div>
+        <div class="po-row" style="flex-wrap:nowrap">
+          <button id="po-min-v21" type="button">—</button>
+          <button id="po-close-v21" type="button">×</button>
+        </div>
+      </div>
+      <div class="po-body" id="po-body-v21">
+        <div class="po-status" id="po-status-v21">
+          🟡 Scanner loaded. Live candle feed not verified.
+        </div>
+        <div class="po-muted">
+          Paste real candle OHLC data below. Newest candle must be last.
+          Format: open,high,low,close — one candle per line.
+        </div>
+        <textarea id="po-data-v21"
+          placeholder="1.0840,1.0850,1.0830,1.0845&#10;1.0845,1.0860,1.0840,1.0855"></textarea>
+        <div class="po-row">
+          <button id="po-scan-v21" type="button">ANALYZE</button>
+          <button id="po-clear-v21" type="button">CLEAR</button>
+        </div>
+        <div class="po-result" id="po-result-v21">
+          <b>Waiting for candle data</b>
+          <p class="po-muted">No random or simulated candles are generated.</p>
+        </div>
+        <p class="po-muted">
+          Analysis only. CALL/PUT is not guaranteed. Confirm expiry and
+          chart timeframe manually. This panel does not place trades.
+        </p>
+      </div>
+    `;
+    document.body.appendChild(panel);
 
-      if (lines.length < 2) {
-        throw new Error('CSV header aur candle rows required hain.');
+    const reopen = document.createElement('button');
+    reopen.id = 'po-reopen-v21';
+    reopen.type = 'button';
+    reopen.textContent = '⚡ Open Scanner';
+    document.body.appendChild(reopen);
+
+    const $ = (id) => document.getElementById(id);
+    const status = $('po-status-v21');
+    const body = $('po-body-v21');
+
+    status.textContent =
+      '🟢 PANEL LOADED — Userscript is running. Live feed: not connected by this script.';
+
+    $('po-min-v21').addEventListener('click', (e) => {
+      e.stopPropagation();
+      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    });
+
+    $('po-close-v21').addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.style.display = 'none';
+      reopen.style.display = 'block';
+    });
+
+    reopen.addEventListener('click', () => {
+      panel.style.display = 'block';
+      reopen.style.display = 'none';
+    });
+
+    $('po-clear-v21').addEventListener('click', () => {
+      $('po-data-v21').value = '';
+      $('po-result-v21').textContent = 'Data cleared. Paste real candle data to analyze.';
+      status.textContent = '🟡 Waiting for real candle data.';
+    });
+
+    // Drag panel by its header; keep it within the visible screen.
+    const header = $('po-drag-v21');
+    let dragging = false;
+    let startX = 0, startY = 0, originX = 0, originY = 0;
+
+    header.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      dragging = true;
+      const rect = panel.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      originX = rect.left;
+      originY = rect.top;
+      panel.style.left = originX + 'px';
+      panel.style.top = originY + 'px';
+      panel.style.right = 'auto';
+      try { header.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    });
+
+    header.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const maxX = Math.max(0, window.innerWidth - panel.offsetWidth);
+      const maxY = Math.max(0, window.innerHeight - 70);
+      panel.style.left = Math.min(maxX, Math.max(0, originX + e.clientX - startX)) + 'px';
+      panel.style.top = Math.min(maxY, Math.max(0, originY + e.clientY - startY)) + 'px';
+    });
+
+    const stopDrag = () => { dragging = false; };
+    header.addEventListener('pointerup', stopDrag);
+    header.addEventListener('pointercancel', stopDrag);
+
+    // Basic transparent OHLC analysis; it never fabricates data.
+    function analyze() {
+      const raw = $('po-data-v21').value.trim();
+      const lines = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+      const candles = [];
+
+      for (const line of lines) {
+        const values = line.split(/[,\s;]+/).map(Number);
+        if (values.length < 4 || values.slice(0, 4).some(v => !Number.isFinite(v))) {
+          $('po-result-v21').textContent =
+            'Invalid row: use open,high,low,close. Check every line.';
+          return;
+        }
+        const [open, high, low, close] = values;
+        if (high < low || high < Math.max(open, close) || low > Math.min(open, close)) {
+          $('po-result-v21').textContent =
+            'Invalid OHLC row: high/low do not contain open and close.';
+          return;
+        }
+        candles.push({ open, high, low, close });
       }
 
-      const separator = lines[0].includes(';') ? ';' : ',';
+      if (candles.length < 30) {
+        $('po-result-v21').textContent =
+          `Only ${candles.length} valid candles. Please provide at least 30 real candles.`;
+        return;
+      }
 
-      const headers = lines[0]
-        .replace(/^\uFEFF/, '')
-        .split(separator)
-        .map(v => v.trim().toLowerCase());
-
-      const find = aliases =>
-        headers.findIndex(h => aliases.includes(h));
-
-      const ix = {
-        time: find(['time', 'timestamp', 'date', 'datetime', 't']),
-        open: find(['open', 'o']),
-        high: find(['high', 'h']),
-        low: find(['low', 'l']),
-        close: find(['close', 'c'])
+      const closes = candles.map(c => c.close);
+      const ema = (period) => {
+        const k = 2 / (period + 1);
+        let value = closes[0];
+        for (let i = 1; i < closes.length; i++) {
+          value = closes[i] * k + value * (1 - k);
+        }
+        return value;
       };
 
-      if ([ix.open, ix.high, ix.low, ix.close].some(v => v < 0)) {
-        throw new Error(
-          'CSV mein open, high, low, close columns hone chahiye.'
-        );
+      let gains = 0, losses = 0;
+      const period = 14;
+      for (let i = closes.length - period; i < closes.length; i++) {
+        const change = closes[i] - closes[i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+      }
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      const rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+
+      const last = candles[candles.length - 1];
+      const previous = candles[candles.length - 2];
+      const trendUp = ema(9) > ema(21) && ema(21) > ema(50);
+      const trendDown = ema(9) < ema(21) && ema(21) < ema(50);
+      const bullish = last.close > last.open;
+      const bearish = last.close < last.open;
+      const higherClose = last.close > previous.close;
+      const lowerClose = last.close < previous.close;
+
+      let signal = 'WAIT / NO CLEAR SETUP';
+      let explanation = 'Indicators do not agree strongly enough.';
+
+      if (trendUp && rsi >= 50 && rsi <= 68 && bullish && higherClose) {
+        signal = 'CALL BIAS';
+        explanation = 'EMA trend, RSI and latest candle direction agree.';
+      } else if (trendDown && rsi <= 50 && rsi >= 32 && bearish && lowerClose) {
+        signal = 'PUT BIAS';
+        explanation = 'EMA trend, RSI and latest candle direction agree.';
       }
 
-      rows = lines.slice(1).map((line, index) => {
-        const p = line.split(separator).map(v => v.trim());
-
-        return {
-          time: ix.time >= 0 ? p[ix.time] : index,
-          open: p[ix.open],
-          high: p[ix.high],
-          low: p[ix.low],
-          close: p[ix.close]
-        };
-      });
+      $('po-result-v21').innerHTML = `
+        <b style="font-size:18px">${signal}</b>
+        <p>${explanation}</p>
+        <hr style="border-color:#40515e">
+        <div>EMA 9: ${ema(9).toFixed(6)}</div>
+        <div>EMA 21: ${ema(21).toFixed(6)}</div>
+        <div>EMA 50: ${ema(50).toFixed(6)}</div>
+        <div>RSI 14: ${rsi.toFixed(1)}</div>
+        <div>Last close: ${last.close}</div>
+        <p class="po-muted">Rule-based indication only, not a probability or guaranteed prediction.</p>
+      `;
+      status.textContent = `🟢 Analyzed ${candles.length} supplied candles. Data freshness not verified.`;
     }
 
-    if (rows.length < 30) {
-      throw new Error(
-        'Kam az kam 30 candles chahiye; 60 ya zyada behtar hain.'
-      );
-    }
+    $('po-scan-v21').addEventListener('click', analyze);
 
-    const result = rows.map((c, i) => ({
-      time: c.time ?? c.timestamp ?? c.t ?? i,
-      open: Number(c.open ?? c.o),
-      high: Number(c.high ?? c.h),
-      low: Number(c.low ?? c.l),
-      close: Number(c.close ?? c.c)
-    }));
-
-    for (const c of result) {
-      if (![c.open, c.high, c.low, c.close].every(Number.isFinite)) {
-        throw new Error('Candle data mein invalid numbers hain.');
+    // If a site re-renders its page, restore the panel if it was removed.
+    const observer = new MutationObserver(() => {
+      if (!document.getElementById(ID) && document.body) {
+        document.body.appendChild(panel);
       }
-
-      if (
-        c.high < c.low ||
-        c.high < Math.max(c.open, c.close) ||
-        c.low > Math.min(c.open, c.close)
-      ) {
-        throw new Error('OHLC values invalid hain.');
+      if (!document.getElementById('po-reopen-v21') && document.body) {
+        document.body.appendChild(reopen);
       }
-    }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
 
-    return result.slice(-1000);
+    console.info('[PO OTC Scanner V2.1] Panel mounted.');
   }
 
-  // ---------------------------
-  // TECHNICAL INDICATORS
-  // ---------------------------
-
-  function calculateEMA(values, period) {
-    if (values.length < period) return null;
-
-    let current = values.slice(0, period)
-      .reduce((a, b) => a + b, 0) / period;
-
-    const alpha = 2 / (period + 1);
-
-    for (let i = period; i < values.length; i++) {
-      current = values[i] * alpha + current * (1 - alpha);
-    }
-
-    return current;
+  try {
+    start();
+  } catch (error) {
+    console.error('[PO OTC Scanner V2.1] Startup error:', error);
+    alert('Pocket Option Scanner error: ' + error.message);
   }
-
-  function calculateRSI(values, period = 14) {
-    if (values.length < period + 1) return null;
-
-    let gain = 0;
-    let loss = 0;
-
-    for (let i = 1; i <= period; i++) {
-      const change = values[i] - values[i - 1];
-
-      if (change > 0) gain += change;
-      else loss -= change;
-    }
-
-    gain /= period;
-    loss /= period;
-
-    for (let i = period + 1; i < values.length; i++) {
-      const change = values[i] - values[i - 1];
-
-      gain = (
-        gain * (period - 1) + Math.max(0, change)
-      ) / period;
-
-      loss = (
-        loss * (period - 1) + Math.max(0, -change)
-      ) / period;
-    }
-
-    if (gain === 0 && loss === 0) return 50;
-    if (loss === 0) return 100;
-    if (gain === 0) return 0;
-
-    return 100 - 100 / (1 + gain / loss);
-  }
-
-  function calculateATR(data, period = 14) {
-    if (data.length < period + 1) return null;
-
-    const ranges = [];
-
-    for (let i = 1; i < data.length; i++) {
-      const c = data[i];
-      const previous = data[i - 1];
-
-      ranges.push(Math.max(
-        c.high - c.low,
-        Math.abs(c.high - previous.close),
-        Math.abs(c.low - previous.close)
-      ));
-    }
-
-    const sample = ranges.slice(-period);
-
-    return sample.reduce((a, b) => a + b, 0) / sample.length;
-  }
-
-  // ---------------------------
-  // CANDLE ANALYSIS
-  // ---------------------------
-
-  function analyze(data) {
-    const closes = data.map(c => c.close);
-    const last = data[data.length - 1];
-    const previous = data[data.length - 2];
-
-    const ema9 = calculateEMA(closes, 9);
-    const ema21 = calculateEMA(closes, 21);
-    const ema50 = calculateEMA(closes, 50);
-    const ema200 = calculateEMA(closes, 200);
-
-    const rsi = calculateRSI(closes);
-    const atr = calculateATR(data);
-
-    let bullish = 0;
-    let bearish = 0;
-
-    const reasons = [];
-
-    if (ema9 !== null && ema21 !== null) {
-      if (ema9 > ema21) {
-        bullish++;
-        reasons.push('EMA 9 above EMA 21');
-      } else if (ema9 < ema21) {
-       
+})();
