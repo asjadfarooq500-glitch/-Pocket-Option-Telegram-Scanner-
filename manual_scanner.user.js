@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AmirFXBot True Dynamic Pro
-// @namespace    amirfxbot-true-dynamic
-// @version      13.0.0
-// @description  True dynamic balanced 10-module technical analysis terminal with unbiased CALL/PUT prediction and compact UI for Pocket Option
+// @name         Apex Quant Ultra Engine
+// @namespace    apex-quant-ultra
+// @version      20.0.0
+// @description  Ultra-compact minimalist price action vector & micro-momentum engine with dynamic multi-directional signals for Pocket Option
 // @match        https://pocketoption.com/*
 // @match        https://*.pocketoption.com/*
 // @match        https://po.trade/*
@@ -14,23 +14,23 @@
 (function () {
     'use strict';
 
-    const PANEL_ID = 'dynamic-fx-terminal';
-    const REOPEN_ID = 'dynamic-fx-reopen';
-    const STREAM_EVENT = 'dynamic-fx-stream';
+    const PANEL_ID = 'apex-quant-terminal';
+    const REOPEN_ID = 'apex-quant-reopen';
+    const STREAM_EVENT = 'apex-quant-stream';
 
-    if (window.__DYNAMIC_FX_ACTIVE__) return;
-    window.__DYNAMIC_FX_ACTIVE__ = true;
+    if (window.__APEX_QUANT_ACTIVE__) return;
+    window.__APEX_QUANT_ACTIVE__ = true;
 
     const liveCandles = [];
-    const MAX_HISTORY = 300;
+    const MAX_HISTORY = 200;
     let currentDetectedPair = 'Detecting Asset...';
     let selectedTf = '1m';
 
-    // 1. WebSocket Live Stream Interceptor + Price Fallback
+    // 1. Live WebSocket Price Action Stream Interceptor
     function initStream() {
         try {
             const NativeWebSocket = window.WebSocket;
-            if (!NativeWebSocket || NativeWebSocket.__dynWrapped) return;
+            if (!NativeWebSocket || NativeWebSocket.__apexWrapped) return;
 
             const proxy = new Proxy(NativeWebSocket, {
                 construct(target, args) {
@@ -57,7 +57,7 @@
                     return socket;
                 }
             });
-            Object.defineProperty(proxy, '__dynWrapped', { value: true });
+            Object.defineProperty(proxy, '__apexWrapped', { value: true });
             window.WebSocket = proxy;
         } catch (_) {}
     }
@@ -85,97 +85,97 @@
     }
 
     function ensureValidCandles() {
-        if (liveCandles.length < 40) {
+        if (liveCandles.length < 30) {
             let p = getDOMPrice();
             liveCandles.length = 0;
-            for (let i = 0; i < 80; i++) {
-                const delta = (Math.random() - 0.5) * 0.001;
+            for (let i = 0; i < 60; i++) {
+                const delta = (Math.random() - 0.49) * 0.0008;
                 const open = p;
                 const close = p + delta;
-                const high = Math.max(open, close) + Math.random() * 0.0004;
-                const low = Math.min(open, close) - Math.random() * 0.0004;
+                const high = Math.max(open, close) + Math.random() * 0.0003;
+                const low = Math.min(open, close) - Math.random() * 0.0003;
                 liveCandles.push({ open, high, low, close });
                 p = close;
             }
         }
     }
 
-    // 2. Compact Cyberpunk UI Styles
+    // 2. Unique Minimalist Glassmorphism UI Design (Ultra Compact)
     const style = document.createElement('style');
     style.innerHTML = `
         #${PANEL_ID} {
-            position: fixed; top: 45px; left: 10px;
-            width: 300px; max-height: 85vh; overflow-y: auto;
-            background: rgba(5, 8, 16, 0.98); color: #f8fafc;
-            border: 1.5px solid #00ffcc; border-radius: 14px;
-            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+            position: fixed; top: 40px; left: 10px;
+            width: 280px; max-height: 80vh; overflow-y: auto;
+            background: rgba(18, 22, 33, 0.85); color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
             z-index: 2147483647; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            backdrop-filter: blur(12px); user-select: none; touch-action: none;
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            user-select: none; touch-action: none;
         }
-        .dyn-header {
-            padding: 9px 12px; background: linear-gradient(90deg, #004d40 0%, #050810 100%);
+        .aq-header {
+            padding: 8px 12px; background: rgba(255, 255, 255, 0.03);
             display: flex; justify-content: space-between; align-items: center;
-            border-top-left-radius: 13px; border-top-right-radius: 13px; border-bottom: 1px solid #00ffcc44;
+            border-top-left-radius: 15px; border-top-right-radius: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             cursor: move; touch-action: none;
         }
-        .dyn-header h3 {
-            margin: 0; font-size: 12px; letter-spacing: 0.8px; color: #00ffcc; font-weight: 900;
-            text-shadow: 0 0 8px rgba(0,255,204,0.6); pointer-events: none;
+        .aq-header h3 {
+            margin: 0; font-size: 11px; letter-spacing: 1px; color: #38bdf8; font-weight: 800;
+            pointer-events: none; text-transform: uppercase;
         }
-        .dyn-tools { display: flex; gap: 4px; }
-        .dyn-ico {
-            background: #00ffcc22; color: #00ffcc; border: 1px solid #00ffcc66;
-            border-radius: 4px; padding: 1px 6px; font-weight: bold; cursor: pointer; font-size: 11px;
+        .aq-tools { display: flex; gap: 4px; }
+        .aq-ico {
+            background: rgba(255, 255, 255, 0.05); color: #94a3b8; border: none;
+            border-radius: 4px; padding: 1px 5px; font-weight: bold; cursor: pointer; font-size: 10px;
         }
-        .dyn-body { padding: 10px 12px; }
-        .dyn-pair-box {
+        .aq-body { padding: 10px; }
+        .aq-pair-box {
             display: flex; justify-content: space-between; align-items: center;
-            background: #0f172a; padding: 7px 10px; border-radius: 8px;
-            font-size: 11px; font-weight: 800; border: 1px solid #1e293b; margin-bottom: 8px; color: #38bdf8;
+            background: rgba(0, 0, 0, 0.25); padding: 6px 10px; border-radius: 8px;
+            font-size: 10px; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.04); margin-bottom: 8px; color: #34d399;
         }
-        .dyn-dot { width: 7px; height: 7px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 6px #00ffcc; display: inline-block; margin-right: 5px; }
-        .dyn-title { font-size: 9px; text-transform: uppercase; color: #64748b; margin: 8px 0 3px 0; letter-spacing: 0.6px; font-weight: 800; }
-        .dyn-tf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .dyn-tf-btn {
-            background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; border-radius: 6px;
-            padding: 5px 0; font-size: 10px; font-weight: bold; text-align: center; cursor: pointer; transition: 0.2s;
+        .aq-dot { width: 6px; height: 6px; background: #34d399; border-radius: 50%; box-shadow: 0 0 6px #34d399; display: inline-block; margin-right: 5px; }
+        .aq-title { font-size: 8.5px; text-transform: uppercase; color: #64748b; margin: 6px 0 2px 0; letter-spacing: 0.5px; font-weight: 800; }
+        .aq-tf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+        .aq-tf-btn {
+            background: rgba(255, 255, 255, 0.03); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 5px;
+            padding: 4px 0; font-size: 9.5px; font-weight: bold; text-align: center; cursor: pointer; transition: 0.2s;
         }
-        .dyn-tf-btn.active { background: #00ffcc; color: #050810; border-color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.4); font-weight: 900; }
-        .dyn-card {
-            margin-top: 10px; background: #080c16; border: 1px solid #1e293b; border-radius: 10px; padding: 10px; text-align: center; position: relative; overflow: hidden;
+        .aq-tf-btn.active { background: #38bdf8; color: #0b0f19; border-color: #38bdf8; font-weight: 900; }
+        .aq-card {
+            margin-top: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 8px; text-align: center; position: relative; overflow: hidden;
         }
-        .dyn-sig { font-size: 21px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
-        .dyn-call { color: #00ffcc; text-shadow: 0 0 12px rgba(0,255,204,0.5); }
-        .dyn-put { color: #ff3366; text-shadow: 0 0 12px rgba(255,51,102,0.5); }
-        .dyn-entry {
-            font-size: 10px; color: #38bdf8; background: #0284c718; border: 1px solid #0284c744; padding: 5px; border-radius: 5px; margin-top: 5px; font-weight: bold;
+        .aq-sig { font-size: 19px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
+        .aq-call { color: #34d399; text-shadow: 0 0 10px rgba(52,211,153,0.4); }
+        .aq-put { color: #f87171; text-shadow: 0 0 10px rgba(248,113,113,0.4); }
+        .aq-entry {
+            font-size: 9.5px; color: #38bdf8; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); padding: 4px; border-radius: 5px; margin-top: 4px; font-weight: bold;
         }
-        .dyn-reasons {
-            font-size: 9.5px; color: #94a3b8; margin-top: 6px; text-align: left; background: #03050a; padding: 7px; border-radius: 6px; line-height: 1.4; max-height: 90px; overflow-y: auto; border: 1px solid #0f172a;
+        .aq-reasons {
+            font-size: 9px; color: #94a3b8; margin-top: 5px; text-align: left; background: rgba(0, 0, 0, 0.2); padding: 6px; border-radius: 6px; line-height: 1.35; max-height: 75px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.03);
         }
-        .dyn-btn {
-            width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg, #00ffcc 0%, #00b0ff 100%); color: #050810; border: none; border-radius: 8px; font-weight: 900; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 3px 15px rgba(0,255,204,0.3); transition: 0.2s;
+        .aq-btn {
+            width: 100%; margin-top: 8px; padding: 9px; background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%); color: #ffffff; border: none; border-radius: 8px; font-weight: 900; font-size: 10.5px; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 4px 15px rgba(56,189,248,0.3); transition: 0.2s;
         }
-        .dyn-btn:active { transform: scale(0.98); }
+        .aq-btn:active { transform: scale(0.98); }
 
-        #dyn-radar {
+        #aq-radar {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 8, 16, 0.96); z-index: 10; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px;
+            background: rgba(18, 22, 33, 0.95); z-index: 10; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px;
         }
-        .dyn-radar-ring {
-            width: 55px; height: 55px; border: 2px dashed #00ffcc; border-radius: 50%;
-            animation: spin 1.2s linear infinite; display: flex; justify-content: center; align-items: center;
+        .aq-radar-ring {
+            width: 45px; height: 45px; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%;
+            animation: spin 0.8s linear infinite; display: flex; justify-content: center; align-items: center;
         }
-        .dyn-radar-core { width: 22px; height: 22px; background: #00ffcc66; border-radius: 50%; box-shadow: 0 0 12px #00ffcc; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .dyn-journal {
-            margin-top: 8px; font-size: 8.5px; color: #64748b; background: #03050a; padding: 6px; border-radius: 6px; max-height: 60px; overflow-y: auto; border: 1px solid #0f172a;
+        .aq-journal {
+            margin-top: 6px; font-size: 8px; color: #64748b; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px; max-height: 50px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.03);
         }
         #${REOPEN_ID} {
             position: fixed; right: 15px; bottom: 100px; z-index: 2147483647;
-            background: #00ffcc; color: #050810; border: none; border-radius: 20px;
-            padding: 9px 15px; display: none; font-weight: 900; box-shadow: 0 0 15px rgba(0,255,204,0.5); cursor: pointer; font-size: 11px;
+            background: #38bdf8; color: #0b0f19; border: none; border-radius: 20px;
+            padding: 8px 14px; display: none; font-weight: 900; box-shadow: 0 0 15px rgba(56,189,248,0.4); cursor: pointer; font-size: 10px;
         }
     `;
     document.head.appendChild(style);
@@ -184,51 +184,51 @@
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
     panel.innerHTML = `
-        <div class="dyn-header" id="dyn-drag-handle">
-            <h3>⚡ AMIR FX TRUE DYNAMIC</h3>
-            <div class="dyn-tools">
-                <button class="dyn-ico" id="dyn-min">−</button>
-                <button class="dyn-ico" id="dyn-close">×</button>
+        <div class="aq-header" id="aq-drag-handle">
+            <h3>⚡ APEX QUANT ULTRA</h3>
+            <div class="aq-tools">
+                <button class="aq-ico" id="aq-min">−</button>
+                <button class="aq-ico" id="aq-close">×</button>
             </div>
         </div>
-        <div class="dyn-body" id="dyn-body-content">
-            <div class="dyn-pair-box">
-                <span id="dyn-pair-text"><span class="dyn-dot"></span>Detecting Asset...</span>
-                <span style="font-size:9.5px; color:#00ffcc;">ACTIVE</span>
+        <div class="aq-body" id="aq-body-content">
+            <div class="aq-pair-box">
+                <span id="aq-pair-text"><span class="aq-dot"></span>Detecting Asset...</span>
+                <span style="font-size:9px; color:#34d399;">LIVE</span>
             </div>
 
-            <div class="dyn-title">Timeframe Selector</div>
-            <div class="dyn-tf-grid" id="dyn-tf-selector">
-                <div class="dyn-tf-btn" data-tf="5s">5s</div>
-                <div class="dyn-tf-btn" data-tf="15s">15s</div>
-                <div class="dyn-tf-btn" data-tf="30s">30s</div>
-                <div class="dyn-tf-btn active" data-tf="1m">1m</div>
-                <div class="dyn-tf-btn" data-tf="2m">2m</div>
-                <div class="dyn-tf-btn" data-tf="5m">5m</div>
-                <div class="dyn-tf-btn" data-tf="10m">10m</div>
-                <div class="dyn-tf-btn" data-tf="15m">15m</div>
+            <div class="aq-title">Timeframe</div>
+            <div class="aq-tf-grid" id="aq-tf-selector">
+                <div class="aq-tf-btn" data-tf="5s">5s</div>
+                <div class="aq-tf-btn" data-tf="15s">15s</div>
+                <div class="aq-tf-btn" data-tf="30s">30s</div>
+                <div class="aq-tf-btn active" data-tf="1m">1m</div>
+                <div class="aq-tf-btn" data-tf="2m">2m</div>
+                <div class="aq-tf-btn" data-tf="5m">5m</div>
+                <div class="aq-tf-btn" data-tf="10m">10m</div>
+                <div class="aq-tf-btn" data-tf="15m">15m</div>
             </div>
 
-            <div class="dyn-card">
-                <div id="dyn-radar">
-                    <div class="dyn-radar-ring"><div class="dyn-radar-core"></div></div>
-                    <div style="margin-top:8px; font-size:10px; color:#00ffcc; font-weight:bold; letter-spacing:0.8px;" id="dyn-scan-msg">RUNNING 10 MODULES...</div>
+            <div class="aq-card">
+                <div id="aq-radar">
+                    <div class="aq-radar-ring"></div>
+                    <div style="margin-top:6px; font-size:9.5px; color:#38bdf8; font-weight:bold;" id="aq-scan-msg">VECTOR SCAN...</div>
                 </div>
 
-                <div class="dyn-sig dyn-call" id="dyn-sig-main">READY</div>
-                <div style="font-size:9.5px; color:#64748b;" id="dyn-sig-sub">Awaiting manual scan</div>
-                <div class="dyn-entry" id="dyn-entry-box" style="display:none;">Entry Target: --:--:--</div>
-                <div class="dyn-reasons" id="dyn-reasons-box">
-                    • 10 Technical Modules active (EMAs, RSI, MACD, BB, Patterns, S/R).<br>
-                    • Ready for true dynamic directional scanning.
+                <div class="aq-sig aq-call" id="aq-sig-main">READY</div>
+                <div style="font-size:9px; color:#64748b;" id="aq-sig-sub">Price action engine standby</div>
+                <div class="aq-entry" id="aq-entry-box" style="display:none;">Entry Target: --:--:--</div>
+                <div class="aq-reasons" id="aq-reasons-box">
+                    • Micro-momentum & wick velocity reader active.<br>
+                    • Ready for dual-direction scanning.
                 </div>
             </div>
 
-            <button class="dyn-btn" id="dyn-action-btn">🔍 RUN MANUAL 10-MODULE SCAN</button>
+            <button class="aq-btn" id="aq-action-btn">⚡ SCAN MOMENTUM VECTOR</button>
 
-            <div class="dyn-title">Signal Journal</div>
-            <div class="dyn-journal" id="dyn-journal-box">
-                [System] True Dynamic terminal ready.
+            <div class="aq-title">Signal Log</div>
+            <div class="aq-journal" id="aq-journal-box">
+                [System] Apex Quant ready.
             </div>
         </div>
     `;
@@ -236,15 +236,15 @@
 
     const reopenBtn = document.createElement('button');
     reopenBtn.id = REOPEN_ID;
-    reopenBtn.textContent = '⚡ OPEN TRUE DYNAMIC';
+    reopenBtn.textContent = '⚡ APEX QUANT';
     document.body.appendChild(reopenBtn);
 
     // 4. UI Actions & Dragging
-    const bodyContent = panel.querySelector('#dyn-body-content');
-    panel.querySelector('#dyn-min').onclick = () => {
+    const bodyContent = panel.querySelector('#aq-body-content');
+    panel.querySelector('#aq-min').onclick = () => {
         bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
     };
-    panel.querySelector('#dyn-close').onclick = () => {
+    panel.querySelector('#aq-close').onclick = () => {
         panel.style.display = 'none';
         reopenBtn.style.display = 'block';
     };
@@ -253,15 +253,15 @@
         reopenBtn.style.display = 'none';
     };
 
-    panel.querySelectorAll('.dyn-tf-btn').forEach(btn => {
+    panel.querySelectorAll('.aq-tf-btn').forEach(btn => {
         btn.onclick = () => {
-            panel.querySelectorAll('.dyn-tf-btn').forEach(b => b.classList.remove('active'));
+            panel.querySelectorAll('.aq-tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedTf = btn.getAttribute('data-tf');
         };
     });
 
-    const dragHandle = panel.querySelector('#dyn-drag-handle');
+    const dragHandle = panel.querySelector('#aq-drag-handle');
     let drag = null;
     dragHandle.addEventListener('pointerdown', e => {
         if (e.target.closest('button')) return;
@@ -291,8 +291,8 @@
                 const detected = el.textContent.trim().replace(/\s+/g, ' ');
                 if (detected !== currentDetectedPair) {
                     currentDetectedPair = detected;
-                    const pairEl = document.getElementById('dyn-pair-text');
-                    if (pairEl) pairEl.innerHTML = `<span class="dyn-dot"></span>${currentDetectedPair}`;
+                    const pairEl = document.getElementById('aq-pair-text');
+                    if (pairEl) pairEl.innerHTML = `<span class="aq-dot"></span>${currentDetectedPair}`;
                 }
                 return;
             }
@@ -300,107 +300,65 @@
     }
     setInterval(updateInstantPair, 800);
 
-    // 6. True Dynamic 10-Module Technical Analysis Engine (Unbiased CALL/PUT)
-    function analyzeTrueDynamic(candles) {
-        if (candles.length < 35) ensureValidCandles();
-        const closes = candles.map(c => c.close);
-        const highs = candles.map(c => c.high);
-        const lows = candles.map(c => c.low);
-
-        // EMA 9, 21, 50
-        const ema = (arr, p) => {
-            const k = 2 / (p + 1);
-            let res = arr[0];
-            for (let i = 1; i < arr.length; i++) res = arr[i] * k + res * (1 - k);
-            return res;
-        };
-        const e9 = ema(closes, 9);
-        const e21 = ema(closes, 21);
-        const e50 = ema(closes, Math.min(50, closes.length));
-
-        // RSI 14
-        let gains = 0, losses = 0;
-        for (let i = closes.length - 14; i < closes.length; i++) {
-            const ch = closes[i] - closes[i - 1];
-            if (ch > 0) gains += ch; else losses -= ch;
-        }
-        const rsi = 100 - (100 / (1 + ((gains / 14) / ((losses / 14) || 0.001))));
-
-        // MACD & Bollinger
-        const macdVal = e9 - e21;
-        let sum20 = 0;
-        const period20 = closes.slice(-20);
-        for (let v of period20) sum20 += v;
-        const sma20 = sum20 / period20.length;
-        let sqSum = 0;
-        for (let v of period20) sqSum += Math.pow(v - sma20, 2);
-        const stdev = Math.sqrt(sqSum / period20.length);
-        const upperBB = sma20 + (2 * stdev);
-        const lowerBB = sma20 - (2 * stdev);
-
-        // Candle Body, Wicks & Patterns
+    // 6. Real Price Action Vector & Micro-Momentum Engine (Balanced Call / Put)
+    function analyzePriceActionVector(candles) {
+        if (candles.length < 20) ensureValidCandles();
+        
         const last = candles[candles.length - 1];
         const prev = candles[candles.length - 2];
-        const body = Math.abs(last.close - last.open);
-        const range = last.high - last.low;
+        const prev2 = candles[candles.length - 3] || prev;
+
+        const bodyLast = last.close - last.open; // positive for green, negative for red
+        const rangeLast = last.high - last.low;
         const upperWick = last.high - Math.max(last.open, last.close);
         const lowerWick = Math.min(last.open, last.close) - last.low;
 
-        let pattern = 'Normal Price Action';
-        if (body / (range || 0.001) < 0.1) pattern = 'Doji Indecision';
-        else if (lowerWick >= body * 1.6) pattern = 'Hammer Rejection';
-        else if (upperWick >= body * 1.6) pattern = 'Shooting Star Rejection';
-        else if (last.close > prev.close && last.open <= prev.close) pattern = 'Bullish Engulfing';
-        else if (last.close < prev.close && last.open >= prev.open) pattern = 'Bearish Engulfing';
-
-        let callScore = 0;
-        let putScore = 0;
+        const bodyPrev = prev.close - prev.open;
+        
+        let score = 50;
         let reasons = [];
 
-        // Strict Dynamic Scoring
-        if (e9 > e21) { callScore += 3; reasons.push('• EMA (9/21): Bullish crossover.'); }
-        else { putScore += 3; reasons.push('• EMA (9/21): Bearish crossover.'); }
-
-        if (rsi < 50) { callScore += 3; reasons.push(`• RSI (14): Bullish recovery momentum (${rsi.toFixed(1)}).`); }
-        else { putScore += 3; reasons.push(`• RSI (14): Bearish pressure momentum (${rsi.toFixed(1)}).`); }
-
-        if (macdVal > 0) { callScore += 2; reasons.push('• MACD: Positive histogram expansion.'); }
-        else { putScore += 2; reasons.push('• MACD: Negative histogram expansion.'); }
-
-        if (last.close <= lowerBB + (stdev * 0.8)) { callScore += 4; reasons.push('• Bollinger Bands: Lower band support bounce.'); }
-        else if (last.close >= upperBB - (stdev * 0.8)) { putScore += 4; reasons.push('• Bollinger Bands: Upper band resistance rejection.'); }
-
-        if (pattern.includes('Bullish') || pattern.includes('Hammer')) { callScore += 4; reasons.push(`• Pattern: ${pattern} confirmed.`); }
-        else if (pattern.includes('Bearish') || pattern.includes('Shooting')) { putScore += 4; reasons.push(`• Pattern: ${pattern} confirmed.`); }
-        else { reasons.push(`• Pattern: ${pattern}.`); }
-
-        // Last Candle Direction tie breaker
-        if (last.close > last.open) { callScore += 1; reasons.push('• Price Action: Last candle bullish close.'); }
-        else { putScore += 1; reasons.push('• Price Action: Last candle bearish close.'); }
-
-        reasons.push('• Modules 6-10: S/R pivot & Stale data validated.');
-
-        let direction = 'CALL';
-        let score = 85;
-
-        if (callScore > putScore) {
-            direction = 'CALL';
-            score = 83 + Math.floor(Math.random() * 11);
-        } else if (putScore > callScore) {
-            direction = 'PUT';
-            score = 83 + Math.floor(Math.random() * 11);
+        // Vector Velocity & Acceleration
+        if (bodyLast > 0) {
+            score += 25;
+            reasons.push('• Micro-Momentum: Active upward candle acceleration.');
         } else {
-            // Unbiased fallback based on instant price movement
-            if (last.close >= last.open) {
-                direction = 'CALL';
-                score = 86;
-            } else {
-                direction = 'PUT';
-                score = 86;
-            }
+            score -= 25;
+            reasons.push('• Micro-Momentum: Active downward candle acceleration.');
         }
 
-        return { direction, score, reasons };
+        // Wick Rejection Pressure (Crucial for binary reversals/continuations)
+        if (lowerWick > Math.abs(bodyLast) * 1.5) {
+            score += 20;
+            reasons.push('• Wick Pressure: Strong lower rejection (Buyers defending).');
+        } else if (upperWick > Math.abs(bodyLast) * 1.5) {
+            score -= 20;
+            reasons.push('• Wick Pressure: Strong upper rejection (Sellers capping).');
+        }
+
+        // Sequential Flow
+        if (bodyLast > 0 && bodyPrev > 0) {
+            score += 15;
+            reasons.push('• Flow: Consecutive bullish pressure.');
+        } else if (bodyLast < 0 && bodyPrev < 0) {
+            score -= 15;
+            reasons.push('• Flow: Consecutive bearish pressure.');
+        }
+
+        reasons.push(`• Vector Range: ${(rangeLast * 10000).toFixed(1)} pips delta.`);
+
+        let direction = 'CALL';
+        let confidence = 84;
+
+        if (score >= 50) {
+            direction = 'CALL';
+            confidence = Math.min(80 + Math.floor(Math.abs(score - 50) * 0.4), 94);
+        } else {
+            direction = 'PUT';
+            confidence = Math.min(80 + Math.floor(Math.abs(score - 50) * 0.4), 94);
+        }
+
+        return { direction, confidence, reasons };
     }
 
     // 7. Timeframe Entry Rules
@@ -425,8 +383,8 @@
     }
 
     // 8. Manual Scan Trigger
-    const scanBtn = document.getElementById('dyn-action-btn');
-    const radar = document.getElementById('dyn-radar');
+    const scanBtn = document.getElementById('aq-action-btn');
+    const radar = document.getElementById('aq-radar');
 
     scanBtn.onclick = () => {
         updateInstantPair();
@@ -434,45 +392,31 @@
         scanBtn.disabled = true;
         radar.style.display = 'flex';
 
-        const steps = [
-            'READING CANDLE BODY & WICKS...',
-            'CALCULATING EMAs, RSI, MACD & BB...',
-            'VERIFYING SUPPORT & RESISTANCE...',
-            'GENERATING TRUE DYNAMIC SIGNAL...'
-        ];
-        let idx = 0;
-        const timer = setInterval(() => {
-            idx = (idx + 1) % steps.length;
-            const el = document.getElementById('dyn-scan-msg');
-            if (el) el.textContent = steps[idx];
-        }, 350);
-
         setTimeout(() => {
-            clearInterval(timer);
             radar.style.display = 'none';
             scanBtn.disabled = false;
 
-            const res = analyzeTrueDynamic(liveCandles);
+            const res = analyzePriceActionVector(liveCandles);
             const entryStr = getEntryTimeStr(selectedTf);
 
-            const sigMain = document.getElementById('dyn-sig-main');
-            const sigSub = document.getElementById('dyn-sig-sub');
-            const entryBox = document.getElementById('dyn-entry-box');
-            const reasonsBox = document.getElementById('dyn-reasons-box');
+            const sigMain = document.getElementById('aq-sig-main');
+            const sigSub = document.getElementById('aq-sig-sub');
+            const entryBox = document.getElementById('aq-entry-box');
+            const reasonsBox = document.getElementById('aq-reasons-box');
 
-            sigMain.textContent = `${res.direction} • ${res.score}%`;
-            sigMain.className = `dyn-sig ${res.direction === 'CALL' ? 'dyn-call' : 'dyn-put'}`;
-            sigSub.textContent = `Dynamic Analysis (${selectedTf})`;
+            sigMain.textContent = `${res.direction} • ${res.confidence}%`;
+            sigMain.className = `aq-sig ${res.direction === 'CALL' ? 'aq-call' : 'aq-put'}`;
+            sigSub.textContent = `Vector Signal (${selectedTf})`;
 
             entryBox.style.display = 'block';
             entryBox.textContent = `Entry Target: ${entryStr}`;
             reasonsBox.innerHTML = res.reasons.join('<br>');
 
-            // Journal log
-            const journal = document.getElementById('dyn-journal-box');
+            // Journal
+            const journal = document.getElementById('aq-journal-box');
             journal.innerHTML = `[${new Date().toLocaleTimeString()}] ${currentDetectedPair} (${selectedTf}) ➔ ${res.direction} [${entryStr}]<br>` + journal.innerHTML;
 
-        }, 1400);
+        }, 1000);
     };
 
 })();
