@@ -1,200 +1,430 @@
 // ==UserScript==
-// @name         PO OTC Scanner V3
-// @namespace    po-otc-scanner-v3
-// @version      3.0.0
-// @description  Mobile floating scanner with draggable panel and manual OHLC analysis
+// @name         Pocket Option Auto Scanner V4
+// @namespace    po-auto-scanner-v4
+// @version      4.0.0
+// @description  Read-only candle detection diagnostics and technical analysis
 // @match        https://pocketoption.com/*
 // @match        https://*.pocketoption.com/*
-// @match        http://pocketoption.com/*
-// @match        http://*.pocketoption.com/*
-// @match        https://po.trade/*
-// @match        https://*.po.trade/*
-// @run-at       document-idle
+// @run-at       document-start
 // @grant        none
 // ==/UserScript==
 
 (function () {
     'use strict';
 
-    const PANEL_ID = 'po-scanner-v3-panel';
-    const BUTTON_ID = 'po-scanner-v3-open';
+    const PANEL_ID = 'po-auto-scanner-v4';
+    const REOPEN_ID = 'po-auto-scanner-v4-reopen';
+    const EVENT_NAME = 'po-v4-normalized-candle';
 
-    function mountScanner() {
-        if (!document.body) {
-            setTimeout(mountScanner, 250);
-            return;
+    if (window.__PO_AUTO_SCANNER_V4__) return;
+    window.__PO_AUTO_SCANNER_V4__ = true;
+
+    /*
+     * PAGE DATA OBSERVER
+     * Looks for conventional OHLC objects in WebSocket messages.
+     * It does not submit orders or inspect account credentials.
+     */
+    function installReadOnlyObserver() {
+        try {
+            const NativeWebSocket = window.WebSocket;
+            if (!NativeWebSocket || NativeWebSocket.__poV4Wrapped) return;
+
+            function extractCandles(value, output, depth) {
+                if (depth > 8 || value == null) return;
+
+                if (Array.isArray(value)) {
+                    for (const item of value) {
+                        extractCandles(item, output, depth + 1);
+                    }
+                    return;
+                }
+
+                if (typeof value !== 'object') return;
+
+                const keys = Object.keys(value);
+                const lower = {};
+                for (const key of keys) {
+                    lower[key.toLowerCase()] = value[key];
+                }
+
+                const get = (...names) => {
+                    for (const name of names) {
+                        if (lower[name] !== undefined) return lower[name];
+                    }
+                    return undefined;
+                };
+
+                const o = get('open', 'o');
+                const h = get('high', 'h');
+                const l = get('low', 'l');
+                const c = get('close', 'c');
+
+                if ([o, h, l, c].every(v =>
+                    v !== undefined && v !== null &&
+                    v !== '' && Number.isFinite(Number(v))
+                )) {
+                    const candle = {
+                        open: Number(o),
+                        high: Number(h),
+                        low: Number(l),
+                        close: Number(c)
+                    };
+
+                    if (
+                        candle.high >= candle.low &&
+                        candle.high >= Math.max(candle.open, candle.close) &&
+                        candle.low <= Math.min(candle.open, candle.close)
+                    ) {
+                        output.push(candle);
+                    }
+                }
+
+                for (const key of keys) {
+                    if (value[key] && typeof value[key] === 'object') {
+                        extractCandles(value[key], output, depth + 1);
+                    }
+                }
+            }
+
+            const proxy = new Proxy(NativeWebSocket, {
+                construct(target, args) {
+                    const socket = Reflect.construct(target, args, target);
+
+                    socket.addEventListener('message', event => {
+                        if (typeof event.data !== 'string') return;
+
+                        // Only parse JSON. Never forward raw messages.
+                        try {
+                            const parsed = JSON.parse(event.data);
+                            const found = [];
+                            extractCandles(parsed, found, 0);
+
+                            if (found.length) {
+                                window.dispatchEvent(new CustomEvent(
+                                    EVENT_NAME,
+                                    { detail: found.slice(-100) }
+                                ));
+                            }
+                        } catch (_) {
+                            // Unsupported or non-JSON message.
+                        }
+                    });
+
+                    return socket;
+                }
+            });
+
+            Object.defineProperty(proxy, '__poV4Wrapped', {
+                value: true
+            });
+
+            window.WebSocket = proxy;
+        } catch (_) {
+            // The browser may prevent page-level instrumentation.
+        }
+    }
+
+    /*
+     * Try to install the observer in the page context.
+     * If the browser blocks inline injection, diagnostics will report no data.
+     */
+    function injectObserver() {
+        const script = document.createElement('script');
+
+        script.textContent = '(' + installReadOnlyObserver.toString() + ')();';
+
+        (document.documentElement || document.head).appendChild(script);
+        script.remove();
+    }
+
+    try {
+        injectObserver();
+    } catch (_) {}
+
+    /*
+     * SCANNER UI AND ANALYSIS
+     */
+    const candles = [];
+    const MAX_CANDLES = 500;
+    let lastCandleKey = '';
+    let lastDataAt = 0;
+    let panel = null;
+    let selectedPair = 'Detecting pair…';
+
+    function addCandles(incoming) {
+        if (!Array.isArray(incoming)) return;
+
+        for (const c of incoming) {
+            if (
+                !c ||
+                ![c.open, c.high, c.low, c.close].every(Number.isFinite) ||
+                c.high < c.low ||
+                c.high < Math.max(c.open, c.close) ||
+                c.low > Math.min(c.open, c.close)
+            ) continue;
+
+            const key = [
+                c.open, c.high, c.low, c.close
+            ].join('|');
+
+            if (key === lastCandleKey) continue;
+
+            lastCandleKey = key;
+            candles.push({
+                open: c.open,
+                high: c.high,
+                low: c.low,
+                close: c.close
+            });
+
+            if (candles.length > MAX_CANDLES) candles.shift();
+            lastDataAt = Date.now();
         }
 
-        // If already installed, make it visible again.
-        let existing = document.getElementById(PANEL_ID);
+        updatePanel();
+    }
 
-        if (existing) {
-            existing.style.setProperty('display', 'block', 'important');
-            existing.style.setProperty('visibility', 'visible', 'important');
-            existing.style.setProperty('z-index', '2147483647', 'important');
-            return;
+    window.addEventListener(EVENT_NAME, event => {
+        addCandles(event.detail);
+    });
+
+    function detectPair() {
+        const text = document.body?.innerText || '';
+
+        const patterns = [
+            /\b[A-Z]{3}\s*\/\s*[A-Z]{3}\s*OTC\b/i,
+            /\b[A-Z]{3}\s*\/\s*[A-Z]{3}\b/i
+        ];
+
+        for (const pattern of patterns) {
+            const match = text.match(pattern);
+            if (match) return match[0].replace(/\s+/g, ' ').trim();
         }
 
-        const panel = document.createElement('div');
+        return 'Pair not detected';
+    }
+
+    function ema(values, period) {
+        if (values.length < period) return null;
+
+        const k = 2 / (period + 1);
+        let result = values[0];
+
+        for (let i = 1; i < values.length; i++) {
+            result = values[i] * k + result * (1 - k);
+        }
+
+        return result;
+    }
+
+    function calculateRSI(values, period = 14) {
+        if (values.length < period + 1) return null;
+
+        let gains = 0;
+        let losses = 0;
+
+        for (let i = values.length - period; i < values.length; i++) {
+            const change = values[i] - values[i - 1];
+
+            if (change > 0) gains += change;
+            else losses -= change;
+        }
+
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+
+        if (avgGain === 0 && avgLoss === 0) return 50;
+        if (avgLoss === 0) return 100;
+
+        return 100 - 100 / (1 + avgGain / avgLoss);
+    }
+
+    function analyse() {
+        if (candles.length < 50) {
+            return {
+                signal: 'DATA INSUFFICIENT',
+                reason: 'At least 50 detected candles are required.'
+            };
+        }
+
+        const closes = candles.map(c => c.close);
+
+        const e9 = ema(closes, 9);
+        const e21 = ema(closes, 21);
+        const e50 = ema(closes, 50);
+        const rsi = calculateRSI(closes);
+
+        if ([e9, e21, e50, rsi].some(v => v === null)) {
+            return {
+                signal: 'DATA INSUFFICIENT',
+                reason: 'Indicators could not be calculated.'
+            };
+        }
+
+        const last = candles[candles.length - 1];
+        const previous = candles[candles.length - 2];
+
+        const bullishTrend = e9 > e21 && e21 > e50;
+        const bearishTrend = e9 < e21 && e21 < e50;
+
+        const bullishCandle =
+            last.close > last.open &&
+            last.close > previous.close;
+
+        const bearishCandle =
+            last.close < last.open &&
+            last.close < previous.close;
+
+        if (bullishTrend && rsi >= 50 && rsi <= 68 && bullishCandle) {
+            return {
+                signal: 'CALL BIAS',
+                reason: 'EMA trend, RSI and candle direction agree.',
+                e9, e21, e50, rsi
+            };
+        }
+
+        if (bearishTrend && rsi >= 32 && rsi <= 50 && bearishCandle) {
+            return {
+                signal: 'PUT BIAS',
+                reason: 'EMA trend, RSI and candle direction agree.',
+                e9, e21, e50, rsi
+            };
+        }
+
+        return {
+            signal: 'WAIT',
+            reason: 'No sufficiently aligned setup.',
+            e9, e21, e50, rsi
+        };
+    }
+
+    function createPanel() {
+        if (!document.body || document.getElementById(PANEL_ID)) return;
+
+        panel = document.createElement('div');
         panel.id = PANEL_ID;
 
         Object.assign(panel.style, {
             position: 'fixed',
-            top: '100px',
+            top: '95px',
             left: '10px',
             width: 'min(310px, calc(100vw - 20px))',
-            maxHeight: '72vh',
+            maxHeight: '68vh',
             overflowY: 'auto',
-            background: '#101820',
-            color: '#ffffff',
+            zIndex: '2147483647',
+            background: '#101923',
+            color: '#fff',
             border: '2px solid #10b981',
             borderRadius: '12px',
-            boxShadow: '0 5px 25px rgba(0,0,0,.65)',
-            zIndex: '2147483647',
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '14px',
-            lineHeight: '1.4',
-            display: 'block',
-            visibility: 'visible',
-            opacity: '1',
-            pointerEvents: 'auto'
+            boxShadow: '0 6px 25px #0009',
+            font: '14px/1.45 -apple-system,Arial,sans-serif',
+            display: 'block'
         });
 
         panel.innerHTML = `
-          <div id="po-v3-header" style="
-            padding:12px;background:#064e3b;border-radius:9px 9px 0 0;
-            display:flex;align-items:center;justify-content:space-between;
-            gap:6px;touch-action:none;user-select:none;">
-            <strong>⚡ PO OTC SCANNER V3</strong>
+          <div id="po-v4-header" style="
+            padding:11px;background:#064e3b;display:flex;
+            justify-content:space-between;align-items:center;
+            touch-action:none;user-select:none">
+            <b>⚡ OTC AUTO SCANNER V4</b>
             <span>
-              <button id="po-v3-min">−</button>
-              <button id="po-v3-close">×</button>
+              <button id="po-v4-min">−</button>
+              <button id="po-v4-close">×</button>
             </span>
           </div>
-
-          <div id="po-v3-content" style="padding:12px;">
-            <div id="po-v3-status" style="
-              padding:9px;background:#243746;border-radius:7px;margin-bottom:10px;">
-              🟢 SCANNER RUNNING
+          <div id="po-v4-body" style="padding:12px">
+            <div id="po-v4-status" style="
+              background:#253545;padding:9px;border-radius:7px">
+              Checking data connection…
             </div>
-
-            <div style="font-size:12px;color:#cbd5e1;margin-bottom:8px;">
-              Candle data: NOT CONNECTED automatically.<br>
-              For manual analysis, enter real OHLC candles below.
-              Newest candle must be last.
+            <div id="po-v4-pair" style="margin-top:9px">
+              Selected pair: Detecting…
             </div>
-
-            <label for="po-v3-input">Open, High, Low, Close</label>
-
-            <textarea id="po-v3-input" placeholder="Paste at least 30 candles:
-1.0840,1.0850,1.0830,1.0845
-1.0845,1.0860,1.0840,1.0855"
-              style="width:100%;height:105px;box-sizing:border-box;
-              margin-top:7px;padding:8px;background:#07111b;color:white;
-              border:1px solid #64748b;border-radius:7px;font-size:12px;">
-            </textarea>
-
-            <div style="display:flex;gap:7px;margin-top:9px;">
-              <button id="po-v3-analyze" style="flex:1;">ANALYZE</button>
-              <button id="po-v3-clear" style="flex:1;">CLEAR</button>
+            <div id="po-v4-count" style="margin-top:5px">
+              Candles received: 0
             </div>
-
-            <div id="po-v3-result" style="
-              margin-top:10px;padding:10px;background:#1e293b;border-radius:8px;">
+            <div id="po-v4-signal" style="
+              margin-top:12px;padding:12px;background:#1e293b;
+              border-radius:8px">
               Waiting for real candle data.
             </div>
-
-            <div style="font-size:11px;color:#cbd5e1;margin-top:10px;">
-              Manual analysis only. No automatic orders. Signals are not guaranteed.
+            <div id="po-v4-indicators" style="
+              margin-top:8px;font-size:12px;color:#cbd5e1"></div>
+            <div style="margin-top:10px;font-size:11px;color:#cbd5e1">
+              Read-only analysis. No automatic orders. Signals are not
+              guaranteed. The detected feed format may be unsupported.
             </div>
           </div>
         `;
 
-        // Style buttons independently of the website's CSS.
         panel.querySelectorAll('button').forEach(button => {
             Object.assign(button.style, {
                 background: '#087f5b',
-                color: '#ffffff',
+                color: '#fff',
                 border: '0',
-                borderRadius: '6px',
-                padding: '7px 10px',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                cursor: 'pointer'
+                borderRadius: '5px',
+                padding: '6px 9px',
+                fontWeight: 'bold'
             });
         });
 
         document.body.appendChild(panel);
 
-        // Floating button used to reopen the panel.
-        let reopen = document.getElementById(BUTTON_ID);
+        let reopen = document.getElementById(REOPEN_ID);
 
         if (!reopen) {
             reopen = document.createElement('button');
-            reopen.id = BUTTON_ID;
+            reopen.id = REOPEN_ID;
             reopen.textContent = '⚡ OPEN SCANNER';
 
             Object.assign(reopen.style, {
                 position: 'fixed',
-                right: '12px',
+                right: '10px',
                 bottom: '90px',
                 zIndex: '2147483647',
                 background: '#087f5b',
-                color: '#ffffff',
-                border: '2px solid #ffffff',
-                borderRadius: '24px',
-                padding: '12px 15px',
-                fontSize: '13px',
-                fontWeight: 'bold',
+                color: '#fff',
+                border: '0',
+                borderRadius: '25px',
+                padding: '12px',
                 display: 'none'
             });
 
             document.body.appendChild(reopen);
         }
 
-        const content = panel.querySelector('#po-v3-content');
-        const status = panel.querySelector('#po-v3-status');
-        const result = panel.querySelector('#po-v3-result');
+        const body = panel.querySelector('#po-v4-body');
 
-        panel.querySelector('#po-v3-min').onclick = function () {
-            content.style.display =
-                content.style.display === 'none' ? 'block' : 'none';
+        panel.querySelector('#po-v4-min').onclick = () => {
+            body.style.display = body.style.display === 'none'
+                ? 'block' : 'none';
         };
 
-        panel.querySelector('#po-v3-close').onclick = function () {
+        panel.querySelector('#po-v4-close').onclick = () => {
             panel.style.display = 'none';
             reopen.style.display = 'block';
         };
 
-        reopen.onclick = function () {
+        reopen.onclick = () => {
             panel.style.display = 'block';
             reopen.style.display = 'none';
         };
 
-        panel.querySelector('#po-v3-clear').onclick = function () {
-            panel.querySelector('#po-v3-input').value = '';
-            result.textContent = 'Data cleared. Enter real candles to analyze.';
-            status.textContent = '🟡 WAITING FOR CANDLE DATA';
-        };
+        // Drag panel using its header.
+        const header = panel.querySelector('#po-v4-header');
+        let drag = null;
 
-        // Mobile drag support.
-        const header = panel.querySelector('#po-v3-header');
-        let dragging = false;
-        let startX = 0;
-        let startY = 0;
-        let initialLeft = 0;
-        let initialTop = 0;
-
-        header.addEventListener('pointerdown', function (event) {
+        header.addEventListener('pointerdown', event => {
             if (event.target.closest('button')) return;
 
-            dragging = true;
-
             const rect = panel.getBoundingClientRect();
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            startX = event.clientX;
-            startY = event.clientY;
+
+            drag = {
+                x: event.clientX,
+                y: event.clientY,
+                left: rect.left,
+                top: rect.top
+            };
 
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
@@ -206,192 +436,101 @@
             event.preventDefault();
         });
 
-        header.addEventListener('pointermove', function (event) {
-            if (!dragging) return;
+        header.addEventListener('pointermove', event => {
+            if (!drag) return;
 
-            const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
-            const maxTop = Math.max(0, window.innerHeight - 60);
+            const maxX = Math.max(0, innerWidth - panel.offsetWidth);
+            const maxY = Math.max(0, innerHeight - 50);
 
-            const newLeft = initialLeft + event.clientX - startX;
-            const newTop = initialTop + event.clientY - startY;
+            panel.style.left = Math.min(maxX, Math.max(0,
+                drag.left + event.clientX - drag.x)) + 'px';
 
-            panel.style.left =
-                Math.min(maxLeft, Math.max(0, newLeft)) + 'px';
-
-            panel.style.top =
-                Math.min(maxTop, Math.max(0, newTop)) + 'px';
+            panel.style.top = Math.min(maxY, Math.max(0,
+                drag.top + event.clientY - drag.y)) + 'px';
         });
 
-        function stopDragging() {
-            dragging = false;
-        }
+        const stop = () => { drag = null; };
 
-        header.addEventListener('pointerup', stopDragging);
-        header.addEventListener('pointercancel', stopDragging);
+        header.addEventListener('pointerup', stop);
+        header.addEventListener('pointercancel', stop);
 
-        // Manual OHLC analysis; never creates synthetic candles.
-        panel.querySelector('#po-v3-analyze').onclick = function () {
-            const raw = panel.querySelector('#po-v3-input').value.trim();
-
-            if (!raw) {
-                result.textContent =
-                    'No candle data entered. Paste real OHLC candles first.';
-                return;
-            }
-
-            const rows = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
-            const candles = [];
-
-            for (let i = 0; i < rows.length; i++) {
-                const values = rows[i].split(/[,\s;]+/).map(Number);
-
-                if (
-                    values.length !== 4 ||
-                    values.some(v => !Number.isFinite(v))
-                ) {
-                    result.textContent =
-                        'Invalid row ' + (i + 1) +
-                        '. Required format: open,high,low,close.';
-                    return;
-                }
-
-                const [open, high, low, close] = values;
-
-                if (
-                    high < low ||
-                    high < Math.max(open, close) ||
-                    low > Math.min(open, close)
-                ) {
-                    result.textContent =
-                        'Invalid high/low values in row ' + (i + 1) + '.';
-                    return;
-                }
-
-                candles.push({ open, high, low, close });
-            }
-
-            if (candles.length < 30) {
-                result.textContent =
-                    'Only ' + candles.length +
-                    ' candles received. At least 30 are required.';
-                return;
-            }
-
-            const closes = candles.map(c => c.close);
-
-            function calculateEMA(period) {
-                const multiplier = 2 / (period + 1);
-                let value = closes[0];
-
-                for (let i = 1; i < closes.length; i++) {
-                    value = closes[i] * multiplier +
-                        value * (1 - multiplier);
-                }
-
-                return value;
-            }
-
-            let gains = 0;
-            let losses = 0;
-
-            for (let i = closes.length - 14; i < closes.length; i++) {
-                const change = closes[i] - closes[i - 1];
-
-                if (change > 0) gains += change;
-                else losses -= change;
-            }
-
-            const averageGain = gains / 14;
-            const averageLoss = losses / 14;
-
-            const rsi = averageLoss === 0
-                ? 100
-                : 100 - 100 / (1 + averageGain / averageLoss);
-
-            const ema9 = calculateEMA(9);
-            const ema21 = calculateEMA(21);
-            const ema50 = calculateEMA(50);
-
-            const last = candles[candles.length - 1];
-            const previous = candles[candles.length - 2];
-
-            const uptrend = ema9 > ema21 && ema21 > ema50;
-            const downtrend = ema9 < ema21 && ema21 < ema50;
-
-            const bullish = last.close > last.open;
-            const bearish = last.close < last.open;
-
-            let signal = 'WAIT — NO CLEAR SETUP';
-            let reason = 'Trend and momentum do not agree sufficiently.';
-
-            if (
-                uptrend &&
-                rsi >= 50 &&
-                rsi <= 68 &&
-                bullish &&
-                last.close > previous.close
-            ) {
-                signal = 'CALL BIAS';
-                reason = 'Uptrend and bullish momentum agree.';
-            } else if (
-                downtrend &&
-                rsi <= 50 &&
-                rsi >= 32 &&
-                bearish &&
-                last.close < previous.close
-            ) {
-                signal = 'PUT BIAS';
-                reason = 'Downtrend and bearish momentum agree.';
-            }
-
-            result.replaceChildren();
-
-            const heading = document.createElement('strong');
-            heading.textContent = signal;
-            heading.style.fontSize = '18px';
-            result.appendChild(heading);
-
-            const details = document.createElement('div');
-            details.style.marginTop = '8px';
-            details.style.whiteSpace = 'pre-line';
-            details.textContent =
-                reason +
-                '\n\nEMA 9: ' + ema9.toFixed(6) +
-                '\nEMA 21: ' + ema21.toFixed(6) +
-                '\nEMA 50: ' + ema50.toFixed(6) +
-                '\nRSI 14: ' + rsi.toFixed(1) +
-                '\nLast close: ' + last.close +
-                '\n\nRule-based indication only; not a guaranteed prediction.';
-
-            result.appendChild(details);
-
-            status.textContent =
-                '🟢 ANALYSIS COMPLETE — ' + candles.length +
-                ' candles supplied manually.';
-        };
-
-        status.textContent = '🟢 SCANNER RUNNING — PANEL CREATED';
-
-        console.log('[PO Scanner V3] Panel created successfully.');
+        updatePanel();
     }
 
-    // Retry mounting in case the trading page loads slowly.
-    let attempts = 0;
+    function updatePanel() {
+        if (!panel || !document.getElementById(PANEL_ID)) return;
+
+        selectedPair = detectPair();
+
+        const age = lastDataAt ? Date.now() - lastDataAt : Infinity;
+        const fresh = age < 15000;
+
+        panel.querySelector('#po-v4-pair').textContent =
+            'Selected pair: ' + selectedPair;
+
+        panel.querySelector('#po-v4-count').textContent =
+            'Candles received: ' + candles.length;
+
+        const status = panel.querySelector('#po-v4-status');
+
+        if (!lastDataAt) {
+            status.textContent =
+                '🔴 DATA OFFLINE — no supported candle messages detected.';
+        } else if (!fresh) {
+            status.textContent =
+                '🟠 DATA STALE — no new candle data recently.';
+        } else {
+            status.textContent =
+                '🟢 CANDLE MESSAGES DETECTED — feed format not independently verified.';
+        }
+
+        const output = panel.querySelector('#po-v4-signal');
+
+        if (!fresh || candles.length < 50) {
+            output.textContent =
+                'No actionable signal. Waiting for fresh real candle data.';
+            panel.querySelector('#po-v4-indicators').textContent = '';
+            return;
+        }
+
+        const result = analyse();
+
+        output.textContent = result.signal + '\n' + result.reason;
+        output.style.whiteSpace = 'pre-line';
+
+        panel.querySelector('#po-v4-indicators').textContent =
+            result.rsi === undefined
+                ? ''
+                : 'EMA 9: ' + result.e9.toFixed(6) +
+                  ' | EMA 21: ' + result.e21.toFixed(6) +
+                  ' | EMA 50: ' + result.e50.toFixed(6) +
+                  ' | RSI: ' + result.rsi.toFixed(1);
+    }
 
     function boot() {
-        if (document.getElementById(PANEL_ID)) return;
-
-        attempts++;
-
-        try {
-            mountScanner();
-        } catch (error) {
-            console.error('[PO Scanner V3] Error:', error);
+        if (!document.body) {
+            setTimeout(boot, 250);
+            return;
         }
 
-        if (attempts < 12 && !document.getElementById(PANEL_ID)) {
-            setTimeout(boot, 500);
-        }
+        createPanel();
+
+        // Pair label may change after the user selects another instrument.
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById(PANEL_ID)) {
+                createPanel();
+            }
+            updatePanel();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+
+        // Refresh diagnostics even if the page does not mutate.
+        setInterval(updatePanel, 3000);
     }
 
     if (document.readyState === 'loading') {
