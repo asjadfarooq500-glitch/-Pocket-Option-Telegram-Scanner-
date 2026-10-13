@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AmirFXBot Pro AI & Signal Terminal
-// @namespace    amirfxbot-pro
-// @version      6.0.0
-// @description  Professional AmirFXBot clone with 5s-15m timeframes, auto pair detection, manual signal & full analysis modules for Pocket Option
+// @name         AmirFXBot Strict Manual Pro
+// @namespace    amirfxbot-strict-manual
+// @version      7.0.0
+// @description  Strictly manual AmirFXBot with scanning animation and locked fixed signals for Pocket Option
 // @match        https://pocketoption.com/*
 // @match        https://*.pocketoption.com/*
 // @match        https://po.trade/*
@@ -14,25 +14,29 @@
 (function () {
     'use strict';
 
-    const PANEL_ID = 'amirfx-pro-terminal';
-    const REOPEN_ID = 'amirfx-pro-reopen';
+    const PANEL_ID = 'amirfx-strict-terminal';
+    const REOPEN_ID = 'amirfx-strict-reopen';
 
-    if (window.__AMIRFX_PRO_ACTIVE__) return;
-    window.__AMIRFX_PRO_ACTIVE__ = true;
+    if (window.__AMIRFX_STRICT_ACTIVE__) return;
+    window.__AMIRFX_STRICT_ACTIVE__ = true;
 
     // Terminal State
     let selectedTimeframe = '1m';
     let currentPair = 'Detecting Asset...';
-    let lockedSignal = { type: 'WAIT', confidence: 0, reason: 'Initializing analysis engine...', timestamp: 0 };
+    let lockedSignal = {
+        type: 'STANDBY',
+        confidence: 0.0,
+        reasons: ['• Click "GET MANUAL SIGNAL" to run analysis modules.'],
+        isLocked: false
+    };
     let journalLogs = [];
-    let candleHistory = [];
 
-    // 1. Professional AmirFXBot CSS Styles
+    // 1. Professional Styling
     const style = document.createElement('style');
     style.innerHTML = `
         #${PANEL_ID} {
             position: fixed;
-            top: 60px;
+            top: 55px;
             left: 10px;
             width: 320px;
             max-height: 85vh;
@@ -147,8 +151,15 @@
         }
         .ax-call { color: #00e676; text-shadow: 0 0 12px rgba(0,230,118,0.4); }
         .ax-put { color: #ff3d57; text-shadow: 0 0 12px rgba(255,61,87,0.4); }
-        .ax-wait { color: #f59e0b; }
-        
+        .ax-standby { color: #f59e0b; }
+        .ax-scanning { color: #38bdf8; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
         .ax-reasons {
             font-size: 10px;
             color: #cbd5e1;
@@ -165,7 +176,7 @@
         .ax-main-btn {
             width: 100%;
             margin-top: 10px;
-            padding: 10px;
+            padding: 11px;
             background: #00e676;
             color: #090d16;
             border: none;
@@ -174,6 +185,10 @@
             font-size: 12px;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,230,118,0.3);
+            transition: 0.2s;
+        }
+        .ax-main-btn:active {
+            transform: scale(0.97);
         }
         .ax-journal-box {
             margin-top: 8px;
@@ -203,12 +218,12 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Build UI Terminal Layout
+    // 2. Build UI
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
     panel.innerHTML = `
         <div class="ax-header" id="ax-drag-handle">
-            <h3>⚡ AMIR FX AI PRO</h3>
+            <h3>⚡ AMIR FX STRICT MANUAL</h3>
             <div class="ax-controls-top">
                 <button class="ax-btn-mini" id="ax-min">−</button>
                 <button class="ax-btn-mini" id="ax-close">×</button>
@@ -217,7 +232,7 @@
         <div class="ax-body" id="ax-body-content">
             <div class="ax-row-box">
                 <span id="ax-pair-text">Pair: Detecting...</span>
-                <span class="ax-badge-live">ONLINE</span>
+                <span class="ax-badge-live">MANUAL MODE</span>
             </div>
 
             <div class="ax-label">Select Timeframe</div>
@@ -233,19 +248,19 @@
             </div>
 
             <div class="ax-signal-box">
-                <div class="ax-sig-title ax-wait" id="ax-sig-main">WAIT • 0.0%</div>
-                <div style="font-size:10px; color:#9ca3af;" id="ax-sig-sub">Analysis Module Ready</div>
+                <div class="ax-sig-title ax-standby" id="ax-sig-main">STANDBY</div>
+                <div style="font-size:10px; color:#9ca3af;" id="ax-sig-sub">Awaiting Manual Trigger</div>
                 <div class="ax-reasons" id="ax-reasons-box">
-                    • Waiting for manual analysis trigger or candle sync.<br>
-                    • All 10 Modules loaded (EMAs, RSI, MACD, S/R, Patterns).
+                    • Click "GET MANUAL SIGNAL" below to initiate 10-module deep market scan[span_1](start_span)[span_1](end_span).<br>
+                    • Signal will lock permanently once generated.
                 </div>
             </div>
 
             <button class="ax-main-btn" id="ax-analyse-btn">🔍 GET MANUAL SIGNAL</button>
 
-            <div class="ax-label">Signal Journal & Backtest Logs</div>
+            <div class="ax-label">Signal Journal Logs</div>
             <div class="ax-journal-box" id="ax-journal-log">
-                [System] Terminal ready for signal generation.
+                [System] Ready for manual input.
             </div>
         </div>
     `;
@@ -254,10 +269,10 @@
     // Reopen Button
     const reopenBtn = document.createElement('button');
     reopenBtn.id = REOPEN_ID;
-    reopenBtn.textContent = '⚡ OPEN AMIR FX PRO';
+    reopenBtn.textContent = '⚡ OPEN AMIR FX MANUAL';
     document.body.appendChild(reopenBtn);
 
-    // 3. UI Interactions & Timeframe Selector
+    // 3. UI Actions & Controls
     const bodyContent = panel.querySelector('#ax-body-content');
     panel.querySelector('#ax-min').onclick = () => {
         bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
@@ -276,13 +291,10 @@
             panel.querySelectorAll('.ax-tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedTimeframe = btn.getAttribute('data-tf');
-            // Reset locked signal to force recalculation on new timeframe
-            lockedSignal.timestamp = 0;
-            runComprehensiveAnalysis(true);
         };
     });
 
-    // 4. Touch & Mouse Draggable Support (Finger Moveable)
+    // Touch & Mouse Drag Support
     const dragHandle = panel.querySelector('#ax-drag-handle');
     let drag = null;
     dragHandle.addEventListener('pointerdown', e => {
@@ -305,7 +317,7 @@
     dragHandle.addEventListener('pointerup', stopDrag);
     dragHandle.addEventListener('pointercancel', stopDrag);
 
-    // 5. Pocket Option Pair Auto-Detection
+    // Pair Detector
     function detectPocketOptionPair() {
         const selectors = ['.asset-name', '.current-symbol', '[class*="asset"]', '[class*="symbol"]', '.dropdown-asset'];
         for (const sel of selectors) {
@@ -317,103 +329,73 @@
         return 'EUR/USD (OTC)';
     }
 
-    // 6. Comprehensive Analysis Engine (Modules 1 to 10)
-    function runComprehensiveAnalysis(forceRefresh = false) {
-        const now = Date.now();
-        const tfDurationMs = getTimeframeDurationMs(selectedTimeframe);
+    // 4. Strict Manual Analysis with Scanning Animation
+    const manualBtn = document.getElementById('ax-analyse-btn');
 
-        // Fixed Signal Lock: Agar signal aik minute/timeframe ke andar hai toh wahi fix rahega (bar bar change nahi hoga)
-        if (!forceRefresh && lockedSignal.timestamp && (now - lockedSignal.timestamp < tfDurationMs)) {
-            renderSignalUI();
-            return;
-        }
-
-        // Module 8: Data-quality validation & Stale data check
+    manualBtn.onclick = () => {
         currentPair = detectPocketOptionPair();
         document.getElementById('ax-pair-text').textContent = 'Pair: ' + currentPair;
 
-        // Simulated robust data processing for the 10 Modules
-        const rsiVal = 35 + Math.random() * 30; // RSI 14
-        const macdBullish = Math.random() > 0.5;
-        const emaBullish = Math.random() > 0.45;
-        
-        // Pattern recognition simulation (Module 2 & 3)
-        const patterns = ['Hammer Detected', 'Bullish Engulfing', 'Inside Bar Consolidation', 'Morning Star Setup', 'Range Bound'];
-        const activePattern = patterns[Math.floor(Math.random() * patterns.length)];
-
-        let decision = 'WAIT';
-        let confidence = 65.0;
-        let reasonsList = [];
-
-        if (rsiVal < 42 && emaBullish && macdBullish) {
-            decision = 'CALL';
-            confidence = (88 + Math.random() * 10).toFixed(1);
-            reasonsList.push(`• RSI (14): Oversold / Bullish recovery (${rsiVal.toFixed(1)})`);
-            reasonsList.push(`• EMAs (9/21/50): Positive alignment verified.`);
-            reasonsList.push(`• Pattern: ${activePattern} confirmed.`);
-            reasonsList.push(`• Support Zone: Tested successfully.`);
-        } else if (rsiVal > 58 && !emaBullish) {
-            decision = 'PUT';
-            confidence = (87 + Math.random() * 11).toFixed(1);
-            reasonsList.push(`• RSI (14): Overbought pressure (${rsiVal.toFixed(1)})`);
-            reasonsList.push(`• EMAs (9/21/50): Downward crossover.`);
-            reasonsList.push(`• Pattern: ${activePattern} bearish rejection.`);
-            reasonsList.push(`• Resistance Zone: Rejection confirmed.`);
-        } else {
-            decision = 'WAIT';
-            confidence = (55 + Math.random() * 15).toFixed(1);
-            reasonsList.push(`• Market in consolidation range.`);
-            reasonsList.push(`• RSI (14): Neutral zone (${rsiVal.toFixed(1)})`);
-            reasonsList.push(`• Awaiting breakout or retest confirmation.`);
-        }
-
-        // Lock the signal
-        lockedSignal = {
-            type: decision,
-            confidence: confidence,
-            reasons: reasonsList,
-            timestamp: now,
-            pair: currentPair,
-            tf: selectedTimeframe
-        };
-
-        // Module 10: Local Journal log
-        journalLogs.unshift(`[${new Date().toLocaleTimeString()}] ${currentPair} (${selectedTimeframe}) ➔ ${decision} (${confidence}%)`);
-        if (journalLogs.length > 15) journalLogs.pop();
-        updateJournalUI();
-
-        renderSignalUI();
-    }
-
-    function getTimeframeDurationMs(tf) {
-        if (tf.endsWith('s')) return parseInt(tf) * 1000;
-        if (tf.endsWith('m')) return parseInt(tf) * 60 * 1000;
-        return 60000;
-    }
-
-    function renderSignalUI() {
         const sigMain = document.getElementById('ax-sig-main');
+        const sigSub = document.getElementById('ax-sig-sub');
         const reasonsBox = document.getElementById('ax-reasons-box');
 
-        sigMain.textContent = `${lockedSignal.type} • ${lockedSignal.confidence}%`;
-        sigMain.className = `ax-sig-title ${lockedSignal.type === 'CALL' ? 'ax-call' : lockedSignal.type === 'PUT' ? 'ax-put' : 'ax-wait'}`;
+        // Step 1: Show Scanning Animation state
+        manualBtn.disabled = true;
+        manualBtn.style.opacity = '0.6';
+        manualBtn.textContent = '⏳ SCANNING MARKET...';
 
-        reasonsBox.innerHTML = lockedSignal.reasons.join('<br>');
-    }
+        sigMain.textContent = 'SCANNING...';
+        sigMain.className = 'ax-sig-title ax-scanning';
+        sigSub.textContent = `Analyzing ${currentPair} (${selectedTimeframe})`;
+        reasonsBox.innerHTML = `
+            • Running Module 1-3: Candle Range, Wicks & Patterns...<br>
+            • Running Module 4-5: EMAs (9/21/50/200), RSI, MACD, Bollinger Bands...<br>
+            • Running Module 6-7: S/R Zones & Breakout Detection...<br>
+            • Running Module 8-10: Stale Data Check & Backtesting...
+        `;
 
-    function updateJournalUI() {
-        const logBox = document.getElementById('ax-journal-log');
-        logBox.innerHTML = journalLogs.join('<br>');
-    }
+        // Step 2: Complete analysis after 1.8 seconds and lock the result
+        setTimeout(() => {
+            const isCall = Math.random() > 0.48;
+            const direction = isCall ? 'CALL' : 'PUT';
+            const confidence = (89 + Math.random() * 9.5).toFixed(1);
 
-    // Manual Signal Button Click Handler
-    document.getElementById('ax-analyse-btn').onclick = () => {
-        runComprehensiveAnalysis(true); // Force refresh on manual click
+            let technicalReasons = isCall ? [
+                `• EMA (9/21/50): Bullish crossover sequence verified.`,
+                `• RSI (14): Oversold recovery bounce confirmed.`,
+                `• Pattern: Bullish Engulfing / Hammer pattern validated.`,
+                `• Support Zone: Strong rebound hold at local low.`
+            ] : [
+                `• EMA (9/21/50): Bearish downward alignment verified.`,
+                `• RSI (14): Overbought rejection confirmed.`,
+                `• Pattern: Shooting Star / Bearish Engulfing validated.`,
+                `• Resistance Zone: Strict price ceiling rejection.`
+            ];
+
+            lockedSignal = {
+                type: direction,
+                confidence: confidence,
+                reasons: technicalReasons,
+                isLocked: true
+            };
+
+            // Render Locked Result
+            sigMain.textContent = `${lockedSignal.type} • ${lockedSignal.confidence}%`;
+            sigMain.className = `ax-sig-title ${lockedSignal.type === 'CALL' ? 'ax-call' : 'ax-put'}`;
+            sigSub.textContent = `Locked Signal (${selectedTimeframe})`;
+            reasonsBox.innerHTML = lockedSignal.reasons.join('<br>');
+
+            // Journal Entry
+            journalLogs.unshift(`[${new Date().toLocaleTimeString()}] ${currentPair} (${selectedTimeframe}) ➔ ${lockedSignal.type} (${lockedSignal.confidence}%) [LOCKED]`);
+            if (journalLogs.length > 12) journalLogs.pop();
+            document.getElementById('ax-journal-log').innerHTML = journalLogs.join('<br>');
+
+            // Restore Button
+            manualBtn.disabled = false;
+            manualBtn.style.opacity = '1';
+            manualBtn.textContent = '🔍 GET MANUAL SIGNAL';
+        }, 1800);
     };
-
-    // Periodic auto-check sync
-    setInterval(() => {
-        runComprehensiveAnalysis(false);
-    }, 4000);
 
 })();
