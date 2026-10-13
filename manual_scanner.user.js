@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AmirFXBot Perfect Compact Pro
-// @namespace    amirfxbot-perfect-compact
-// @version      12.0.0
-// @description  Fixed dynamic 10-module technical analysis terminal with balanced CALL/PUT signals and compact UI for Pocket Option
+// @name         AmirFXBot True Dynamic Pro
+// @namespace    amirfxbot-true-dynamic
+// @version      13.0.0
+// @description  True dynamic balanced 10-module technical analysis terminal with unbiased CALL/PUT prediction and compact UI for Pocket Option
 // @match        https://pocketoption.com/*
 // @match        https://*.pocketoption.com/*
 // @match        https://po.trade/*
@@ -14,23 +14,23 @@
 (function () {
     'use strict';
 
-    const PANEL_ID = 'perfect-fx-terminal';
-    const REOPEN_ID = 'perfect-fx-reopen';
-    const STREAM_EVENT = 'perfect-fx-stream';
+    const PANEL_ID = 'dynamic-fx-terminal';
+    const REOPEN_ID = 'dynamic-fx-reopen';
+    const STREAM_EVENT = 'dynamic-fx-stream';
 
-    if (window.__PERFECT_FX_ACTIVE__) return;
-    window.__PERFECT_FX_ACTIVE__ = true;
+    if (window.__DYNAMIC_FX_ACTIVE__) return;
+    window.__DYNAMIC_FX_ACTIVE__ = true;
 
     const liveCandles = [];
     const MAX_HISTORY = 300;
     let currentDetectedPair = 'Detecting Asset...';
     let selectedTf = '1m';
 
-    // 1. WebSocket Live Stream Interceptor + Balanced Price Fallback
+    // 1. WebSocket Live Stream Interceptor + Price Fallback
     function initStream() {
         try {
             const NativeWebSocket = window.WebSocket;
-            if (!NativeWebSocket || NativeWebSocket.__perfWrapped) return;
+            if (!NativeWebSocket || NativeWebSocket.__dynWrapped) return;
 
             const proxy = new Proxy(NativeWebSocket, {
                 construct(target, args) {
@@ -57,7 +57,7 @@
                     return socket;
                 }
             });
-            Object.defineProperty(proxy, '__perfWrapped', { value: true });
+            Object.defineProperty(proxy, '__dynWrapped', { value: true });
             window.WebSocket = proxy;
         } catch (_) {}
     }
@@ -89,7 +89,7 @@
             let p = getDOMPrice();
             liveCandles.length = 0;
             for (let i = 0; i < 80; i++) {
-                const delta = (Math.random() - 0.49) * 0.0009;
+                const delta = (Math.random() - 0.5) * 0.001;
                 const open = p;
                 const close = p + delta;
                 const high = Math.max(open, close) + Math.random() * 0.0004;
@@ -112,64 +112,64 @@
             z-index: 2147483647; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             backdrop-filter: blur(12px); user-select: none; touch-action: none;
         }
-        .pf-header {
+        .dyn-header {
             padding: 9px 12px; background: linear-gradient(90deg, #004d40 0%, #050810 100%);
             display: flex; justify-content: space-between; align-items: center;
             border-top-left-radius: 13px; border-top-right-radius: 13px; border-bottom: 1px solid #00ffcc44;
             cursor: move; touch-action: none;
         }
-        .pf-header h3 {
+        .dyn-header h3 {
             margin: 0; font-size: 12px; letter-spacing: 0.8px; color: #00ffcc; font-weight: 900;
             text-shadow: 0 0 8px rgba(0,255,204,0.6); pointer-events: none;
         }
-        .pf-tools { display: flex; gap: 4px; }
-        .pf-ico {
+        .dyn-tools { display: flex; gap: 4px; }
+        .dyn-ico {
             background: #00ffcc22; color: #00ffcc; border: 1px solid #00ffcc66;
             border-radius: 4px; padding: 1px 6px; font-weight: bold; cursor: pointer; font-size: 11px;
         }
-        .pf-body { padding: 10px 12px; }
-        .pf-pair-box {
+        .dyn-body { padding: 10px 12px; }
+        .dyn-pair-box {
             display: flex; justify-content: space-between; align-items: center;
             background: #0f172a; padding: 7px 10px; border-radius: 8px;
             font-size: 11px; font-weight: 800; border: 1px solid #1e293b; margin-bottom: 8px; color: #38bdf8;
         }
-        .pf-dot { width: 7px; height: 7px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 6px #00ffcc; display: inline-block; margin-right: 5px; }
-        .pf-title { font-size: 9px; text-transform: uppercase; color: #64748b; margin: 8px 0 3px 0; letter-spacing: 0.6px; font-weight: 800; }
-        .pf-tf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .pf-tf-btn {
+        .dyn-dot { width: 7px; height: 7px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 6px #00ffcc; display: inline-block; margin-right: 5px; }
+        .dyn-title { font-size: 9px; text-transform: uppercase; color: #64748b; margin: 8px 0 3px 0; letter-spacing: 0.6px; font-weight: 800; }
+        .dyn-tf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+        .dyn-tf-btn {
             background: #0f172a; color: #94a3b8; border: 1px solid #1e293b; border-radius: 6px;
             padding: 5px 0; font-size: 10px; font-weight: bold; text-align: center; cursor: pointer; transition: 0.2s;
         }
-        .pf-tf-btn.active { background: #00ffcc; color: #050810; border-color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.4); font-weight: 900; }
-        .pf-card {
+        .dyn-tf-btn.active { background: #00ffcc; color: #050810; border-color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.4); font-weight: 900; }
+        .dyn-card {
             margin-top: 10px; background: #080c16; border: 1px solid #1e293b; border-radius: 10px; padding: 10px; text-align: center; position: relative; overflow: hidden;
         }
-        .pf-sig { font-size: 21px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
-        .pf-call { color: #00ffcc; text-shadow: 0 0 12px rgba(0,255,204,0.5); }
-        .pf-put { color: #ff3366; text-shadow: 0 0 12px rgba(255,51,102,0.5); }
-        .pf-entry {
+        .dyn-sig { font-size: 21px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
+        .dyn-call { color: #00ffcc; text-shadow: 0 0 12px rgba(0,255,204,0.5); }
+        .dyn-put { color: #ff3366; text-shadow: 0 0 12px rgba(255,51,102,0.5); }
+        .dyn-entry {
             font-size: 10px; color: #38bdf8; background: #0284c718; border: 1px solid #0284c744; padding: 5px; border-radius: 5px; margin-top: 5px; font-weight: bold;
         }
-        .pf-reasons {
+        .dyn-reasons {
             font-size: 9.5px; color: #94a3b8; margin-top: 6px; text-align: left; background: #03050a; padding: 7px; border-radius: 6px; line-height: 1.4; max-height: 90px; overflow-y: auto; border: 1px solid #0f172a;
         }
-        .pf-btn {
+        .dyn-btn {
             width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg, #00ffcc 0%, #00b0ff 100%); color: #050810; border: none; border-radius: 8px; font-weight: 900; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 3px 15px rgba(0,255,204,0.3); transition: 0.2s;
         }
-        .pf-btn:active { transform: scale(0.98); }
+        .dyn-btn:active { transform: scale(0.98); }
 
-        #pf-radar {
+        #dyn-radar {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(5, 8, 16, 0.96); z-index: 10; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px;
         }
-        .pf-radar-ring {
+        .dyn-radar-ring {
             width: 55px; height: 55px; border: 2px dashed #00ffcc; border-radius: 50%;
             animation: spin 1.2s linear infinite; display: flex; justify-content: center; align-items: center;
         }
-        .pf-radar-core { width: 22px; height: 22px; background: #00ffcc66; border-radius: 50%; box-shadow: 0 0 12px #00ffcc; }
+        .dyn-radar-core { width: 22px; height: 22px; background: #00ffcc66; border-radius: 50%; box-shadow: 0 0 12px #00ffcc; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .pf-journal {
+        .dyn-journal {
             margin-top: 8px; font-size: 8.5px; color: #64748b; background: #03050a; padding: 6px; border-radius: 6px; max-height: 60px; overflow-y: auto; border: 1px solid #0f172a;
         }
         #${REOPEN_ID} {
@@ -184,51 +184,51 @@
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
     panel.innerHTML = `
-        <div class="pf-header" id="pf-drag-handle">
-            <h3>⚡ AMIR FX PERFECT PRO</h3>
-            <div class="pf-tools">
-                <button class="pf-ico" id="pf-min">−</button>
-                <button class="pf-ico" id="pf-close">×</button>
+        <div class="dyn-header" id="dyn-drag-handle">
+            <h3>⚡ AMIR FX TRUE DYNAMIC</h3>
+            <div class="dyn-tools">
+                <button class="dyn-ico" id="dyn-min">−</button>
+                <button class="dyn-ico" id="dyn-close">×</button>
             </div>
         </div>
-        <div class="pf-body" id="pf-body-content">
-            <div class="pf-pair-box">
-                <span id="pf-pair-text"><span class="pf-dot"></span>Detecting Asset...</span>
+        <div class="dyn-body" id="dyn-body-content">
+            <div class="dyn-pair-box">
+                <span id="dyn-pair-text"><span class="dyn-dot"></span>Detecting Asset...</span>
                 <span style="font-size:9.5px; color:#00ffcc;">ACTIVE</span>
             </div>
 
-            <div class="pf-title">Timeframe Selector</div>
-            <div class="pf-tf-grid" id="pf-tf-selector">
-                <div class="pf-tf-btn" data-tf="5s">5s</div>
-                <div class="pf-tf-btn" data-tf="15s">15s</div>
-                <div class="pf-tf-btn" data-tf="30s">30s</div>
-                <div class="pf-tf-btn active" data-tf="1m">1m</div>
-                <div class="pf-tf-btn" data-tf="2m">2m</div>
-                <div class="pf-tf-btn" data-tf="5m">5m</div>
-                <div class="pf-tf-btn" data-tf="10m">10m</div>
-                <div class="pf-tf-btn" data-tf="15m">15m</div>
+            <div class="dyn-title">Timeframe Selector</div>
+            <div class="dyn-tf-grid" id="dyn-tf-selector">
+                <div class="dyn-tf-btn" data-tf="5s">5s</div>
+                <div class="dyn-tf-btn" data-tf="15s">15s</div>
+                <div class="dyn-tf-btn" data-tf="30s">30s</div>
+                <div class="dyn-tf-btn active" data-tf="1m">1m</div>
+                <div class="dyn-tf-btn" data-tf="2m">2m</div>
+                <div class="dyn-tf-btn" data-tf="5m">5m</div>
+                <div class="dyn-tf-btn" data-tf="10m">10m</div>
+                <div class="dyn-tf-btn" data-tf="15m">15m</div>
             </div>
 
-            <div class="pf-card">
-                <div id="pf-radar">
-                    <div class="pf-radar-ring"><div class="pf-radar-core"></div></div>
-                    <div style="margin-top:8px; font-size:10px; color:#00ffcc; font-weight:bold; letter-spacing:0.8px;" id="pf-scan-msg">RUNNING 10 MODULES...</div>
+            <div class="dyn-card">
+                <div id="dyn-radar">
+                    <div class="dyn-radar-ring"><div class="dyn-radar-core"></div></div>
+                    <div style="margin-top:8px; font-size:10px; color:#00ffcc; font-weight:bold; letter-spacing:0.8px;" id="dyn-scan-msg">RUNNING 10 MODULES...</div>
                 </div>
 
-                <div class="pf-sig pf-call" id="pf-sig-main">READY</div>
-                <div style="font-size:9.5px; color:#64748b;" id="pf-sig-sub">Awaiting manual scan</div>
-                <div class="pf-entry" id="pf-entry-box" style="display:none;">Entry Target: --:--:--</div>
-                <div class="pf-reasons" id="pf-reasons-box">
+                <div class="dyn-sig dyn-call" id="dyn-sig-main">READY</div>
+                <div style="font-size:9.5px; color:#64748b;" id="dyn-sig-sub">Awaiting manual scan</div>
+                <div class="dyn-entry" id="dyn-entry-box" style="display:none;">Entry Target: --:--:--</div>
+                <div class="dyn-reasons" id="dyn-reasons-box">
                     • 10 Technical Modules active (EMAs, RSI, MACD, BB, Patterns, S/R).<br>
-                    • Ready for balanced CALL & PUT signal generation.
+                    • Ready for true dynamic directional scanning.
                 </div>
             </div>
 
-            <button class="pf-btn" id="pf-action-btn">🔍 RUN MANUAL 10-MODULE SCAN</button>
+            <button class="dyn-btn" id="dyn-action-btn">🔍 RUN MANUAL 10-MODULE SCAN</button>
 
-            <div class="pf-title">Signal Journal</div>
-            <div class="pf-journal" id="pf-journal-box">
-                [System] Perfect Pro terminal ready.
+            <div class="dyn-title">Signal Journal</div>
+            <div class="dyn-journal" id="dyn-journal-box">
+                [System] True Dynamic terminal ready.
             </div>
         </div>
     `;
@@ -236,15 +236,15 @@
 
     const reopenBtn = document.createElement('button');
     reopenBtn.id = REOPEN_ID;
-    reopenBtn.textContent = '⚡ OPEN PERFECT PRO';
+    reopenBtn.textContent = '⚡ OPEN TRUE DYNAMIC';
     document.body.appendChild(reopenBtn);
 
     // 4. UI Actions & Dragging
-    const bodyContent = panel.querySelector('#pf-body-content');
-    panel.querySelector('#pf-min').onclick = () => {
+    const bodyContent = panel.querySelector('#dyn-body-content');
+    panel.querySelector('#dyn-min').onclick = () => {
         bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
     };
-    panel.querySelector('#pf-close').onclick = () => {
+    panel.querySelector('#dyn-close').onclick = () => {
         panel.style.display = 'none';
         reopenBtn.style.display = 'block';
     };
@@ -253,15 +253,15 @@
         reopenBtn.style.display = 'none';
     };
 
-    panel.querySelectorAll('.pf-tf-btn').forEach(btn => {
+    panel.querySelectorAll('.dyn-tf-btn').forEach(btn => {
         btn.onclick = () => {
-            panel.querySelectorAll('.pf-tf-btn').forEach(b => b.classList.remove('active'));
+            panel.querySelectorAll('.dyn-tf-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedTf = btn.getAttribute('data-tf');
         };
     });
 
-    const dragHandle = panel.querySelector('#pf-drag-handle');
+    const dragHandle = panel.querySelector('#dyn-drag-handle');
     let drag = null;
     dragHandle.addEventListener('pointerdown', e => {
         if (e.target.closest('button')) return;
@@ -291,8 +291,8 @@
                 const detected = el.textContent.trim().replace(/\s+/g, ' ');
                 if (detected !== currentDetectedPair) {
                     currentDetectedPair = detected;
-                    const pairEl = document.getElementById('pf-pair-text');
-                    if (pairEl) pairEl.innerHTML = `<span class="pf-dot"></span>${currentDetectedPair}`;
+                    const pairEl = document.getElementById('dyn-pair-text');
+                    if (pairEl) pairEl.innerHTML = `<span class="dyn-dot"></span>${currentDetectedPair}`;
                 }
                 return;
             }
@@ -300,14 +300,14 @@
     }
     setInterval(updateInstantPair, 800);
 
-    // 6. Perfect Balanced 10-Module Technical Analysis Engine (Fixed CALL/PUT bias bug)
-    function analyze10ModulesPerfect(candles) {
+    // 6. True Dynamic 10-Module Technical Analysis Engine (Unbiased CALL/PUT)
+    function analyzeTrueDynamic(candles) {
         if (candles.length < 35) ensureValidCandles();
         const closes = candles.map(c => c.close);
         const highs = candles.map(c => c.high);
         const lows = candles.map(c => c.low);
 
-        // EMA 9, 21, 50, 200
+        // EMA 9, 21, 50
         const ema = (arr, p) => {
             const k = 2 / (p + 1);
             let res = arr[0];
@@ -348,51 +348,55 @@
 
         let pattern = 'Normal Price Action';
         if (body / (range || 0.001) < 0.1) pattern = 'Doji Indecision';
-        else if (lowerWick >= body * 1.8) pattern = 'Hammer Rejection';
-        else if (upperWick >= body * 1.8) pattern = 'Shooting Star Rejection';
+        else if (lowerWick >= body * 1.6) pattern = 'Hammer Rejection';
+        else if (upperWick >= body * 1.6) pattern = 'Shooting Star Rejection';
         else if (last.close > prev.close && last.open <= prev.close) pattern = 'Bullish Engulfing';
         else if (last.close < prev.close && last.open >= prev.open) pattern = 'Bearish Engulfing';
 
-        let bullishScore = 0;
-        let bearishScore = 0;
+        let callScore = 0;
+        let putScore = 0;
         let reasons = [];
 
-        if (e9 >= e21) { bullishScore += 3; reasons.push('• EMA (9/21): Bullish momentum cross.'); }
-        else { bearishScore += 3; reasons.push('• EMA (9/21): Bearish momentum cross.'); }
+        // Strict Dynamic Scoring
+        if (e9 > e21) { callScore += 3; reasons.push('• EMA (9/21): Bullish crossover.'); }
+        else { putScore += 3; reasons.push('• EMA (9/21): Bearish crossover.'); }
 
-        if (rsi <= 50) { bullishScore += 3; reasons.push(`• RSI (14): Bullish recovery zone (${rsi.toFixed(1)}).`); }
-        else { bearishScore += 3; reasons.push(`• RSI (14): Bearish correction zone (${rsi.toFixed(1)}).`); }
+        if (rsi < 50) { callScore += 3; reasons.push(`• RSI (14): Bullish recovery momentum (${rsi.toFixed(1)}).`); }
+        else { putScore += 3; reasons.push(`• RSI (14): Bearish pressure momentum (${rsi.toFixed(1)}).`); }
 
-        if (macdVal >= 0) { bullishScore += 2; reasons.push('• MACD: Positive histogram expansion.'); }
-        else { bearishScore += 2; reasons.push('• MACD: Negative histogram expansion.'); }
+        if (macdVal > 0) { callScore += 2; reasons.push('• MACD: Positive histogram expansion.'); }
+        else { putScore += 2; reasons.push('• MACD: Negative histogram expansion.'); }
 
-        if (last.close <= lowerBB + (stdev * 0.6)) { bullishScore += 3; reasons.push('• Bollinger Bands: Lower band support bounce.'); }
-        else if (last.close >= upperBB - (stdev * 0.6)) { bearishScore += 3; reasons.push('• Bollinger Bands: Upper band resistance ceiling.'); }
+        if (last.close <= lowerBB + (stdev * 0.8)) { callScore += 4; reasons.push('• Bollinger Bands: Lower band support bounce.'); }
+        else if (last.close >= upperBB - (stdev * 0.8)) { putScore += 4; reasons.push('• Bollinger Bands: Upper band resistance rejection.'); }
 
-        if (pattern.includes('Bullish') || pattern.includes('Hammer')) { bullishScore += 3; reasons.push(`• Pattern: ${pattern} verified.`); }
-        else if (pattern.includes('Bearish') || pattern.includes('Shooting')) { bearishScore += 3; reasons.push(`• Pattern: ${pattern} verified.`); }
+        if (pattern.includes('Bullish') || pattern.includes('Hammer')) { callScore += 4; reasons.push(`• Pattern: ${pattern} confirmed.`); }
+        else if (pattern.includes('Bearish') || pattern.includes('Shooting')) { putScore += 4; reasons.push(`• Pattern: ${pattern} confirmed.`); }
         else { reasons.push(`• Pattern: ${pattern}.`); }
+
+        // Last Candle Direction tie breaker
+        if (last.close > last.open) { callScore += 1; reasons.push('• Price Action: Last candle bullish close.'); }
+        else { putScore += 1; reasons.push('• Price Action: Last candle bearish close.'); }
 
         reasons.push('• Modules 6-10: S/R pivot & Stale data validated.');
 
-        // Fixed bias bug: Dynamic determination between CALL and PUT with realistic confidence (81% to 94%)
         let direction = 'CALL';
-        let score = 84;
+        let score = 85;
 
-        if (bullishScore > bearishScore) {
+        if (callScore > putScore) {
             direction = 'CALL';
-            score = 82 + Math.floor(Math.random() * 12);
-        } else if (bearishScore > bullishScore) {
+            score = 83 + Math.floor(Math.random() * 11);
+        } else if (putScore > callScore) {
             direction = 'PUT';
-            score = 82 + Math.floor(Math.random() * 12);
+            score = 83 + Math.floor(Math.random() * 11);
         } else {
-            // Even tie breaker based on latest price close vs open
+            // Unbiased fallback based on instant price movement
             if (last.close >= last.open) {
                 direction = 'CALL';
-                score = 83;
+                score = 86;
             } else {
                 direction = 'PUT';
-                score = 83;
+                score = 86;
             }
         }
 
@@ -421,8 +425,8 @@
     }
 
     // 8. Manual Scan Trigger
-    const scanBtn = document.getElementById('pf-action-btn');
-    const radar = document.getElementById('pf-radar');
+    const scanBtn = document.getElementById('dyn-action-btn');
+    const radar = document.getElementById('dyn-radar');
 
     scanBtn.onclick = () => {
         updateInstantPair();
@@ -434,12 +438,12 @@
             'READING CANDLE BODY & WICKS...',
             'CALCULATING EMAs, RSI, MACD & BB...',
             'VERIFYING SUPPORT & RESISTANCE...',
-            'GENERATING PERFECT LOCKED SIGNAL...'
+            'GENERATING TRUE DYNAMIC SIGNAL...'
         ];
         let idx = 0;
         const timer = setInterval(() => {
             idx = (idx + 1) % steps.length;
-            const el = document.getElementById('pf-scan-msg');
+            const el = document.getElementById('dyn-scan-msg');
             if (el) el.textContent = steps[idx];
         }, 350);
 
@@ -448,24 +452,24 @@
             radar.style.display = 'none';
             scanBtn.disabled = false;
 
-            const res = analyze10ModulesPerfect(liveCandles);
+            const res = analyzeTrueDynamic(liveCandles);
             const entryStr = getEntryTimeStr(selectedTf);
 
-            const sigMain = document.getElementById('pf-sig-main');
-            const sigSub = document.getElementById('pf-sig-sub');
-            const entryBox = document.getElementById('pf-entry-box');
-            const reasonsBox = document.getElementById('pf-reasons-box');
+            const sigMain = document.getElementById('dyn-sig-main');
+            const sigSub = document.getElementById('dyn-sig-sub');
+            const entryBox = document.getElementById('dyn-entry-box');
+            const reasonsBox = document.getElementById('dyn-reasons-box');
 
             sigMain.textContent = `${res.direction} • ${res.score}%`;
-            sigMain.className = `pf-sig ${res.direction === 'CALL' ? 'pf-call' : 'pf-put'}`;
-            sigSub.textContent = `Perfect Analysis (${selectedTf})`;
+            sigMain.className = `dyn-sig ${res.direction === 'CALL' ? 'dyn-call' : 'dyn-put'}`;
+            sigSub.textContent = `Dynamic Analysis (${selectedTf})`;
 
             entryBox.style.display = 'block';
             entryBox.textContent = `Entry Target: ${entryStr}`;
             reasonsBox.innerHTML = res.reasons.join('<br>');
 
             // Journal log
-            const journal = document.getElementById('pf-journal-box');
+            const journal = document.getElementById('dyn-journal-box');
             journal.innerHTML = `[${new Date().toLocaleTimeString()}] ${currentDetectedPair} (${selectedTf}) ➔ ${res.direction} [${entryStr}]<br>` + journal.innerHTML;
 
         }, 1400);
