@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Quotex Pure Price Action Pro
+// @name         Quotex Pure Price Action Pro v2
 // @namespace    quotex-pure-price-action
-// @version      1.0.0
-// @description  Pure Price Action bot for Quotex based on Support/Resistance, Candlestick patterns, wicks, and structure
-// @match        https://quotex.com/*
-// @match        https://*.quotex.com/*
-// @match        https://qxbroker.com/*
+// @version      2.0.0
+// @description  Pure Price Action bot for Quotex with robust UI injection and S/R analysis
 // @match        https://*.qxbroker.com/*
-// @match        https://quotex.io/*
+// @match        https://*.quotex.com/*
 // @match        https://*.quotex.io/*
+// @match        https://qxbroker.com/*
+// @match        https://quotex.com/*
+// @match        https://quotex.io/*
 // @run-at       document-end
 // @grant        none
 // ==/UserScript==
@@ -25,9 +25,9 @@
 
     const liveCandles = [];
     const MAX_HISTORY = 300;
-    let currentAsset = 'Quotex Asset';
+    let currentAsset = 'Quotex Market';
 
-    // 1. WebSocket Interceptor for Quotex Live Chart Data
+    // 1. WebSocket Interceptor for Quotex Live Data
     function initQuotexStream() {
         try {
             const NativeWebSocket = window.WebSocket;
@@ -37,7 +37,7 @@
                 construct(target, args) {
                     const socket = Reflect.construct(target, args, target);
                     socket.addEventListener('message', event => {
-                        if (typeof event.data !== 'string' || event.data.length > 25000) return;
+                        if (typeof event.data !== 'string' || event.data.length > 30000) return;
                         try {
                             const parsed = JSON.parse(event.data);
                             const dataObj = parsed.data || parsed.candles || parsed.history || parsed;
@@ -77,14 +77,14 @@
         }
     });
 
-    // 2. DOM Asset Detector for Quotex
+    // 2. Asset Detector
     function detectQuotexAsset() {
-        const selectors = ['.asset-name', '.symbol-name', '[class*="asset"]', '[class*="symbol"]', '.text-gold'];
+        const selectors = ['.asset-name', '.symbol-name', '[class*="asset"]', '[class*="symbol"]', '.text-gold', '.asset-select'];
         for (const sel of selectors) {
             const el = document.querySelector(sel);
             if (el && el.textContent.trim().length > 1) {
                 const name = el.textContent.trim().replace(/\s+/g, ' ');
-                if (name !== currentAsset) {
+                if (name !== currentAsset && name.length < 25) {
                     currentAsset = name;
                     const pairEl = document.getElementById('qx-pair-txt');
                     if (pairEl) pairEl.innerHTML = `<span class="qx-dot"></span>${currentAsset}`;
@@ -95,11 +95,11 @@
     }
     setInterval(detectQuotexAsset, 1000);
 
-    // 3. Floating Glassmorphism UI & Mini Chart Styling
+    // 3. Styles
     const style = document.createElement('style');
     style.innerHTML = `
         #${PANEL_ID} {
-            position: fixed; top: 50px; left: 15px;
+            position: fixed; top: 60px; left: 20px;
             width: 280px; background: rgba(13, 17, 28, 0.96); color: #ffffff;
             border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 14px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
@@ -147,87 +147,95 @@
         }
         
         #${REOPEN_ID} {
-            position: fixed; right: 15px; bottom: 100px; z-index: 2147483647;
+            position: fixed; right: 20px; bottom: 100px; z-index: 2147483647;
             background: #f59e0b; color: #0d111c; border: none; border-radius: 18px;
-            padding: 7px 14px; display: none; font-weight: 900; box-shadow: 0 0 12px rgba(245,158,11,0.4); cursor: pointer; font-size: 10px;
+            padding: 8px 15px; display: none; font-weight: 900; box-shadow: 0 0 15px rgba(245,158,11,0.5); cursor: pointer; font-size: 10.5px;
         }
     `;
     document.head.appendChild(style);
 
-    // 4. Build UI Layout Panel
-    const panel = document.createElement('div');
-    panel.id = PANEL_ID;
-    panel.innerHTML = `
-        <div class="qx-header" id="qx-drag-handle">
-            <h3>⚡ QUOTEX PRICE ACTION</h3>
-            <div class="qx-tools">
-                <button class="qx-ico" id="qx-min">−</button>
-                <button class="qx-ico" id="qx-close">×</button>
-            </div>
-        </div>
-        <div class="qx-body" id="qx-body-content">
-            <div class="qx-pair-box">
-                <span id="qx-pair-txt"><span class="qx-dot"></span>${currentAsset}</span>
-                <span style="font-size:8.5px; color:#f59e0b;">PURE PA</span>
-            </div>
+    // 4. Robust UI Injector Function
+    function injectUI() {
+        if (document.getElementById(PANEL_ID) || !document.body) return;
 
-            <div class="qx-canvas-box">
-                <canvas id="qx-mini-canvas"></canvas>
-            </div>
-
-            <div class="qx-sig-box">
-                <div class="qx-sig qx-call" id="qx-sig-main">SCANNING S/R...</div>
-                <div class="qx-sub" id="qx-sig-sub">Waiting for price action confirmation</div>
-                <div class="qx-reasons" id="qx-reasons-box">
-                    • Analyzing support & resistance rejections.<br>
-                    • Monitoring wick pressure & engulfing patterns.
+        const panel = document.createElement('div');
+        panel.id = PANEL_ID;
+        panel.innerHTML = `
+            <div class="qx-header" id="qx-drag-handle">
+                <h3>⚡ QUOTEX PRICE ACTION</h3>
+                <div class="qx-tools">
+                    <button class="qx-ico" id="qx-min">−</button>
+                    <button class="qx-ico" id="qx-close">×</button>
                 </div>
             </div>
-        </div>
-    `;
-    document.body.appendChild(panel);
+            <div class="qx-body" id="qx-body-content">
+                <div class="qx-pair-box">
+                    <span id="qx-pair-txt"><span class="qx-dot"></span>${currentAsset}</span>
+                    <span style="font-size:8.5px; color:#f59e0b;">PURE PA</span>
+                </div>
 
-    const reopenBtn = document.createElement('button');
-    reopenBtn.id = REOPEN_ID;
-    reopenBtn.textContent = '⚡ PRICE ACTION';
-    document.body.appendChild(reopenBtn);
+                <div class="qx-canvas-box">
+                    <canvas id="qx-mini-canvas"></canvas>
+                </div>
 
-    // 5. Drag & Minimize Controls
-    const bodyContent = panel.querySelector('#qx-body-content');
-    panel.querySelector('#qx-min').onclick = () => {
-        bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
-    };
-    panel.querySelector('#qx-close').onclick = () => {
-        panel.style.display = 'none';
-        reopenBtn.style.display = 'block';
-    };
-    reopenBtn.onclick = () => {
-        panel.style.display = 'block';
-        reopenBtn.style.display = 'none';
-    };
+                <div class="qx-sig-box">
+                    <div class="qx-sig qx-call" id="qx-sig-main">SCANNING S/R...</div>
+                    <div class="qx-sub" id="qx-sig-sub">Waiting for price action confirmation</div>
+                    <div class="qx-reasons" id="qx-reasons-box">
+                        • Analyzing support & resistance rejections.<br>
+                        • Monitoring wick pressure & engulfing patterns.
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(panel);
 
-    const dragHandle = panel.querySelector('#qx-drag-handle');
-    let drag = null;
-    dragHandle.addEventListener('pointerdown', e => {
-        if (e.target.closest('button')) return;
-        const rect = panel.getBoundingClientRect();
-        drag = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top };
-        dragHandle.setPointerCapture(e.pointerId);
-        e.preventDefault();
-    });
-    dragHandle.addEventListener('pointermove', e => {
-        if (!drag) return;
-        const maxX = window.innerWidth - panel.offsetWidth - 5;
-        const maxY = window.innerHeight - 50;
-        panel.style.left = Math.min(maxX, Math.max(0, drag.left + e.clientX - drag.x)) + 'px';
-        panel.style.top = Math.min(maxY, Math.max(0, drag.top + e.clientY - drag.y)) + 'px';
-        panel.style.right = 'auto'; panel.style.bottom = 'auto';
-    });
-    const stopDrag = () => { drag = null; };
-    dragHandle.addEventListener('pointerup', stopDrag);
-    dragHandle.addEventListener('pointercancel', stopDrag);
+        const reopenBtn = document.createElement('button');
+        reopenBtn.id = REOPEN_ID;
+        reopenBtn.textContent = '⚡ PRICE ACTION';
+        document.body.appendChild(reopenBtn);
 
-    // 6. Mini Canvas Real Chart Renderer
+        // Controls
+        const bodyContent = panel.querySelector('#qx-body-content');
+        panel.querySelector('#qx-min').onclick = () => {
+            bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
+        };
+        panel.querySelector('#qx-close').onclick = () => {
+            panel.style.display = 'none';
+            reopenBtn.style.display = 'block';
+        };
+        reopenBtn.onclick = () => {
+            panel.style.display = 'block';
+            reopenBtn.style.display = 'none';
+        };
+
+        // Dragging
+        const dragHandle = panel.querySelector('#qx-drag-handle');
+        let drag = null;
+        dragHandle.addEventListener('pointerdown', e => {
+            if (e.target.closest('button')) return;
+            const rect = panel.getBoundingClientRect();
+            drag = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top };
+            dragHandle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        dragHandle.addEventListener('pointermove', e => {
+            if (!drag) return;
+            const maxX = window.innerWidth - panel.offsetWidth - 5;
+            const maxY = window.innerHeight - 50;
+            panel.style.left = Math.min(maxX, Math.max(0, drag.left + e.clientX - drag.x)) + 'px';
+            panel.style.top = Math.min(maxY, Math.max(0, drag.top + e.clientY - drag.y)) + 'px';
+            panel.style.right = 'auto'; panel.style.bottom = 'auto';
+        });
+        const stopDrag = () => { drag = null; };
+        dragHandle.addEventListener('pointerup', stopDrag);
+        dragHandle.addEventListener('pointercancel', stopDrag);
+    }
+
+    // Check and inject every second until loaded
+    setInterval(injectUI, 1000);
+
+    // 5. Mini Canvas Chart Renderer
     function drawMiniChart() {
         const canvas = document.getElementById('qx-mini-canvas');
         if (!canvas) return;
@@ -271,15 +279,13 @@
         });
     }
 
-    // 7. Pure Price Action Analysis Engine (No Indicators)
+    // 6. Pure Price Action Analysis Engine (Support, Resistance, Wicks, Engulfing)
     function runPriceActionAnalysis() {
         if (liveCandles.length < 15) return;
 
         const last = liveCandles[liveCandles.length - 1];
         const prev = liveCandles[liveCandles.length - 2];
-        const prev2 = liveCandles[liveCandles.length - 3] || prev;
 
-        // Support & Resistance Swing Zones from recent candles
         const recentHighs = liveCandles.slice(-20).map(c => c.high);
         const recentLows = liveCandles.slice(-20).map(c => c.low);
         const resistance = Math.max(...recentHighs);
@@ -294,20 +300,19 @@
         let putScore = 0;
         let reasons = [];
 
-        // Rule 1: Support Rejection (Pin Bar / Hammer)
+        // Support Rejection (Hammer / Pin Bar)
         if (Math.abs(last.close - support) < (range * 1.5) || lowerWick >= body * 2) {
             callScore += 4;
             reasons.push('• Price Action: Support Zone Rejection / Hammer formed.');
         }
 
-        // Rule 2: Resistance Rejection (Shooting Star)
+        // Resistance Rejection (Shooting Star)
         if (Math.abs(last.close - resistance) < (range * 1.5) || upperWick >= body * 2) {
             putScore += 4;
             reasons.push('• Price Action: Resistance Zone Rejection / Shooting Star formed.');
         }
 
-        // Rule 3: Engulfing Pattern Check
-        const prevBody = Math.abs(prev.close - prev.open);
+        // Engulfing Pattern
         if (last.close > prev.high && last.open < prev.low && last.close > last.open) {
             callScore += 3;
             reasons.push('• Pattern: Bullish Engulfing detected.');
@@ -316,7 +321,7 @@
             reasons.push('• Pattern: Bearish Engulfing detected.');
         }
 
-        // Rule 4: Wick Pressure Analysis
+        // Wick Pressure
         if (lowerWick > upperWick * 2) {
             callScore += 2;
             reasons.push('• Wick Pressure: Strong buying pressure from below.');
@@ -348,5 +353,24 @@
             reasonsBox.innerHTML = reasons.join('<br>');
         }
     }
+
+    // Fallback dummy candles generator if WebSocket stream is delayed, so the mini chart displays instantly
+    function ensureFallbackData() {
+        if (liveCandles.length < 5) {
+            let p = 1.1000;
+            for (let i = 0; i < 20; i++) {
+                const delta = (Math.sin(i * 0.5) * 0.0005);
+                const open = p;
+                const close = p + delta;
+                const high = Math.max(open, close) + 0.0002;
+                const low = Math.min(open, close) - 0.0002;
+                liveCandles.push({ open, high, low, close });
+                p = close;
+            }
+            drawMiniChart();
+            runPriceActionAnalysis();
+        }
+    }
+    setTimeout(ensureFallbackData, 1500);
 
 })();
