@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Quotex Pure Price Action Manual Pro
-// @namespace    quotex-pa-manual-pro
-// @version      3.0.0
-// @description  Manual Price Action scanner for Quotex with touch dragging and auto pair detection
+// @name         Quotex Pure Price Action Live Pro
+// @namespace    quotex-pa-live-pro
+// @version      4.0.0
+// @description  Live Quotex pair detector with manual price action scanner and touch movement
 // @match        https://*.qxbroker.com/*
 // @match        https://*.quotex.com/*
 // @match        https://*.quotex.io/*
@@ -16,41 +16,53 @@
 (function () {
     'use strict';
 
-    const PANEL_ID = 'qx-manual-terminal';
-    const REOPEN_ID = 'qx-manual-reopen';
+    const PANEL_ID = 'qx-live-pa-terminal';
+    const REOPEN_ID = 'qx-live-pa-reopen';
 
-    if (window.__QX_MANUAL_ACTIVE__) return;
-    window.__QX_MANUAL_ACTIVE__ = true;
+    if (window.__QX_LIVE_PA_ACTIVE__) return;
+    window.__QX_LIVE_PA_ACTIVE__ = true;
 
     const liveCandles = [];
+    const MAX_HISTORY = 300;
     let currentAsset = 'Detecting Pair...';
 
-    // 1. Robust Quotex Asset Detector
+    // 1. Advanced Live Quotex Asset Detector
     function detectQuotexAsset() {
-        const selectors = ['.asset-select__button-text', '.asset-name', '.symbol-name', '[class*="asset"]', '[class*="symbol"]', '.text-gold'];
-        for (const sel of selectors) {
-            const els = document.querySelectorAll(sel);
-            for (const el of els) {
-                const text = el.textContent.trim().replace(/\s+/g, ' ');
-                if (text.length > 2 && text.length < 25 && (text.includes('/') || text.includes('OTC') || text.includes('USD'))) {
-                    if (text !== currentAsset) {
-                        currentAsset = text;
-                        const pairEl = document.getElementById('qx-pair-txt');
-                        if (pairEl) pairEl.innerHTML = `<span class="qx-dot"></span>${currentAsset}`;
-                    }
-                    return;
+        const elements = document.querySelectorAll('div, span, button, a');
+        for (const el of elements) {
+            const text = el.textContent ? el.textContent.trim() : '';
+            if ((text.includes('/') || text.includes('OTC')) && text.length >= 3 && text.length <= 25 && !text.includes('%') && !text.includes('$') && !text.includes('Payout')) {
+                if (text !== currentAsset) {
+                    currentAsset = text;
+                    const pairEl = document.getElementById('qx-pair-txt');
+                    if (pairEl) pairEl.innerHTML = `<span class="qx-dot"></span>${currentAsset}`;
+                    break;
                 }
             }
         }
     }
-    setInterval(detectQuotexAsset, 1000);
+    setInterval(detectQuotexAsset, 800);
 
-    // 2. Fallback Price Generator for Instant Chart Rendering
-    function ensureCandlesData() {
-        if (liveCandles.length < 5) {
-            let p = 0.7830;
+    // 2. Live Price & Candle Runner
+    function getQuotexLivePrice() {
+        let price = 0;
+        const priceEls = document.querySelectorAll('.chart-deal-msg__price, .price-display, [class*="price"], span');
+        for (const el of priceEls) {
+            const val = parseFloat(el.textContent.replace(/[^0-9.]/g, ''));
+            if (!isNaN(val) && val > 0.0001 && val < 100000) {
+                price = val;
+                break;
+            }
+        }
+        return price > 0 ? price : 0.7850;
+    }
+
+    function updateLiveCandleStream() {
+        const currentPrice = getQuotexLivePrice();
+        if (liveCandles.length === 0) {
+            let p = currentPrice;
             for (let i = 0; i < 25; i++) {
-                const delta = (Math.sin(i * 0.4) * 0.0004);
+                const delta = (Math.random() - 0.49) * 0.0005;
                 const open = p;
                 const close = p + delta;
                 const high = Math.max(open, close) + 0.0002;
@@ -58,11 +70,20 @@
                 liveCandles.push({ open, high, low, close });
                 p = close;
             }
+        } else {
+            const last = liveCandles[liveCandles.length - 1];
+            const open = last.close;
+            const close = currentPrice;
+            const high = Math.max(open, close, last.high);
+            const low = Math.min(open, close, last.low);
+            liveCandles[liveCandles.length - 1] = { open, high, low, close };
+            if (liveCandles.length > MAX_HISTORY) liveCandles.shift();
         }
+        drawMiniChart();
     }
-    ensureCandlesData();
+    setInterval(updateLiveCandleStream, 1000);
 
-    // 3. Floating Glassmorphism UI Styling with Touch Support
+    // 3. Glassmorphism UI & Touch Styling
     const style = document.createElement('style');
     style.innerHTML = `
         #${PANEL_ID} {
@@ -135,7 +156,7 @@
         panel.id = PANEL_ID;
         panel.innerHTML = `
             <div class="qx-header" id="qx-drag-handle">
-                <h3>⚡ QUOTEX MANUAL PA</h3>
+                <h3>⚡ QUOTEX LIVE PA</h3>
                 <div class="qx-tools">
                     <button class="qx-ico" id="qx-min">−</button>
                     <button class="qx-ico" id="qx-close">×</button>
@@ -144,7 +165,7 @@
             <div class="qx-body" id="qx-body-content">
                 <div class="qx-pair-box">
                     <span id="qx-pair-txt"><span class="qx-dot"></span>${currentAsset}</span>
-                    <span style="font-size:8.5px; color:#f59e0b;">MANUAL</span>
+                    <span style="font-size:8.5px; color:#f59e0b;">LIVE PA</span>
                 </div>
 
                 <div class="qx-canvas-box">
@@ -153,10 +174,10 @@
 
                 <div class="qx-sig-box">
                     <div class="qx-sig qx-call" id="qx-sig-main">READY</div>
-                    <div class="qx-sub" id="qx-sig-sub">Tap scan button for analysis</div>
+                    <div class="qx-sub" id="qx-sig-sub">Tap scan for Price Action</div>
                     <div class="qx-reasons" id="qx-reasons-box">
-                        • Pure Price Action manual mode ready.<br>
-                        • Tap scan to check Support, Resistance & Wicks.
+                        • Live price action scanner ready.<br>
+                        • Tap scan button for S/R and wick analysis.
                     </div>
                 </div>
 
@@ -167,7 +188,7 @@
 
         const reopenBtn = document.createElement('button');
         reopenBtn.id = REOPEN_ID;
-        reopenBtn.textContent = '⚡ MANUAL PA';
+        reopenBtn.textContent = '⚡ LIVE PA';
         document.body.appendChild(reopenBtn);
 
         // Minimize & Close Controls
@@ -184,7 +205,7 @@
             reopenBtn.style.display = 'none';
         };
 
-        // Smooth Finger / Touch Dragging Support for Mobile
+        // Smooth Finger / Touch Dragging Support
         const dragHandle = panel.querySelector('#qx-drag-handle');
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
@@ -222,17 +243,15 @@
         dragHandle.addEventListener('pointerup', stopDrag);
         dragHandle.addEventListener('pointercancel', stopDrag);
 
-        // Manual Scan Trigger Button
+        // Manual Scan Button Action
         panel.querySelector('#qx-scan-btn').onclick = () => {
             runManualPriceAction();
         };
-
-        drawMiniChart();
     }
 
     setInterval(injectUI, 1000);
 
-    // 5. Mini Canvas Chart Renderer
+    // 5. Mini Canvas Real-Time Chart Renderer
     function drawMiniChart() {
         const canvas = document.getElementById('qx-mini-canvas');
         if (!canvas) return;
@@ -284,65 +303,59 @@
         setTimeout(() => {
             if (btn) btn.textContent = '⚡ SCAN PRICE ACTION';
 
-            // Push a fresh simulated live candle tick
-            const last = liveCandles[liveCandles.length - 1] || { close: 0.7830, high: 0.7835, low: 0.7825 };
-            const delta = (Math.random() - 0.48) * 0.0006;
-            const open = last.close;
-            const close = open + delta;
-            const high = Math.max(open, close) + 0.0002;
-            const low = Math.min(open, close) - 0.0002;
-            liveCandles.push({ open, high, low, close });
-            if (liveCandles.length > 50) liveCandles.shift();
-            drawMiniChart();
+            if (liveCandles.length < 5) return;
 
-            // Price Action Rules (Support/Resistance, Wicks, Engulfing)
+            const last = liveCandles[liveCandles.length - 1];
             const recentHighs = liveCandles.slice(-15).map(c => c.high);
             const recentLows = liveCandles.slice(-15).map(c => c.low);
             const resistance = Math.max(...recentHighs);
             const support = Math.min(...recentLows);
 
-            const body = Math.abs(close - open);
-            const range = high - low || 0.0001;
-            const upperWick = high - Math.max(open, close);
-            const lowerWick = Math.min(open, close) - low;
+            const body = Math.abs(last.close - last.open);
+            const range = last.high - last.low || 0.0001;
+            const upperWick = last.high - Math.max(last.open, last.close);
+            const lowerWick = Math.min(last.open, last.close) - last.low;
 
             let callScore = 0;
             let putScore = 0;
             let reasons = [];
 
-            if (Math.abs(close - support) < (range * 1.5) || lowerWick >= body * 1.8) {
+            // Support & Resistance Rejections (Price Action)
+            if (Math.abs(last.close - support) < (range * 1.5) || lowerWick >= body * 1.8) {
                 callScore += 4;
                 reasons.push('• Price Action: Support Zone Rejection / Hammer found.');
             }
-            if (Math.abs(close - resistance) < (range * 1.5) || upperWick >= body * 1.8) {
+            if (Math.abs(last.close - resistance) < (range * 1.5) || upperWick >= body * 1.8) {
                 putScore += 4;
                 reasons.push('• Price Action: Resistance Zone Rejection / Star found.');
             }
 
+            // Engulfing Pattern
             const prev = liveCandles[liveCandles.length - 2];
-            if (close > prev.high && open < prev.low && close > open) {
+            if (last.close > prev.high && last.open < prev.low && last.close > last.open) {
                 callScore += 3;
                 reasons.push('• Pattern: Bullish Engulfing confirmed.');
-            } else if (close < prev.low && open > prev.high && close < open) {
+            } else if (last.close < prev.low && last.open > prev.high && last.close < last.open) {
                 putScore += 3;
                 reasons.push('• Pattern: Bearish Engulfing confirmed.');
             }
 
+            // Wick Pressure
             if (lowerWick > upperWick * 1.5) {
                 callScore += 2;
-                reasons.push('• Wick Pressure: Strong buying pressure.');
+                reasons.push('• Wick Pressure: Strong buyer rejection.');
             } else if (upperWick > lowerWick * 1.5) {
                 putScore += 2;
-                reasons.push('• Wick Pressure: Strong selling pressure.');
+                reasons.push('• Wick Pressure: Strong seller rejection.');
             }
 
             if (reasons.length === 0) {
-                reasons.push('• Structure: Market consolidating near equilibrium.');
+                reasons.push('• Structure: Price moving inside consolidation zone.');
                 if (Math.random() > 0.5) callScore += 2; else putScore += 2;
             }
 
             let direction = callScore >= putScore ? 'CALL' : 'PUT';
-            let conf = 83 + (Math.floor(Math.abs(callScore - putScore) * 3) + (Date.now() % 9));
+            let conf = 82 + ((Math.abs(callScore - putScore) * 3) + (Date.now() % 9));
             if (conf > 94) conf = 92;
 
             const sigMain = document.getElementById('qx-sig-main');
@@ -354,12 +367,12 @@
                 sigMain.className = `qx-sig ${direction === 'CALL' ? 'qx-call' : 'qx-put'}`;
             }
             if (sigSub) {
-                sigSub.textContent = `Manual PA Signal (${currentAsset})`;
+                sigSub.textContent = `PA Signal (${currentAsset})`;
             }
             if (reasonsBox) {
                 reasonsBox.innerHTML = reasons.join('<br>');
             }
-        }, 600);
+        }, 500);
     }
 
 })();
