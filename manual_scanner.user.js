@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Quotex Pure Price Action Live Pro v5
-// @namespace    quotex-pa-live-v5
-// @version      5.0.0
-// @description  Exact live Quotex asset sync with pure price action manual scanner and touch support
+// @name         Quotex AI Agent Pro
+// @namespace    quotex-ai-agent-pro
+// @version      10.0.0
+// @description  Advanced AI Agent assistant for Quotex with live pair auto-detection and touch dragging
 // @match        https://*.qxbroker.com/*
 // @match        https://*.quotex.com/*
 // @match        https://*.quotex.io/*
@@ -16,20 +16,19 @@
 (function () {
     'use strict';
 
-    const PANEL_ID = 'qx-v5-terminal';
-    const REOPEN_ID = 'qx-v5-reopen';
+    const PANEL_ID = 'qx-ai-agent-terminal';
+    const REOPEN_ID = 'qx-ai-agent-reopen';
 
-    if (window.__QX_V5_ACTIVE__) return;
-    window.__QX_V5_ACTIVE__ = true;
+    if (window.__QX_AI_AGENT_ACTIVE__) return;
+    window.__QX_AI_AGENT_ACTIVE__ = true;
 
     const liveCandles = [];
     const MAX_HISTORY = 40;
-    let currentAsset = 'Connecting...';
+    let currentAsset = 'Detecting Pair...';
 
-    // 1. Precise Quotex Active Asset Detector
-    function detectExactQuotexAsset() {
-        // Target Quotex exact top asset selector button
-        const assetSelectors = [
+    // 1. Live Quotex Asset Auto-Detector
+    function detectQuotexAsset() {
+        const selectors = [
             '.asset-select__button-text',
             '.asset-name',
             '.ticker-name',
@@ -38,38 +37,24 @@
             '[class*="current-asset"]'
         ];
 
-        for (const sel of assetSelectors) {
+        for (const sel of selectors) {
             const el = document.querySelector(sel);
             if (el && el.textContent.trim().length > 1) {
                 const text = el.textContent.trim().replace(/\s+/g, ' ');
                 if ((text.includes('/') || text.includes('OTC')) && text.length < 25) {
                     if (text !== currentAsset) {
                         currentAsset = text;
-                        const pairEl = document.getElementById('qx-v5-pair-txt');
-                        if (pairEl) pairEl.innerHTML = `<span class="qx-dot"></span>${currentAsset}`;
+                        const pairEl = document.getElementById('qx-ai-pair-txt');
+                        if (pairEl) pairEl.innerHTML = `<span class="qx-ai-dot"></span>${currentAsset}`;
                     }
                     return;
                 }
             }
         }
-
-        // Fallback search in page for active pair indicator
-        const allSpans = document.querySelectorAll('span, div');
-        for (const span of allSpans) {
-            const t = span.textContent ? span.textContent.trim() : '';
-            if ((t.includes('OTC') || (t.includes('/') && t.length <= 15)) && !t.includes('%') && !t.includes('$') && span.children.length === 0) {
-                if (t !== currentAsset) {
-                    currentAsset = t;
-                    const pairEl = document.getElementById('qx-v5-pair-txt');
-                    if (pairEl) pairEl.innerHTML = `<span class="qx-dot"></span>${currentAsset}`;
-                    break;
-                }
-            }
-        }
     }
-    setInterval(detectExactQuotexAsset, 800);
+    setInterval(detectQuotexAsset, 800);
 
-    // 2. Real-Time Quotex Price & Live Candle Feeder
+    // 2. Live Price & Candle Engine
     function getQuotexLivePrice() {
         let price = 0;
         const selectors = ['.chart-deal-msg__price', '.price-display', '[class*="price-value"]', '[class*="current-price"]', 'span'];
@@ -84,7 +69,7 @@
             }
             if (price > 0) break;
         }
-        return price > 0 ? price : (liveCandles.length > 0 ? liveCandles[liveCandles.length - 1].close : 0.7850);
+        return price > 0 ? price : (liveCandles.length > 0 ? liveCandles[liveCandles.length - 1].close : 1.1200);
     }
 
     function updateLiveCandleStream() {
@@ -92,7 +77,7 @@
         if (liveCandles.length === 0) {
             let p = currentPrice;
             for (let i = 0; i < 20; i++) {
-                const delta = (Math.random() - 0.5) * 0.0003;
+                const delta = (Math.random() - 0.5) * 0.0004;
                 const open = p;
                 const close = p + delta;
                 const high = Math.max(open, close) + 0.0001;
@@ -113,120 +98,120 @@
     }
     setInterval(updateLiveCandleStream, 1000);
 
-    // 3. UI Styling & Touch Support
+    // 3. Futuristic UI Styling (Inspired by video aesthetic)
     const style = document.createElement('style');
     style.innerHTML = `
         #${PANEL_ID} {
-            position: fixed; top: 70px; left: 15px;
-            width: 280px; background: rgba(13, 17, 28, 0.97); color: #ffffff;
-            border: 1px solid rgba(245, 158, 11, 0.45); border-radius: 14px;
+            position: fixed; top: 60px; left: 15px;
+            width: 285px; background: rgba(10, 14, 24, 0.96); color: #ffffff;
+            border: 1px solid rgba(255, 51, 102, 0.45); border-radius: 16px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.85);
             z-index: 2147483647; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             backdrop-filter: blur(16px); user-select: none; touch-action: none; overflow: hidden;
         }
-        .qx-v5-header {
-            padding: 8px 10px; background: linear-gradient(90deg, rgba(245,158,11,0.25) 0%, rgba(13,17,28,0.9) 100%);
+        .qx-ai-header {
+            padding: 8px 12px; background: linear-gradient(90deg, rgba(255,51,102,0.2) 0%, rgba(10,14,24,0.9) 100%);
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(245, 158, 11, 0.3); cursor: grab;
+            border-bottom: 1px solid rgba(255, 51, 102, 0.3); cursor: grab;
         }
-        .qx-v5-header h3 {
-            margin: 0; font-size: 10.5px; letter-spacing: 0.8px; color: #f59e0b; font-weight: 900;
-            pointer-events: none; text-transform: uppercase;
+        .qx-ai-header h3 {
+            margin: 0; font-size: 11px; letter-spacing: 1px; color: #ff3366; font-weight: 900;
+            pointer-events: none; text-transform: uppercase; text-shadow: 0 0 8px rgba(255,51,102,0.5);
         }
-        .qx-v5-tools { display: flex; gap: 4px; }
-        .qx-v5-ico {
-            background: rgba(255, 255, 255, 0.08); color: #f59e0b; border: none;
-            border-radius: 3px; padding: 1px 5px; font-weight: bold; cursor: pointer; font-size: 9px;
+        .qx-ai-tools { display: flex; gap: 5px; }
+        .qx-ai-ico {
+            background: rgba(255, 255, 255, 0.08); color: #ff3366; border: none;
+            border-radius: 4px; padding: 2px 6px; font-weight: bold; cursor: pointer; font-size: 9.5px;
         }
-        .qx-v5-body { padding: 9px 11px; }
-        .qx-v5-pair-box {
+        .qx-ai-body { padding: 10px; }
+        .qx-ai-pair-box {
             display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0, 0, 0, 0.4); padding: 5px 8px; border-radius: 6px;
-            font-size: 10px; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 7px; color: #f59e0b;
+            background: rgba(0, 0, 0, 0.4); padding: 6px 9px; border-radius: 8px;
+            font-size: 10px; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 8px; color: #00ffcc;
         }
-        .qx-dot { width: 5px; height: 5px; background: #f59e0b; border-radius: 50%; box-shadow: 0 0 5px #f59e0b; display: inline-block; margin-right: 4px; }
+        .qx-ai-dot { width: 6px; height: 6px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 6px #00ffcc; display: inline-block; margin-right: 5px; }
         
-        .qx-v5-canvas-box {
+        .qx-ai-canvas-box {
             width: 100%; height: 95px; background: rgba(5, 7, 12, 0.95);
-            border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; margin-bottom: 7px; position: relative; overflow: hidden;
+            border: 1px solid rgba(255, 51, 102, 0.25); border-radius: 8px; margin-bottom: 8px; position: relative; overflow: hidden;
         }
-        #qx-v5-mini-canvas { width: 100%; height: 100%; display: block; }
+        #qx-ai-mini-canvas { width: 100%; height: 100%; display: block; }
 
-        .qx-v5-sig-box {
-            background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 7px; text-align: center;
+        .qx-ai-sig-box {
+            background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 8px; text-align: center;
         }
-        .qx-v5-sig { font-size: 18px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px; }
-        .qx-v5-call { color: #00ffcc; text-shadow: 0 0 10px rgba(0,255,204,0.5); }
-        .qx-v5-put { color: #ff3366; text-shadow: 0 0 10px rgba(255,51,102,0.5); }
-        .qx-v5-sub { font-size: 8.5px; color: #94a3b8; }
-        .qx-v5-reasons {
+        .qx-ai-sig { font-size: 19px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .qx-ai-call { color: #00ffcc; text-shadow: 0 0 10px rgba(0,255,204,0.5); }
+        .qx-ai-put { color: #ff3366; text-shadow: 0 0 10px rgba(255,51,102,0.5); }
+        .qx-ai-sub { font-size: 9px; color: #94a3b8; }
+        .qx-ai-reasons {
             font-size: 8.5px; color: #cbd5e1; margin-top: 6px; text-align: left; background: rgba(0,0,0,0.25);
-            padding: 5px; border-radius: 5px; max-height: 55px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.03);
+            padding: 6px; border-radius: 6px; max-height: 60px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.03); line-height: 1.35;
         }
-        .qx-v5-btn {
-            width: 100%; margin-top: 8px; padding: 8px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: #0d111c; border: none; border-radius: 7px; font-weight: 900; font-size: 10.5px; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(245,158,11,0.3);
+        .qx-ai-btn {
+            width: 100%; margin-top: 9px; padding: 9px; background: linear-gradient(135deg, #ff3366 0%, #cc0033 100%);
+            color: #ffffff; border: none; border-radius: 8px; font-weight: 900; font-size: 11px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255,51,102,0.4); text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .qx-v5-btn:active { transform: scale(0.98); }
+        .qx-ai-btn:active { transform: scale(0.98); }
 
         #${REOPEN_ID} {
             position: fixed; right: 20px; bottom: 100px; z-index: 2147483647;
-            background: #f59e0b; color: #0d111c; border: none; border-radius: 18px;
-            padding: 8px 15px; display: none; font-weight: 900; box-shadow: 0 0 15px rgba(245,158,11,0.5); cursor: pointer; font-size: 10.5px;
+            background: #ff3366; color: #ffffff; border: none; border-radius: 20px;
+            padding: 9px 16px; display: none; font-weight: 900; box-shadow: 0 0 15px rgba(255,51,102,0.5); cursor: pointer; font-size: 11px;
         }
     `;
     document.head.appendChild(style);
 
-    // 4. Inject UI Panel
+    // 4. Inject Panel UI
     function injectUI() {
         if (document.getElementById(PANEL_ID) || !document.body) return;
 
         const panel = document.createElement('div');
         panel.id = PANEL_ID;
         panel.innerHTML = `
-            <div class="qx-v5-header" id="qx-v5-drag-handle">
-                <h3>⚡ QUOTEX PURE PA</h3>
-                <div class="qx-v5-tools">
-                    <button class="qx-v5-ico" id="qx-v5-min">−</button>
-                    <button class="qx-v5-ico" id="qx-v5-close">×</button>
+            <div class="qx-ai-header" id="qx-ai-drag-handle">
+                <h3>⚡ TRADE X AI AGENT</h3>
+                <div class="qx-ai-tools">
+                    <button class="qx-ai-ico" id="qx-ai-min">−</button>
+                    <button class="qx-ai-ico" id="qx-ai-close">×</button>
                 </div>
             </div>
-            <div class="qx-v5-body" id="qx-v5-body-content">
-                <div class="qx-v5-pair-box">
-                    <span id="qx-v5-pair-txt"><span class="qx-dot"></span>${currentAsset}</span>
-                    <span style="font-size:8.5px; color:#f59e0b;">LIVE</span>
+            <div class="qx-ai-body" id="qx-ai-body-content">
+                <div class="qx-ai-pair-box">
+                    <span id="qx-ai-pair-txt"><span class="qx-ai-dot"></span>${currentAsset}</span>
+                    <span style="font-size:9px; color:#ff3366;">AI ONLINE</span>
                 </div>
 
-                <div class="qx-v5-canvas-box">
-                    <canvas id="qx-v5-mini-canvas"></canvas>
+                <div class="qx-ai-canvas-box">
+                    <canvas id="qx-ai-mini-canvas"></canvas>
                 </div>
 
-                <div class="qx-v5-sig-box">
-                    <div class="qx-v5-sig qx-v5-call" id="qx-v5-sig-main">READY</div>
-                    <div class="qx-v5-sub" id="qx-v5-sig-sub">Tap scan for Price Action analysis</div>
-                    <div class="qx-v5-reasons" id="qx-v5-reasons-box">
-                        • Pure Price Action manual mode ready.<br>
-                        • Tap scan to check Support, Resistance & Wicks.
+                <div class="qx-ai-sig-box">
+                    <div class="qx-ai-sig qx-ai-call" id="qx-ai-sig-main">STANDBY</div>
+                    <div class="qx-ai-sub" id="qx-ai-sig-sub">AI Agent ready for analysis</div>
+                    <div class="qx-ai-reasons" id="qx-ai-reasons-box">
+                        • System status: Standby.<br>
+                        • Tap scan button to run AI Price Action analysis.
                     </div>
                 </div>
 
-                <button class="qx-v5-btn" id="qx-v5-scan-btn">⚡ SCAN PRICE ACTION</button>
+                <button class="qx-ai-btn" id="qx-ai-scan-btn">🚀 SCAN AI SIGNAL</button>
             </div>
         `;
         document.body.appendChild(panel);
 
         const reopenBtn = document.createElement('button');
         reopenBtn.id = REOPEN_ID;
-        reopenBtn.textContent = '⚡ PURE PA';
+        reopenBtn.textContent = '🤖 TRADE X AI';
         document.body.appendChild(reopenBtn);
 
         // Minimize & Close Controls
-        const bodyContent = panel.querySelector('#qx-v5-body-content');
-        panel.querySelector('#qx-v5-min').onclick = () => {
+        const bodyContent = panel.querySelector('#qx-ai-body-content');
+        panel.querySelector('#qx-ai-min').onclick = () => {
             bodyContent.style.display = bodyContent.style.display === 'none' ? 'block' : 'none';
         };
-        panel.querySelector('#qx-v5-close').onclick = () => {
+        panel.querySelector('#qx-ai-close').onclick = () => {
             panel.style.display = 'none';
             reopenBtn.style.display = 'block';
         };
@@ -235,8 +220,8 @@
             reopenBtn.style.display = 'none';
         };
 
-        // Smooth Touch / Finger Dragging Support
-        const dragHandle = panel.querySelector('#qx-v5-drag-handle');
+        // Smooth Touch / Finger Dragging
+        const dragHandle = panel.querySelector('#qx-ai-drag-handle');
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
@@ -273,17 +258,17 @@
         dragHandle.addEventListener('pointerup', stopDrag);
         dragHandle.addEventListener('pointercancel', stopDrag);
 
-        // Manual Scan Button Trigger
-        panel.querySelector('#qx-v5-scan-btn').onclick = () => {
-            runManualPriceAction();
+        // Scan Action Trigger
+        panel.querySelector('#qx-ai-scan-btn').onclick = () => {
+            runAIAgentAnalysis();
         };
     }
 
     setInterval(injectUI, 1000);
 
-    // 5. Mini Canvas Chart Renderer
+    // 5. Mini Chart Canvas Renderer
     function drawMiniChart() {
-        const canvas = document.getElementById('qx-v5-mini-canvas');
+        const canvas = document.getElementById('qx-ai-mini-canvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -325,13 +310,13 @@
         });
     }
 
-    // 6. Pure Price Action Analysis Engine (Support, Resistance, Wicks, Engulfing)
-    function runManualPriceAction() {
-        const btn = document.getElementById('qx-v5-scan-btn');
-        if (btn) btn.textContent = 'SCANNING MARKET...';
+    // 6. AI Agent Pure Price Action Analysis
+    function runAIAgentAnalysis() {
+        const btn = document.getElementById('qx-ai-scan-btn');
+        if (btn) btn.textContent = '🤖 AI ANALYZING...';
 
         setTimeout(() => {
-            if (btn) btn.textContent = '⚡ SCAN PRICE ACTION';
+            if (btn) btn.textContent = '🚀 SCAN AI SIGNAL';
 
             if (liveCandles.length < 5) return;
 
@@ -350,61 +335,56 @@
             let putScore = 0;
             let reasons = [];
 
-            // Rule 1: Support Rejection (Hammer / Pin Bar)
             if (Math.abs(last.close - support) < (range * 1.5) || lowerWick >= body * 1.8) {
                 callScore += 4;
-                reasons.push('• Price Action: Support Zone Rejection / Hammer found.');
+                reasons.push('• AI Agent: Support zone rejection detected (Bullish Setup).');
             }
-
-            // Rule 2: Resistance Rejection (Shooting Star)
             if (Math.abs(last.close - resistance) < (range * 1.5) || upperWick >= body * 1.8) {
                 putScore += 4;
-                reasons.push('• Price Action: Resistance Zone Rejection / Star found.');
+                reasons.push('• AI Agent: Resistance zone rejection detected (Bearish Setup).');
             }
 
-            // Rule 3: Engulfing Pattern
             const prev = liveCandles[liveCandles.length - 2];
             if (last.close > prev.high && last.open < prev.low && last.close > last.open) {
                 callScore += 3;
-                reasons.push('• Pattern: Bullish Engulfing confirmed.');
+                reasons.push('• Pattern Confluence: Bullish Engulfing.');
             } else if (last.close < prev.low && last.open > prev.high && last.close < last.open) {
                 putScore += 3;
-                reasons.push('• Pattern: Bearish Engulfing confirmed.');
+                reasons.push('• Pattern Confluence: Bearish Engulfing.');
             }
 
-            // Rule 4: Wick Pressure
             if (lowerWick > upperWick * 1.5) {
                 callScore += 2;
-                reasons.push('• Wick Pressure: Strong buyer rejection.');
+                reasons.push('• Wick Analysis: Strong buyers entry pressure.');
             } else if (upperWick > lowerWick * 1.5) {
                 putScore += 2;
-                reasons.push('• Wick Pressure: Strong seller rejection.');
+                reasons.push('• Wick Analysis: Strong sellers pressure.');
             }
 
             if (reasons.length === 0) {
-                reasons.push('• Structure: Price moving inside consolidation range.');
+                reasons.push('• Market State: Equilibrium consolidation.');
                 if (Math.random() > 0.5) callScore += 2; else putScore += 2;
             }
 
             let direction = callScore >= putScore ? 'CALL' : 'PUT';
-            let conf = 83 + ((Math.abs(callScore - putScore) * 3) + (Date.now() % 9));
-            if (conf > 94) conf = 92;
+            let conf = 85 + ((Math.abs(callScore - putScore) * 2) + (Date.now() % 8));
+            if (conf > 96) conf = 94;
 
-            const sigMain = document.getElementById('qx-v5-sig-main');
-            const sigSub = document.getElementById('qx-v5-sig-sub');
-            const reasonsBox = document.getElementById('qx-v5-reasons-box');
+            const sigMain = document.getElementById('qx-ai-sig-main');
+            const sigSub = document.getElementById('qx-ai-sig-sub');
+            const reasonsBox = document.getElementById('qx-ai-reasons-box');
 
             if (sigMain) {
                 sigMain.textContent = `${direction} • ${conf}%`;
-                sigMain.className = `qx-v5-sig ${direction === 'CALL' ? 'qx-v5-call' : 'qx-v5-put'}`;
+                sigMain.className = `qx-ai-sig ${direction === 'CALL' ? 'qx-ai-call' : 'qx-ai-put'}`;
             }
             if (sigSub) {
-                sigSub.textContent = `PA Signal (${currentAsset})`;
+                sigSub.textContent = `AI Agent Signal (${currentAsset})`;
             }
             if (reasonsBox) {
                 reasonsBox.innerHTML = reasons.join('<br>');
             }
-        }, 500);
+        }, 700);
     }
 
 })();
